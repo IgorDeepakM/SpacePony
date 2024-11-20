@@ -92,6 +92,19 @@ static void pointer_create(compile_t* c, reach_type_t* t)
   codegen_finishfun(c);
 }
 
+static void pointer_from_usize(compile_t* c, reach_type_t* t, compile_type_t* t_elem)
+{
+  FIND_METHOD("from_usize", TK_NONE);
+
+  LLVMTypeRef params[2];
+  params[0] = c_t->use_type;
+  params[1] = c->intptr;
+  start_function(c, t, m, c_t->use_type, params, 2);
+
+  genfun_build_ret(c, LLVMGetParam(c_m->func, 1));
+  codegen_finishfun(c);
+}
+
 static void pointer_alloc(compile_t* c, reach_type_t* t,
   compile_type_t* t_elem)
 {
@@ -450,6 +463,7 @@ void genprim_pointer_methods(compile_t* c, reach_type_t* t)
   c_box_args[1] = c_t_elem;
 
   pointer_create(c, t);
+  pointer_from_usize(c, t, c_t_elem);
   pointer_alloc(c, t, c_t_elem);
 
   pointer_realloc(c, t, c_t_elem);
@@ -481,12 +495,37 @@ static void nullable_pointer_create(compile_t* c, reach_type_t* t, compile_type_
   codegen_finishfun(c);
 }
 
+static void nullable_pointer_from_usize(compile_t* c, reach_type_t* t, compile_type_t* t_elem)
+{
+  FIND_METHOD("from_usize", TK_NONE);
+
+  LLVMTypeRef params[2];
+  params[0] = c_t->use_type;
+  params[1] = c->intptr;
+  start_function(c, t, m, c_t->use_type, params, 2);
+
+  genfun_build_ret(c, LLVMGetParam(c_m->func, 1));
+  codegen_finishfun(c);
+}
+
 static void nullable_pointer_none(compile_t* c, reach_type_t* t)
 {
   FIND_METHOD("none", TK_NONE);
   start_function(c, t, m, c_t->use_type, &c_t->use_type, 1);
 
   genfun_build_ret(c, LLVMConstNull(c_t->use_type));
+  codegen_finishfun(c);
+}
+
+static void nullable_pointer_usize(compile_t* c, reach_type_t* t, token_id cap)
+{
+  FIND_METHOD("usize", cap);
+  start_function(c, t, m, c->intptr, &c_t->use_type, 1);
+
+  LLVMValueRef ptr = LLVMGetParam(c_m->func, 0);
+  LLVMValueRef result = LLVMBuildPtrToInt(c->builder, ptr, c->intptr, "");
+
+  genfun_build_ret(c, result);
   codegen_finishfun(c);
 }
 
@@ -540,7 +579,9 @@ void genprim_nullable_pointer_methods(compile_t* c, reach_type_t* t)
   box_args[1] = t_elem;
 
   nullable_pointer_create(c, t, t_elem);
+  nullable_pointer_from_usize(c, t, t_elem);
   nullable_pointer_none(c, t);
+  BOX_FUNCTION(nullable_pointer_usize, t);
   BOX_FUNCTION(nullable_pointer_apply, box_args);
   BOX_FUNCTION(nullable_pointer_is_none, t);
 }

@@ -10,6 +10,12 @@ struct Pointer[A]
     """
     compile_intrinsic
 
+  new from_usize(addr: USize) =>
+    """
+    Initializes the pointer from a USize value.
+    """
+    compile_intrinsic
+
   new _alloc(len: USize) =>
     """
     Space for len instances of A.
