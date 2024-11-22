@@ -409,7 +409,19 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
       {
         ast_t* def = (ast_t*)ast_data(typearg);
 
-        if(ast_id(def) == TK_STRUCT)
+        bool pointer = false;
+        if(orig != NULL)
+        {
+          ast_t* typeref = (ast_t*)ast_child(orig);
+          if(typeref != NULL)
+          {
+            ast_t* typerefdef = (ast_t*)ast_type(typeref);
+            ast_t* data = (ast_t*)ast_data(typerefdef);
+            pointer = is_pointer(typerefdef) || is_nullable_pointer(typerefdef);
+          }
+        }
+
+        if(ast_id(def) == TK_STRUCT && !pointer)
         {
           if(report_errors)
           {

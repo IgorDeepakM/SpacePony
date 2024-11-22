@@ -15,6 +15,13 @@ struct Pointer[A]
     Initializes the pointer from a USize value.
     """
     compile_intrinsic
+  
+  new from_any[B](from: B) =>
+    """
+    This initializes from any type to a NullablePointer. This is useful when
+    initializing a NullablePointer[None] from a struct.
+    """
+    compile_intrinsic
 
   new _alloc(len: USize) =>
     """

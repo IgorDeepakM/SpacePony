@@ -32,10 +32,10 @@
   gen(c, gen_data, TK_REF); \
   gen(c, gen_data, TK_VAL);
 
-#define GENERIC_FUNCTION(name, gen) \
-  generic_function(c, t, stringtab(name), gen);
+#define GENERIC_FUNCTION(name, gen, gen_data) \
+  generic_function(c, t, stringtab(name), gen, gen_data);
 
-typedef void (*generate_gen_fn)(compile_t*, reach_type_t*, reach_method_t*);
+typedef void (*generate_gen_fn)(compile_t*, reach_type_t*, reach_method_t*, void* gen_data);
 
 static void start_function(compile_t* c, reach_type_t* t, reach_method_t* m,
   LLVMTypeRef result, LLVMTypeRef* params, unsigned count)
@@ -48,7 +48,7 @@ static void start_function(compile_t* c, reach_type_t* t, reach_method_t* m,
 }
 
 static void generic_function(compile_t* c, reach_type_t* t, const char* name,
-  generate_gen_fn gen)
+  generate_gen_fn gen, void* gen_data)
 {
   reach_method_name_t* n = reach_method_name(t, name);
 
@@ -60,7 +60,7 @@ static void generic_function(compile_t* c, reach_type_t* t, const char* name,
   while((m = reach_methods_next(&n->r_methods, &i)) != NULL)
   {
     m->intrinsic = true;
-    gen(c, t, m);
+    gen(c, t, m, gen_data);
   }
 }
 
@@ -99,6 +99,22 @@ static void pointer_from_usize(compile_t* c, reach_type_t* t, compile_type_t* t_
   LLVMTypeRef params[2];
   params[0] = c_t->use_type;
   params[1] = c->intptr;
+  start_function(c, t, m, c_t->use_type, params, 2);
+
+  genfun_build_ret(c, LLVMGetParam(c_m->func, 1));
+  codegen_finishfun(c);
+}
+
+static void pointer_from_any(compile_t* c, reach_type_t* t, reach_method_t* m, void* gen_data)
+{
+  m->intrinsic = true;
+  compile_type_t* c_t = (compile_type_t*)t->c_type;
+  compile_type_t* t_elem = ((compile_type_t**)gen_data)[1];
+  compile_method_t* c_m = (compile_method_t*)m->c_method;
+
+  LLVMTypeRef params[2];
+  params[0] = c_t->use_type;
+  params[1] = t_elem->use_type;
   start_function(c, t, m, c_t->use_type, params, 2);
 
   genfun_build_ret(c, LLVMGetParam(c_m->func, 1));
@@ -184,7 +200,7 @@ static void pointer_unsafe(compile_t* c, reach_type_t* t)
   codegen_finishfun(c);
 }
 
-static void pointer_convert(compile_t* c, reach_type_t* t, reach_method_t* m)
+static void pointer_convert(compile_t* c, reach_type_t* t, reach_method_t* m, void* gen_data)
 {
   m->intrinsic = true;
   compile_type_t* c_t = (compile_type_t*)t->c_type;
@@ -464,11 +480,12 @@ void genprim_pointer_methods(compile_t* c, reach_type_t* t)
 
   pointer_create(c, t);
   pointer_from_usize(c, t, c_t_elem);
+  GENERIC_FUNCTION("from_any", pointer_from_any, c_box_args);
   pointer_alloc(c, t, c_t_elem);
 
   pointer_realloc(c, t, c_t_elem);
   pointer_unsafe(c, t);
-  GENERIC_FUNCTION("_convert", pointer_convert);
+  GENERIC_FUNCTION("_convert", pointer_convert, NULL);
   BOX_FUNCTION(pointer_apply, box_args);
   pointer_update(c, t, t_elem);
   BOX_FUNCTION(pointer_offset, c_box_args);
@@ -502,6 +519,22 @@ static void nullable_pointer_from_usize(compile_t* c, reach_type_t* t, compile_t
   LLVMTypeRef params[2];
   params[0] = c_t->use_type;
   params[1] = c->intptr;
+  start_function(c, t, m, c_t->use_type, params, 2);
+
+  genfun_build_ret(c, LLVMGetParam(c_m->func, 1));
+  codegen_finishfun(c);
+}
+
+static void nullable_pointer_from_any(compile_t* c, reach_type_t* t, reach_method_t* m, void* gen_data)
+{
+  m->intrinsic = true;
+  compile_type_t* c_t = (compile_type_t*)t->c_type;
+  compile_type_t* t_elem = ((compile_type_t**)gen_data)[1];
+  compile_method_t* c_m = (compile_method_t*)m->c_method;
+
+  LLVMTypeRef params[2];
+  params[0] = c_t->use_type;
+  params[1] = t_elem->use_type;
   start_function(c, t, m, c_t->use_type, params, 2);
 
   genfun_build_ret(c, LLVMGetParam(c_m->func, 1));
@@ -580,6 +613,7 @@ void genprim_nullable_pointer_methods(compile_t* c, reach_type_t* t)
 
   nullable_pointer_create(c, t, t_elem);
   nullable_pointer_from_usize(c, t, t_elem);
+  GENERIC_FUNCTION("from_any", nullable_pointer_from_any, box_args);
   nullable_pointer_none(c, t);
   BOX_FUNCTION(nullable_pointer_usize, t);
   BOX_FUNCTION(nullable_pointer_apply, box_args);
@@ -587,7 +621,7 @@ void genprim_nullable_pointer_methods(compile_t* c, reach_type_t* t)
 }
 
 static void donotoptimise_apply(compile_t* c, reach_type_t* t,
-  reach_method_t* m)
+  reach_method_t* m, void *gen_data)
 {
   m->intrinsic = true;
   compile_type_t* c_t = (compile_type_t*)t->c_type;
@@ -656,7 +690,7 @@ static void donotoptimise_observe(compile_t* c, reach_type_t* t, token_id cap)
 
 void genprim_donotoptimise_methods(compile_t* c, reach_type_t* t)
 {
-  GENERIC_FUNCTION("apply", donotoptimise_apply);
+  GENERIC_FUNCTION("apply", donotoptimise_apply, NULL);
   BOX_FUNCTION(donotoptimise_observe, t);
 }
 

@@ -949,7 +949,7 @@ bool expr_nominal(pass_opt_t* opt, ast_t** astp)
   // builtin types have no contraint on their type parameter, and it is safe
   // to bind a struct as a type argument (which is not safe on any user defined
   // type, as that type might then be used for pattern matching).
-  if(is_pointer(ast) || is_literal(ast, "Array"))
+  if(is_pointer(ast) || is_literal(ast, "Array") || is_nullable_pointer(ast))
     return true;
 
   ast_t* typeparams = ast_childidx(def, 1);
@@ -958,9 +958,9 @@ bool expr_nominal(pass_opt_t* opt, ast_t** astp)
   if(!reify_defaults(typeparams, typeargs, true, opt))
     return false;
 
-  if(is_nullable_pointer(ast))
+  /*if(is_nullable_pointer(ast))
   {
-    // NullablePointer[A] must be bound to a struct.
+    // NullablePointer[A] must be bound to a struct or None.
     pony_assert(ast_childcount(typeargs) == 1);
     ast_t* typeparam = ast_child(typeparams);
     ast_t* typearg = ast_child(typeargs);
@@ -993,14 +993,14 @@ bool expr_nominal(pass_opt_t* opt, ast_t** astp)
     {
       ast_error(opt->check.errors, ast,
         "%s is not allowed: "
-        "the type argument to NullablePointer must be a struct",
+        "the type argument to NullablePointer must be a struct or None",
         ast_print_type(ast));
 
       return false;
     }
 
     return true;
-  }
+  }*/
 
   return check_constraints(typeargs, typeparams, typeargs, true, opt);
 }
