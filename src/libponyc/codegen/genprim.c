@@ -485,7 +485,7 @@ void genprim_pointer_methods(compile_t* c, reach_type_t* t)
 
   pointer_realloc(c, t, c_t_elem);
   pointer_unsafe(c, t);
-  GENERIC_FUNCTION("_convert", pointer_convert, NULL);
+  GENERIC_FUNCTION("convert", pointer_convert, NULL);
   BOX_FUNCTION(pointer_apply, box_args);
   pointer_update(c, t, t_elem);
   BOX_FUNCTION(pointer_offset, c_box_args);

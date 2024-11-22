@@ -41,7 +41,7 @@ struct Pointer[A]
     """
     compile_intrinsic
 
-  fun _convert[B](): this->Pointer[B] =>
+  fun convert[B](): this->Pointer[B] =>
     """
     Convert from Pointer[A] to Pointer[B].
     """
