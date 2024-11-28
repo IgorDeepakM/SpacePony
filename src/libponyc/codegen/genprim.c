@@ -419,6 +419,31 @@ static void pointer_usize(compile_t* c, reach_type_t* t)
   codegen_finishfun(c);
 }
 
+static void pointer_to_reftype(compile_t* c, void* data, token_id cap)
+{
+  // Returns the receiver if it isn't null.
+  reach_type_t* t = ((reach_type_t**)data)[0];
+  compile_type_t* t_elem = ((compile_type_t**)data)[1];
+
+  FIND_METHOD("to_reftype", cap);
+  start_function(c, t, m, t_elem->use_type, &c_t->use_type, 1);
+
+  LLVMValueRef result = LLVMGetParam(c_m->func, 0);
+  LLVMValueRef test = LLVMBuildIsNull(c->builder, result, "");
+
+  LLVMBasicBlockRef is_false = codegen_block(c, "");
+  LLVMBasicBlockRef is_true = codegen_block(c, "");
+  LLVMBuildCondBr(c->builder, test, is_true, is_false);
+
+  LLVMPositionBuilderAtEnd(c->builder, is_false);
+  genfun_build_ret(c, result);
+
+  LLVMPositionBuilderAtEnd(c->builder, is_true);
+  gencall_error(c);
+
+  codegen_finishfun(c);
+}
+
 static void pointer_is_null(compile_t* c, reach_type_t* t)
 {
   FIND_METHOD("is_null", TK_NONE);
@@ -495,6 +520,7 @@ void genprim_pointer_methods(compile_t* c, reach_type_t* t)
   BOX_FUNCTION(pointer_copy_to, c_box_args);
   pointer_usize(c, t);
   pointer_is_null(c, t);
+  BOX_FUNCTION(pointer_to_reftype, c_box_args);
   pointer_eq(c, t);
   pointer_lt(c, t);
 }

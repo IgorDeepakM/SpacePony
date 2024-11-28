@@ -105,6 +105,13 @@ struct Pointer[A]
     """
     compile_intrinsic
 
+  fun to_reftype(): this->A ? =>
+    """
+    This re-encodes the type of `this` from Pointer[A] to A, allowing
+    `this` to be assigned to a field of variable of type A.
+    """
+    compile_intrinsic
+
   fun tag is_null(): Bool =>
     """
     Return true for a null pointer, false for anything else.
