@@ -958,9 +958,9 @@ bool expr_nominal(pass_opt_t* opt, ast_t** astp)
   if(!reify_defaults(typeparams, typeargs, true, opt))
     return false;
 
-  /*if(is_nullable_pointer(ast))
+  if(is_nullable_pointer(ast))
   {
-    // NullablePointer[A] must be bound to a struct or None.
+    // NullablePointer[A] must be bound to a struct.
     pony_assert(ast_childcount(typeargs) == 1);
     ast_t* typeparam = ast_child(typeparams);
     ast_t* typearg = ast_child(typeargs);
@@ -993,14 +993,14 @@ bool expr_nominal(pass_opt_t* opt, ast_t** astp)
     {
       ast_error(opt->check.errors, ast,
         "%s is not allowed: "
-        "the type argument to NullablePointer must be a struct or None",
+        "the type argument to NullablePointer must be a struct",
         ast_print_type(ast));
 
       return false;
     }
 
     return true;
-  }*/
+  }
 
   return check_constraints(typeargs, typeparams, typeargs, true, opt);
 }

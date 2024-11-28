@@ -14,19 +14,6 @@ struct NullablePointer[A]
     """
     compile_intrinsic
 
-  new from_usize(addr: USize) =>
-    """
-    Initializes the pointer from a USize value.
-    """
-    compile_intrinsic
-
-  new from_any[B](from: B) =>
-    """
-    This initializes from any type to a NullablePointer. This is useful when
-    initializing a NullablePointer[None] from a struct.
-    """
-    compile_intrinsic
-
   new none() =>
     """
     This returns a null pointer typed as a NullablePointer[A].
@@ -44,11 +31,5 @@ struct NullablePointer[A]
   fun is_none(): Bool =>
     """
     Returns true if `this` is null (ie apply would raise an error).
-    """
-    compile_intrinsic
-
-  fun usize(): USize =>
-    """
-    Convert the pointer into an integer.
     """
     compile_intrinsic
