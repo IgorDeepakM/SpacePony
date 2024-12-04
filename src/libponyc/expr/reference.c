@@ -584,30 +584,6 @@ bool expr_paramref(pass_opt_t* opt, ast_t* ast)
 
 bool expr_addressof(pass_opt_t* opt, ast_t* ast)
 {
-  // Check if we're in an FFI call.
-  ast_t* parent = ast_parent(ast);
-  bool ok = false;
-
-  if(ast_id(parent) == TK_SEQ)
-  {
-    parent = ast_parent(parent);
-
-    if(ast_id(parent) == TK_POSITIONALARGS)
-    {
-      parent = ast_parent(parent);
-
-      if(ast_id(parent) == TK_FFICALL)
-        ok = true;
-    }
-  }
-
-  if(!ok)
-  {
-    ast_error(opt->check.errors, ast,
-      "the addressof operator can only be used for FFI arguments");
-    return false;
-  }
-
   ast_t* expr = ast_child(ast);
 
   switch(ast_id(expr))
