@@ -852,7 +852,15 @@ static reach_type_t* add_nominal(reach_t* r, ast_t* type, pass_opt_t* opt)
 
   while(typearg != NULL)
   {
-    add_type(r, typearg, opt);
+    if (is_any_literal(typearg))
+    {
+      ast_t* literal_type = ast_type(typearg);
+      add_type(r, literal_type, opt);
+    }
+    else
+    {
+      add_type(r, typearg, opt);
+    }
     typearg = ast_sibling(typearg);
   }
 

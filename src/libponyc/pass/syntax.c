@@ -880,9 +880,28 @@ static ast_result_t syntax_embed(pass_opt_t* opt, ast_t* ast)
 
 static ast_result_t syntax_type_param(pass_opt_t* opt, ast_t* ast)
 {
+  AST_GET_CHILDREN(ast, id, value_type, default_arg);
+  const char* name = ast_name(id);
+  if (!is_name_type(name))
+  {
+    if (ast_id(value_type) == TK_NONE)
+    {
+      ast_error(opt->check.errors, ast, "Value parameter requires a type constraint");
+      return AST_ERROR;
+    }
 
-  if(!check_id_type_param(opt, ast_child(ast)))
-    return AST_ERROR;
+    if (!check_id_type_param(opt, ast_childidx(value_type, 1)))
+    {
+      return AST_ERROR;
+    }
+  }
+  else
+  {
+    if (!check_id_type_param(opt, id))
+    {
+      return AST_ERROR;
+    }
+  }
 
   return AST_OK;
 }
@@ -1506,16 +1525,6 @@ ast_result_t pass_syntax(ast_t** astp, pass_opt_t* options)
     case TK_CAP_ANY:    r = syntax_cap_set(options, ast); break;
 
     case TK_ANNOTATION: r = syntax_annotation(options, ast); break;
-
-    case TK_VALUEFORMALARG:
-    case TK_VALUEFORMALPARAM:
-      ast_error(options->check.errors, ast,
-        "Value formal parameters not yet supported");
-      ast_error_continue(options->check.errors, ast_parent(ast),
-        "Note that many functions including array indexing use the apply "
-        "method rather than square brackets");
-      r = AST_ERROR;
-      break;
 
     case TK_CONSTANT:
       ast_error(options->check.errors, ast,

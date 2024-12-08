@@ -604,6 +604,8 @@ ast_result_t pass_expr(ast_t** astp, pass_opt_t* options)
     case TK_VARREF:
     case TK_LETREF:     r = expr_localref(options, ast); break;
     case TK_PARAMREF:   r = expr_paramref(options, ast); break;
+    case TK_VALUEFORMALPARAMREF:
+                        r = expr_valueformalparamref(options, astp); break;
 
     case TK_THIS:       r = expr_this(options, ast); break;
     case TK_TRUE:
@@ -648,6 +650,10 @@ ast_result_t pass_expr(ast_t** astp, pass_opt_t* options)
         return AST_OK;
 
       r = expr_literal(options, ast, "String");
+      break;
+
+    case TK_TYPEARGS:
+      r = expr_typeargs(options, ast);
       break;
 
     case TK_FFICALL:

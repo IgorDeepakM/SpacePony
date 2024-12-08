@@ -293,15 +293,27 @@ ast_t* type_for_class(pass_opt_t* opt, ast_t* def, ast_t* ast,
     while(typeparam != NULL)
     {
       ast_t* typeparam_id = ast_child(typeparam);
-      ast_t* typearg = type_sugar(ast, NULL, ast_name(typeparam_id));
-      ast_append(typeargs, typearg);
 
-      if(expr)
+      if (ast_id(typeparam) == TK_VALUEFORMALPARAM)
       {
-        names_nominal(opt, ast, &typearg, false);
+        BUILD(typearg, ast,
+          NODE(TK_VALUEFORMALPARAMREF,
+            TREE(typeparam_id)));
 
-        if(ast_id(typearg) == TK_TYPEPARAMREF)
-          flatten_typeparamref(opt, typearg);
+        ast_append(typeargs, typearg);
+      }
+      else
+      {
+        ast_t* typearg = type_sugar(ast, NULL, ast_name(typeparam_id));
+        ast_append(typeargs, typearg);
+
+        if(expr)
+        {
+          names_nominal(opt, ast, &typearg, false);
+
+          if(ast_id(typearg) == TK_TYPEPARAMREF)
+            flatten_typeparamref(opt, typearg);
+        }
       }
 
       typeparam = ast_sibling(typeparam);

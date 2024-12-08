@@ -205,6 +205,10 @@ LLVMValueRef gen_expr(compile_t* c, ast_t* ast)
       return NULL;
     }
 
+    case TK_VALUEFORMALPARAMREF:
+      ret = gen_valueformalparamref(c, ast);
+      break;
+
     default:
       ast_error(c->opt->check.errors, ast, "not implemented (codegen unknown)");
       return NULL;

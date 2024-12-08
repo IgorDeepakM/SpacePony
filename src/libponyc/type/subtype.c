@@ -1493,6 +1493,82 @@ static bool is_typeparam_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
   return ok;
 }
 
+// Unfortunately, this typechecking method relies on many assumptions about how
+// and when it will be called. This is because we can't nicely check values
+// during the type checking phase as we need expressions to be evaluated but the
+// expressions aren't guaranteed to be type safe / legal until after typechecking.
+// As such we delay checking equality of value arguments until after type checking
+// and after evaluation. At the time of writing there are no value constraints
+// so provided the value is of the correct type this is fine.
+// TODO: ammend this comment after value constraints
+static bool is_typevalue_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap, 
+  errorframe_t* errorf, pass_opt_t* opt)
+{
+    return true;
+
+  switch(ast_id(super))
+  {
+    /*case TK_VALUEFORMALARG:
+    {
+      ast_t* sub_value = ast_child(sub);
+      ast_t *super_value = ast_child(super);
+      ast_t *super_type = ast_type(super_value);
+      ast_t *sub_type = ast_type(sub_value);
+
+      // The type of these should be equal so we first check this
+      if(!is_eqtype(super_type, sub_type, errorf, opt))
+        return false;
+
+      // If the expressions are not the same then we add them to a list of
+      // expressions which we which check for equality later.
+      /*if (!ast_equal(super_value, sub_value))
+      {
+        // If we are later than type checking then this will have already been handled
+        // TODO: find a nicer way of handling this edge case
+        if(opt->program_pass >= PASS_REACH)
+          return true;
+
+        ast_t* type = opt->check.frame->type;
+
+        // TODO: what is a better way of getting the memeber?
+        ast_t* member = ast_nearest(super_value, TK_FUN);
+        if(member == NULL)
+          member = ast_nearest(super_value, TK_NEW);
+
+        // If member is still NULL it's because we have no
+        // member to attach an equality entry to, this may be
+        // the case when a class inherits from a trait. This
+        // is fine as the entry will have been attached to another
+        // list.
+        if(member == NULL)
+          return true;
+
+        assert(type != NULL);
+        assert(member != NULL);
+
+        const char* type_name = ast_name(ast_child(type));
+        const char* member_name = ast_name(ast_childidx(member, 1));
+
+        equality_entry_t* entry = search_equality(opt->check.equality_tab,
+                                                  type_name, member_name);
+
+        // This condition is a slight optimisation as this method is called
+        // from eq_typeargs so all entries would appear twice. This improves
+        // compilation time and error messages.
+        if(entry == NULL || !ast_equal(sub_value, entry->current->lhs))
+          mark_check_equality(opt->check.equality_tab, type_name, member_name,
+                              super_value, sub_value);
+      }
+
+      return true;
+    }*/
+
+    default:
+      assert(0);
+  }
+  return false;
+}
+
 static bool is_arrow_sub_nominal(ast_t* sub, ast_t* super,
   check_cap_t check_cap, errorframe_t* errorf, pass_opt_t* opt)
 {
@@ -1697,6 +1773,9 @@ static bool is_x_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
     case TK_TYPEPARAMREF:
       return is_typeparam_sub_x(sub, super, check_cap, errorf, opt);
 
+    case TK_VALUEFORMALPARAMREF:
+      return is_typevalue_sub_x(sub, super, check_cap, errorf, opt);
+
     case TK_ARROW:
       return is_arrow_sub_x(sub, super, check_cap, errorf, opt);
 
@@ -1707,6 +1786,8 @@ static bool is_x_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
 
     default: {}
   }
+
+  return true;
 
   pony_assert(0);
   return false;
@@ -1758,6 +1839,19 @@ bool is_literal(ast_t* type, const char* name)
 
   // Don't have to check the package, since literals are all builtins.
   return !strcmp(ast_name(ast_childidx(type, 1)), name);
+}
+
+bool is_any_literal(ast_t* ast)
+{
+  if (ast == NULL)
+    return false;
+
+  token_id id = ast_id(ast);
+  return id == TK_TRUE  ||
+         id == TK_FALSE ||
+         id == TK_INT   ||
+         id == TK_FLOAT ||
+         id == TK_STRING;
 }
 
 bool is_pointer(ast_t* type)
@@ -1894,6 +1988,9 @@ bool is_constructable(ast_t* type)
     case TK_TYPEPARAMREF:
       return is_constructable(typeparam_constraint(type));
 
+    case TK_VALUEFORMALPARAMREF:
+      return is_constructable(ast_type(type));
+
     case TK_ARROW:
       return is_constructable(ast_childidx(type, 1));
 
@@ -1953,6 +2050,9 @@ bool is_concrete(ast_t* type)
 
     case TK_TYPEPARAMREF:
       return is_constructable(typeparam_constraint(type));
+
+    case TK_VALUEFORMALPARAMREF:
+      return is_constructable(ast_type(type));
 
     case TK_ARROW:
       return is_concrete(ast_childidx(type, 1));
@@ -2057,6 +2157,7 @@ bool is_bare(ast_t* type)
       return is_bare(ast_childidx(type, 1));
 
     case TK_TYPEPARAMREF:
+    case TK_VALUEFORMALPARAMREF:
     case TK_FUNTYPE:
     case TK_INFERTYPE:
     case TK_ERRORTYPE:

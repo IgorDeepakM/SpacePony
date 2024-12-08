@@ -7,6 +7,8 @@
 #include "../../libponyrt/gc/serialise.h"
 #include "../../libponyrt/mem/pool.h"
 #include "ponyassert.h"
+#include "../expr/literal.h"
+#include "../pass/expr.h"
 
 static void reify_typeparamref(ast_t** astp, ast_t* typeparam, ast_t* typearg)
 {
@@ -62,6 +64,23 @@ static void reify_typeparamref(ast_t** astp, ast_t* typeparam, ast_t* typearg)
   }
 
   ast_replace(astp, typearg);
+}
+
+static void reify_valueformalparamref(ast_t** astp, ast_t* typeparam, ast_t* typearg)
+{
+  ast_t* ast = *astp;
+  assert(ast_id(ast) == TK_VALUEFORMALPARAMREF);
+  ast_t* ref_name = ast_child(ast);
+  ast_t* param_name = ast_child(typeparam);
+
+  if (strcmp(ast_name(ref_name), ast_name(param_name)))
+    return;
+
+  //if (ast_checkreified(ast))
+  //  return;
+
+  ast_replace(astp, typearg);
+  //ast_setreified(*astp);
 }
 
 static void reify_arrow(ast_t** astp)
@@ -129,6 +148,10 @@ static void reify_one(pass_opt_t* opt, ast_t** astp, ast_t* typeparam, ast_t* ty
   {
     case TK_TYPEPARAMREF:
       reify_typeparamref(astp, typeparam, typearg);
+      break;
+
+    case TK_VALUEFORMALPARAMREF:
+      reify_valueformalparamref(astp, typeparam, typearg);
       break;
 
     case TK_ARROW:
@@ -404,7 +427,7 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
 
   while(typeparam != NULL)
   {
-    if(is_bare(typearg))
+    if(!is_any_literal(typearg) && is_bare(typearg))
     {
       if(report_errors)
       {
@@ -447,6 +470,11 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
         break;
       }
 
+      case TK_VALUEFORMALPARAMREF:
+        typeparam = ast_sibling(typeparam);
+        typearg = ast_sibling(typearg);
+        continue;
+
       default: {}
     }
 
@@ -458,7 +486,9 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
     // A bound type must be a subtype of the constraint.
     errorframe_t info = NULL;
     errorframe_t* infop = (report_errors ? &info : NULL);
-    if(!is_subtype_constraint(typearg, r_constraint, infop, opt))
+
+    // A bound type must be a subtype of the constraint.
+    if(!is_any_literal(typearg) && !is_subtype_constraint(typearg, r_constraint, infop, opt))
     {
       if(report_errors)
       {
@@ -480,9 +510,9 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
     ast_free_unattached(r_constraint);
 
     // A constructable constraint can only be fulfilled by a concrete typearg.
-    if(is_constructable(constraint) && !is_concrete(typearg))
+    if (is_constructable(constraint) && !is_any_literal(typearg) && !is_concrete(typearg))
     {
-      if(report_errors)
+      if (report_errors)
       {
         ast_error(opt->check.errors, orig, "a constructable constraint can "
           "only be fulfilled by a concrete type argument");

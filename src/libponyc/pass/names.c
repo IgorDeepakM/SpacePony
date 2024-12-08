@@ -208,6 +208,21 @@ static bool names_typeparam(pass_opt_t* opt, ast_t** astp, ast_t* def)
   return true;
 }
 
+// ----------------------- Maybe remove this
+static bool names_valueparam(pass_opt_t* opt, ast_t** astp, ast_t* def)
+{
+  (void)opt;
+  ast_t* ast = *astp;
+  AST_GET_CHILDREN(ast, package, id);
+  assert(ast_id(package) == TK_NONE);
+
+  REPLACE(astp,
+    NODE(TK_VALUEFORMALPARAMREF, TREE(id)));
+
+  ast_setdata(*astp, def);
+  return true;
+}
+
 static bool names_type(pass_opt_t* opt, ast_t** astp, ast_t* def)
 {
   ast_t* ast = *astp;
@@ -348,6 +363,11 @@ bool names_nominal(pass_opt_t* opt, ast_t* scope, ast_t** astp, bool expr)
 
       case TK_TYPEPARAM:
         r = names_typeparam(opt, astp, def);
+        break;
+
+      // ----------------------- Maybe remove this
+      case TK_VALUEFORMALPARAM:
+        r = names_valueparam(opt, astp, def);
         break;
 
       case TK_INTERFACE:

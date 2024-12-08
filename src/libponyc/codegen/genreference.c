@@ -576,3 +576,28 @@ LLVMValueRef gen_string(compile_t* c, ast_t* ast)
 
   return g_inst;
 }
+
+LLVMValueRef gen_valueformalparamref(compile_t* c, ast_t* ast)
+{
+  const char* name = ast_name(ast_child(ast));
+
+  ast_t* typeargs = c->frame->reify->type_typeargs;
+  ast_t* typeparams = c->frame->reify->type_typeparams;
+
+  ast_t* typearg_elem = ast_child(typeargs);
+  ast_t* typeparam_elem = ast_child(typeparams);
+
+  while (typeparam_elem != NULL && typearg_elem != NULL)
+  {
+    if(strcmp(name, ast_name(ast_child(typeparam_elem))) == 0)
+    {
+      return gen_expr(c, typearg_elem);
+    }
+
+    typearg_elem = ast_sibling(typearg_elem);
+    typeparam_elem = ast_sibling(typeparam_elem);
+  }
+
+  pony_assert(0);
+  return NULL;
+}

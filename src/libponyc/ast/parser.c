@@ -104,7 +104,7 @@ DEF(const_expr);
   DONE();
 
 // literal
-DEF(typeargliteral);
+/*DEF(typeargliteral);
   AST_NODE(TK_VALUEFORMALARG);
   PRINT_INLINE();
   RULE("type argument", literal);
@@ -115,11 +115,11 @@ DEF(typeargconst);
   AST_NODE(TK_VALUEFORMALARG);
   PRINT_INLINE();
   RULE("formal argument value", const_expr);
-  DONE();
+  DONE();*/
 
 // type | typeargliteral | typeargconst
 DEF(typearg);
-  RULE("type argument", type, typeargliteral, typeargconst);
+  RULE("type argument", type, literal, const_expr);
   DONE();
 
 // ID [COLON type] [ASSIGN typearg]

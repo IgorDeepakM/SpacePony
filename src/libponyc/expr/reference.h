@@ -17,6 +17,7 @@ bool expr_dontcareref(pass_opt_t* opt, ast_t* ast);
 bool expr_local(pass_opt_t* opt, ast_t* ast);
 bool expr_localref(pass_opt_t* opt, ast_t* ast);
 bool expr_paramref(pass_opt_t* opt, ast_t* ast);
+bool expr_valueformalparamref(pass_opt_t* opt, ast_t** astp);
 bool expr_addressof(pass_opt_t* opt, ast_t* ast);
 bool expr_digestof(pass_opt_t* opt, ast_t* ast);
 bool expr_this(pass_opt_t* opt, ast_t* ast);
@@ -24,6 +25,7 @@ bool expr_tuple(pass_opt_t* opt, ast_t* ast);
 bool expr_nominal(pass_opt_t* opt, ast_t** astp);
 bool expr_fun(pass_opt_t* opt, ast_t* ast);
 bool expr_compile_intrinsic(pass_opt_t* opt, ast_t* ast);
+bool expr_typeargs(pass_opt_t* opt, ast_t* ast);
 
 PONY_EXTERN_C_END
 

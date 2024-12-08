@@ -5,6 +5,7 @@
 #include "../../libponyrt/mem/pool.h"
 #include "ponyassert.h"
 #include <string.h>
+#include "../type/subtype.h"
 
 static void types_append(printbuf_t* buf, ast_t* elements);
 
@@ -56,6 +57,13 @@ static void type_append(printbuf_t* buf, ast_t* type, bool first)
 
       return;
     }
+
+    case TK_TRUE:
+    case TK_FALSE:
+    case TK_STRING:
+    case TK_INT:
+      printbuf(buf, ast_get_print(type));
+      return;
 
     default: {}
   }

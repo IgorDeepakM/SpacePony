@@ -334,6 +334,7 @@ bool expr_typeref(pass_opt_t* opt, ast_t** astp)
     const char* name = ast_name(id);
     const char* package_name =
       (ast_id(package) != TK_NONE) ? ast_name(ast_child(package)) : NULL;
+
     type = type_sugar_args(ast, package_name, name, typeargs);
     ast_settype(ast, type);
 
@@ -481,6 +482,20 @@ bool expr_local(pass_opt_t* opt, ast_t* ast)
   (void)ast;
   pony_assert(ast_type(ast) != NULL);
 
+  AST_GET_CHILDREN(ast, id, type);
+  assert(type != NULL);
+
+  if (ast_id(type) == TK_NONE)
+  {
+    return true;
+  }
+
+  // This overwrites the type of the id and ast with a type which has been
+  // refined for the local during the expr pass. We do this as values and
+  // expressions in types will not be typed otherwise.
+  ast_settype(id, type);
+  ast_settype(ast, type);
+
   return true;
 }
 
@@ -579,6 +594,24 @@ bool expr_paramref(pass_opt_t* opt, ast_t* ast)
     r_type = consume_type(type, TK_NONE, false);
 
   ast_settype(ast, r_type);
+  return true;
+}
+
+bool expr_valueformalparamref(pass_opt_t* opt, ast_t** astp)
+{
+  typecheck_t* t = &opt->check;
+  ast_t* ast = *astp;
+
+  pony_assert(ast_id(ast) == TK_VALUEFORMALPARAMREF);
+
+  // Everything we reference must be in scope.
+  const char* name = ast_name(ast_child(ast));
+
+  sym_status_t status;
+  ast_t* def = ast_get(ast, name, &status);
+
+  ast_t* constraint = ast_childidx(def, 1);
+  ast_settype(ast, constraint);
   return true;
 }
 
@@ -793,7 +826,7 @@ bool expr_this(pass_opt_t* opt, ast_t* ast)
 
   while(typearg != NULL)
   {
-    if(!expr_nominal(opt, &typearg))
+    if (!expr_nominal(opt, &typearg))
     {
       ast_error(opt->check.errors, ast, "couldn't create a type for 'this'");
       ast_free(type);
@@ -1055,5 +1088,40 @@ bool expr_compile_intrinsic(pass_opt_t* opt, ast_t* ast)
 {
   (void)opt;
   ast_settype(ast, ast_from(ast, TK_COMPILE_INTRINSIC));
+  return true;
+}
+
+bool expr_typeargs(pass_opt_t* opt, ast_t* ast)
+{
+  pony_assert(ast_id(ast) == TK_TYPEARGS);
+
+  // This function goes through the typeargs 'list' for arguments that
+  // are literals and tries to coerse the literal from the type in the 
+  // class or struct declaration.
+  ast_t* underlying_type = (ast_t*)ast_data(ast_parent(ast));
+
+  if (underlying_type != NULL && (ast_id(underlying_type) == TK_CLASS ||
+    ast_id(underlying_type) == TK_STRUCT))
+  {
+    ast_t* typeparam_elem = ast_child(ast_childidx(underlying_type, 1));
+    ast_t* typearg_elem = ast_child(ast);
+
+    while (typearg_elem != NULL)
+    {
+      if (is_any_literal(typearg_elem))
+      {
+        // type check the typeparam in case it is a value typeparameter
+        if (ast_visit(&typeparam_elem, NULL, pass_expr, opt, PASS_EXPR) != AST_OK)
+          return false;
+
+        if (!coerce_literals(&typearg_elem, ast_childidx(typeparam_elem, 1), opt))
+          return false;
+      }
+
+      typeparam_elem = ast_sibling(typeparam_elem);
+      typearg_elem = ast_sibling(typearg_elem);
+    }
+  }
+
   return true;
 }
