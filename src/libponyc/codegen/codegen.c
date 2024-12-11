@@ -808,7 +808,6 @@ bool codegen_llvm_init()
   LLVMInitializeVectorization(passreg);
   LLVMInitializeInstCombine(passreg);
   LLVMInitializeIPO(passreg);
-  LLVMInitializeInstrumentation(passreg);
   LLVMInitializeAnalysis(passreg);
   LLVMInitializeIPA(passreg);
   LLVMInitializeCodeGen(passreg);
