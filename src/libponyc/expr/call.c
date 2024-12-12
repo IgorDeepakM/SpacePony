@@ -59,6 +59,12 @@ bool method_check_type_params(pass_opt_t* opt, ast_t** astp)
     return false;
   }
 
+  if (!coerce_valueformalargs(typeparams, typeargs, true, opt))
+  {
+    ast_free_unattached(typeargs);
+    return false;
+  }
+
   if(!check_constraints(lhs, typeparams, typeargs, true, opt))
   {
     ast_free_unattached(typeargs);

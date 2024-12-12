@@ -25,7 +25,6 @@ bool expr_tuple(pass_opt_t* opt, ast_t* ast);
 bool expr_nominal(pass_opt_t* opt, ast_t** astp);
 bool expr_fun(pass_opt_t* opt, ast_t* ast);
 bool expr_compile_intrinsic(pass_opt_t* opt, ast_t* ast);
-bool expr_typeargs(pass_opt_t* opt, ast_t* ast);
 
 PONY_EXTERN_C_END
 

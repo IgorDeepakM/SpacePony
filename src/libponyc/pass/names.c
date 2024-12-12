@@ -208,7 +208,6 @@ static bool names_typeparam(pass_opt_t* opt, ast_t** astp, ast_t* def)
   return true;
 }
 
-// ----------------------- Maybe remove this
 static bool names_valueparam(pass_opt_t* opt, ast_t** astp, ast_t* def)
 {
   (void)opt;
@@ -365,7 +364,6 @@ bool names_nominal(pass_opt_t* opt, ast_t* scope, ast_t** astp, bool expr)
         r = names_typeparam(opt, astp, def);
         break;
 
-      // ----------------------- Maybe remove this
       case TK_VALUEFORMALPARAM:
         r = names_valueparam(opt, astp, def);
         break;

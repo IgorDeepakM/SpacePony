@@ -407,6 +407,36 @@ void deferred_reify_free(deferred_reification_t* deferred)
   }
 }
 
+bool coerce_valueformalargs(ast_t* typeparams, ast_t* typeargs,
+  bool report_errors, pass_opt_t* opt)
+{
+  // This function goes through the typeargs 'list' for arguments that
+  // are literals and tries to coerse the literal from the type in the
+  // class or struct declaration.
+
+  ast_t* typeparam_elem = ast_child(typeparams);
+  ast_t* typearg_elem = ast_child(typeargs);
+
+  while (typearg_elem != NULL)
+  {
+    if (is_any_literal(typearg_elem))
+    {
+      // type check the typeparam in case it is a value typeparameter
+      if (ast_visit(&typeparam_elem, NULL, pass_expr, opt, PASS_EXPR) != AST_OK)
+        return false;
+
+      if (!coerce_literals(&typearg_elem, ast_childidx(typeparam_elem, 1), opt))
+        return false;
+    }
+
+    typeparam_elem = ast_sibling(typeparam_elem);
+    typearg_elem = ast_sibling(typearg_elem);
+  }
+
+  return true;
+}
+
+
 bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
   bool report_errors, pass_opt_t* opt)
 {

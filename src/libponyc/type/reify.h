@@ -42,6 +42,9 @@ deferred_reification_t* deferred_reify_dup(deferred_reification_t* deferred);
 
 void deferred_reify_free(deferred_reification_t* deferred);
 
+bool coerce_valueformalargs(ast_t* typeparams, ast_t* typeargs,
+  bool report_errors, pass_opt_t* opt);
+
 bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
   bool report_errors, pass_opt_t* opt);
 

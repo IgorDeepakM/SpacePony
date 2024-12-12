@@ -335,6 +335,17 @@ bool expr_typeref(pass_opt_t* opt, ast_t** astp)
     const char* package_name =
       (ast_id(package) != TK_NONE) ? ast_name(ast_child(package)) : NULL;
 
+    ast_t* underlying_type = (ast_t*)ast_data(ast);
+    if (underlying_type != NULL &&
+      (ast_id(underlying_type) == TK_CLASS || ast_id(underlying_type) == TK_STRUCT))
+    {
+      ast_t* typeparams = ast_childidx(underlying_type, 1);
+      if (!coerce_valueformalargs(typeparams, typeargs, true, opt))
+      {
+        return false;
+      }
+    }
+
     type = type_sugar_args(ast, package_name, name, typeargs);
     ast_settype(ast, type);
 
@@ -826,7 +837,15 @@ bool expr_this(pass_opt_t* opt, ast_t* ast)
 
   while(typearg != NULL)
   {
-    if (!expr_nominal(opt, &typearg))
+    if (ast_id(typearg) == TK_VALUEFORMALPARAMREF)
+    {
+      if (!expr_valueformalparamref(opt, &typearg))
+      {
+        ast_free(type);
+        return false;
+      }
+    }
+    else if (!expr_nominal(opt, &typearg))
     {
       ast_error(opt->check.errors, ast, "couldn't create a type for 'this'");
       ast_free(type);
@@ -1011,6 +1030,11 @@ bool expr_nominal(pass_opt_t* opt, ast_t** astp)
     return true;
   }
 
+  if (!coerce_valueformalargs(typeparams, typeargs, true, opt))
+  {
+    return false;
+  }
+
   return check_constraints(typeargs, typeparams, typeargs, true, opt);
 }
 
@@ -1088,40 +1112,5 @@ bool expr_compile_intrinsic(pass_opt_t* opt, ast_t* ast)
 {
   (void)opt;
   ast_settype(ast, ast_from(ast, TK_COMPILE_INTRINSIC));
-  return true;
-}
-
-bool expr_typeargs(pass_opt_t* opt, ast_t* ast)
-{
-  pony_assert(ast_id(ast) == TK_TYPEARGS);
-
-  // This function goes through the typeargs 'list' for arguments that
-  // are literals and tries to coerse the literal from the type in the 
-  // class or struct declaration.
-  ast_t* underlying_type = (ast_t*)ast_data(ast_parent(ast));
-
-  if (underlying_type != NULL && (ast_id(underlying_type) == TK_CLASS ||
-    ast_id(underlying_type) == TK_STRUCT))
-  {
-    ast_t* typeparam_elem = ast_child(ast_childidx(underlying_type, 1));
-    ast_t* typearg_elem = ast_child(ast);
-
-    while (typearg_elem != NULL)
-    {
-      if (is_any_literal(typearg_elem))
-      {
-        // type check the typeparam in case it is a value typeparameter
-        if (ast_visit(&typeparam_elem, NULL, pass_expr, opt, PASS_EXPR) != AST_OK)
-          return false;
-
-        if (!coerce_literals(&typearg_elem, ast_childidx(typeparam_elem, 1), opt))
-          return false;
-      }
-
-      typeparam_elem = ast_sibling(typeparam_elem);
-      typearg_elem = ast_sibling(typearg_elem);
-    }
-  }
-
   return true;
 }

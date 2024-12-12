@@ -581,6 +581,7 @@ LLVMValueRef gen_valueformalparamref(compile_t* c, ast_t* ast)
 {
   const char* name = ast_name(ast_child(ast));
 
+  // First loop through the typeargs for the type to find the reference
   ast_t* typeargs = c->frame->reify->type_typeargs;
   ast_t* typeparams = c->frame->reify->type_typeparams;
 
@@ -590,6 +591,24 @@ LLVMValueRef gen_valueformalparamref(compile_t* c, ast_t* ast)
   while (typeparam_elem != NULL && typearg_elem != NULL)
   {
     if(strcmp(name, ast_name(ast_child(typeparam_elem))) == 0)
+    {
+      return gen_expr(c, typearg_elem);
+    }
+
+    typearg_elem = ast_sibling(typearg_elem);
+    typeparam_elem = ast_sibling(typeparam_elem);
+  }
+
+  // First loop through the typeargs for the method to find the reference
+  typeargs = c->frame->reify->method_typeargs;
+  typeparams = c->frame->reify->method_typeparams;
+
+  typearg_elem = ast_child(typeargs);
+  typeparam_elem = ast_child(typeparams);
+
+  while (typeparam_elem != NULL && typearg_elem != NULL)
+  {
+    if (strcmp(name, ast_name(ast_child(typeparam_elem))) == 0)
     {
       return gen_expr(c, typearg_elem);
     }
