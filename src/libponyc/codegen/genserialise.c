@@ -390,6 +390,17 @@ bool genserialise(compile_t* c, reach_type_t* t)
         // Don't serialise Pointer[A]
         if(name == c->str_Pointer)
           return true;
+
+        if (name == c->str_CFixedSizedArray)
+        {
+          // Use the trace function as the serialise_trace function.
+          compile_type_t* c_t = (compile_type_t*)t->c_type;
+          c_t->serialise_trace_fn = c_t->trace_fn;
+
+          genprim_c_fixed_sized_array_serialise(c, t);
+          genprim_c_fixed_sized_array_deserialise(c, t);
+          return true;
+        }
       }
       break;
     }

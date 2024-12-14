@@ -11,6 +11,14 @@ void genprim_pointer_methods(compile_t* c, reach_type_t* t);
 
 void genprim_nullable_pointer_methods(compile_t* c, reach_type_t* t);
 
+void genprim_c_fixed_sized_array_methods(compile_t* c, reach_type_t* t);
+
+void genprim_c_fixed_sized_array_trace(compile_t* c, reach_type_t* t);
+
+void genprim_c_fixed_sized_array_serialise(compile_t* c, reach_type_t* t);
+
+void genprim_c_fixed_sized_array_deserialise(compile_t* c, reach_type_t* t);
+
 void genprim_donotoptimise_methods(compile_t* c, reach_type_t* t);
 
 void genprim_array_trace(compile_t* c, reach_type_t* t);

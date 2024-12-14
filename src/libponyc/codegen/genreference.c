@@ -313,6 +313,7 @@ LLVMValueRef gen_addressof(compile_t* c, ast_t* ast)
       return gen_localptr(c, expr);
 
     case TK_FVARREF:
+    case TK_EMBEDREF:
       return gen_fieldptr(c, expr);
 
     case TK_FUNREF:

@@ -35,6 +35,8 @@ bool is_any_literal(ast_t* ast);
 
 bool is_nullable_pointer(ast_t* type);
 
+bool is_c_fixed_sized_array(ast_t* type);
+
 bool is_none(ast_t* type);
 
 bool is_env(ast_t* type);

@@ -643,6 +643,7 @@ bool expr_addressof(pass_opt_t* opt, ast_t* ast)
     case TK_VARREF:
     case TK_FUNREF:
     case TK_BEREF:
+    case TK_EMBEDREF:
       break;
 
     case TK_FLETREF:
@@ -650,10 +651,10 @@ bool expr_addressof(pass_opt_t* opt, ast_t* ast)
         "can't take the address of a let field");
       return false;
 
-    case TK_EMBEDREF:
-      ast_error(opt->check.errors, ast,
-        "can't take the address of an embed field");
-      return false;
+    //case TK_EMBEDREF:
+    //  ast_error(opt->check.errors, ast,
+    //    "can't take the address of an embed field");
+    //  return false;
 
     case TK_TUPLEELEMREF:
       ast_error(opt->check.errors, ast,
@@ -668,6 +669,11 @@ bool expr_addressof(pass_opt_t* opt, ast_t* ast)
     case TK_PARAMREF:
       ast_error(opt->check.errors, ast,
         "can't take the address of a function parameter");
+      return false;
+
+    case TK_VALUEFORMALPARAMREF:
+      ast_error(opt->check.errors, ast,
+        "can't take the address of a value type parameter");
       return false;
 
     default:

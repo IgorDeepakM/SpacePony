@@ -1940,6 +1940,11 @@ bool is_nullable_pointer(ast_t* type)
   return is_literal(type, "NullablePointer");
 }
 
+bool is_c_fixed_sized_array(ast_t* type)
+{
+  return is_literal(type, "CFixedSizedArray");
+}
+
 bool is_none(ast_t* type)
 {
   return is_literal(type, "None");

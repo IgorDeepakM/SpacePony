@@ -159,6 +159,7 @@ static bool make_opaque_struct(compile_t* c, reach_type_t* t)
           c_t->mem_type = c->ptr;
           return true;
         }
+        // CFixedSizedArray is just a structure which is handled below
       }
 
       if(t->bare_method == NULL)
@@ -399,6 +400,29 @@ static void make_dispatch(compile_t* c, reach_type_t* t)
   codegen_finishfun(c);
 }
 
+static bool make_c_fixed_sized_array_struct(compile_t* c, reach_type_t* t)
+{
+  compile_type_t* c_t = (compile_type_t*)t->c_type;
+
+  ast_t* typeargs = ast_childidx(t->ast, 2);
+  AST_GET_CHILDREN(typeargs, elem_type, size);
+  lexint_t* size_val = ast_int(size);
+
+  size_t buf_size = sizeof(LLVMTypeRef);
+  LLVMTypeRef* elements = (LLVMTypeRef*)ponyint_pool_alloc_size(buf_size);
+
+  reach_type_t* elem_reach_type = reach_type(c->reach, elem_type);
+  compile_type_t* elem_reach_c_t = (compile_type_t*)elem_reach_type->c_type;
+
+  pony_assert(lexint_cmp64(size_val, UINT32_MAX) <= 0);
+  elements[0] = LLVMArrayType(elem_reach_c_t->use_type,
+    (unsigned int)size_val->low);
+
+  LLVMStructSetBody(c_t->structure, elements, 1, false);
+  ponyint_pool_free_size(buf_size, elements);
+  return true;
+}
+
 static bool make_struct(compile_t* c, reach_type_t* t)
 {
   compile_type_t* c_t = (compile_type_t*)t->c_type;
@@ -423,6 +447,11 @@ static bool make_struct(compile_t* c, reach_type_t* t)
 
     case TK_STRUCT:
     {
+      if (is_c_fixed_sized_array(t->ast))
+      {
+        return make_c_fixed_sized_array_struct(c, t);
+      }
+
       // Pointer and NullablePointer will have no structure.
       if(c_t->structure == NULL)
         return true;
@@ -658,6 +687,8 @@ static void make_intrinsic_methods(compile_t* c, reach_type_t* t)
       genprim_donotoptimise_methods(c, t);
     else if(name == c->str_Platform)
       genprim_platform_methods(c, t);
+    else if(name == c->str_CFixedSizedArray)
+      genprim_c_fixed_sized_array_methods(c, t);
   }
 }
 
@@ -668,17 +699,28 @@ static bool make_trace(compile_t* c, reach_type_t* t)
   if(c_t->trace_fn == NULL)
     return true;
 
-  if(t->underlying == TK_CLASS)
+  if (t->underlying == TK_CLASS || t->underlying == TK_STRUCT)
   {
     // Special case the array trace function.
     AST_GET_CHILDREN(t->ast, pkg, id);
     const char* package = ast_name(pkg);
     const char* name = ast_name(id);
 
-    if((package == c->str_builtin) && (name == c->str_Array))
+    if(t->underlying == TK_CLASS)
     {
-      genprim_array_trace(c, t);
-      return true;
+      if ((package == c->str_builtin) && (name == c->str_Array))
+      {
+        genprim_array_trace(c, t);
+        return true;
+      }
+    }
+    else if(t->underlying == TK_STRUCT)
+    {
+      if ((package == c->str_builtin) && (name == c->str_CFixedSizedArray))
+      {
+        genprim_c_fixed_sized_array_trace(c, t);
+        return true;
+      }
     }
   }
 
