@@ -324,7 +324,9 @@ TEST_F(BadPonyTest, IndexArrayWithBrackets)
         "let xs = [as I64: 1; 2; 3]\n"
         "xs[1]";
 
-  TEST_ERRORS_1(src, "Value formal parameters not yet supported");
+  // TODO: is this a proper error message for a type that isn't a generic?
+  // Pony thinks we are about to call a generic method.
+  TEST_ERRORS_1(src, "can't reference a method without calling it");
 }
 
 TEST_F(BadPonyTest, ShadowingBuiltinTypeParameter)
