@@ -335,14 +335,18 @@ bool expr_typeref(pass_opt_t* opt, ast_t** astp)
     const char* package_name =
       (ast_id(package) != TK_NONE) ? ast_name(ast_child(package)) : NULL;
 
-    ast_t* underlying_type = (ast_t*)ast_data(ast);
-    if (underlying_type != NULL &&
-      (ast_id(underlying_type) == TK_CLASS || ast_id(underlying_type) == TK_STRUCT))
+    if (ast_id(typeargs) != TK_NONE)
     {
-      ast_t* typeparams = ast_childidx(underlying_type, 1);
-      if (!coerce_valueformalargs(typeparams, typeargs, true, opt))
+      ast_t* underlying_type = (ast_t*)ast_data(ast);
+      if(underlying_type != NULL &&
+        (ast_id(underlying_type) == TK_CLASS || ast_id(underlying_type) == TK_STRUCT) ||
+         ast_id(underlying_type) == TK_TRAIT || ast_id(underlying_type) == TK_INTERFACE)
       {
-        return false;
+        ast_t* typeparams = ast_childidx(underlying_type, 1);
+        if (!check_constraints(*astp, typeparams, typeargs, true, opt))
+        {
+          return false;
+        }
       }
     }
 
@@ -623,6 +627,7 @@ bool expr_valueformalparamref(pass_opt_t* opt, ast_t** astp)
 
   ast_t* constraint = ast_childidx(def, 1);
   ast_settype(ast, constraint);
+
   return true;
 }
 
@@ -1028,11 +1033,6 @@ bool expr_nominal(pass_opt_t* opt, ast_t** astp)
     }
 
     return true;
-  }
-
-  if (!coerce_valueformalargs(typeparams, typeargs, true, opt))
-  {
-    return false;
   }
 
   return check_constraints(typeargs, typeparams, typeargs, true, opt);

@@ -97,7 +97,7 @@ static bool check_assume(ast_t* sub, ast_t* super, pass_opt_t* opt)
     {
       AST_GET_CHILDREN(assumption, assume_sub, assume_super);
 
-      if(exact_nominal(sub, assume_sub, opt) &&
+      if (exact_nominal(sub, assume_sub, opt) &&
         exact_nominal(super, assume_super, opt))
       {
         ret = true;
@@ -194,6 +194,67 @@ static bool is_sub_cap_and_eph(ast_t* sub, ast_t* super, check_cap_t check_cap,
   return false;
 }
 
+static bool is_literal_equal(ast_t* a, ast_t* b, errorframe_t* errorf,
+  pass_opt_t* opt)
+{
+  switch(ast_id(a))
+  {
+    case TK_INT:
+      if (ast_id(b) == TK_INT)
+      {
+        lexint_t* lex_a = ast_int(a);
+        lexint_t* lex_b = ast_int(b);
+        if (lex_a->high == lex_b->high && lex_a->low == lex_b->low)
+        {
+          return true;
+        }
+      }
+      break;
+
+    case TK_FLOAT:
+      if (ast_id(b) == TK_FLOAT)
+      {
+        double a_float = ast_float(a);
+        double b_float = ast_float(b);
+        if (a_float == b_float)
+        {
+          return true;
+        }
+      }
+      break;
+
+    case TK_TRUE:
+      if (ast_id(b) == TK_TRUE)
+      {
+        return true;
+      }
+      break;
+
+    case TK_FALSE:
+      if (ast_id(b) == TK_FALSE)
+      {
+        return true;
+      }
+      break;
+
+    case TK_STRING:
+      if (ast_id(b) == TK_STRING)
+      {
+        if (strcmp(ast_name(a), ast_name(b)) == 0)
+        {
+          return true;
+        }
+      }
+      break;
+
+    default:
+      pony_assert(0);
+      break;
+  }
+
+  return false;
+}
+
 static bool is_eq_typeargs(ast_t* a, ast_t* b, errorframe_t* errorf,
   pass_opt_t* opt)
 {
@@ -207,6 +268,14 @@ static bool is_eq_typeargs(ast_t* a, ast_t* b, errorframe_t* errorf,
 
   while((a_arg != NULL) && (b_arg != NULL))
   {
+    if (is_any_literal(a_arg))
+    {
+      if (!is_literal_equal(a_arg, b_arg, errorf, opt))
+      {
+        ret = false;
+      }
+    }
+
     if(!is_eqtype(a_arg, b_arg, errorf, opt))
       ret = false;
 
@@ -1501,71 +1570,78 @@ static bool is_typeparam_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
 // and after evaluation. At the time of writing there are no value constraints
 // so provided the value is of the correct type this is fine.
 // TODO: ammend this comment after value constraints
-static bool is_typevalue_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap, 
+static bool is_typevalueparam_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
   errorframe_t* errorf, pass_opt_t* opt)
 {
-    return true;
-
-  switch(ast_id(super))
+  if (ast_id(super) == TK_VALUEFORMALPARAMREF)
   {
-    /*case TK_VALUEFORMALARG:
+    ast_t* super_underlying_type = ast_type(super);
+    pony_assert(super_underlying_type != NULL);
+
+    return is_x_sub_x(sub, super_underlying_type, check_cap, errorf, opt);
+  }
+  else if(is_any_literal(super))
+  {
+    //ast_t* sub_value = ast_child(sub);
+    //ast_t *super_value = ast_child(super);
+    ast_t *super_type = ast_type(sub);
+    ast_t *sub_type = ast_type(super);
+
+    // The type of these should be equal so we first check this
+    if(!is_eqtype(super_type, sub_type, errorf, opt))
+      return false;
+
+    // If the expressions are not the same then we add them to a list of
+    // expressions which we which check for equality later.
+    /*if (!ast_equa(super_value, sub_value))
     {
-      ast_t* sub_value = ast_child(sub);
-      ast_t *super_value = ast_child(super);
-      ast_t *super_type = ast_type(super_value);
-      ast_t *sub_type = ast_type(sub_value);
+      // If we are later than type checking then this will have already been handled
+      // TODO: find a nicer way of handling this edge case
+      if(opt->program_pass >= PASS_REACH)
+        return true;
 
-      // The type of these should be equal so we first check this
-      if(!is_eqtype(super_type, sub_type, errorf, opt))
-        return false;
+      ast_t* type = opt->check.frame->type;
 
-      // If the expressions are not the same then we add them to a list of
-      // expressions which we which check for equality later.
-      /*if (!ast_equal(super_value, sub_value))
-      {
-        // If we are later than type checking then this will have already been handled
-        // TODO: find a nicer way of handling this edge case
-        if(opt->program_pass >= PASS_REACH)
-          return true;
+      // TODO: what is a better way of getting the memeber?
+      ast_t* member = ast_nearest(super_value, TK_FUN);
+      if(member == NULL)
+        member = ast_nearest(super_value, TK_NEW);
 
-        ast_t* type = opt->check.frame->type;
+      // If member is still NULL it's because we have no
+      // member to attach an equality entry to, this may be
+      // the case when a class inherits from a trait. This
+      // is fine as the entry will have been attached to another
+      // list.
+      if(member == NULL)
+        return true;
 
-        // TODO: what is a better way of getting the memeber?
-        ast_t* member = ast_nearest(super_value, TK_FUN);
-        if(member == NULL)
-          member = ast_nearest(super_value, TK_NEW);
+      assert(type != NULL);
+      assert(member != NULL);
 
-        // If member is still NULL it's because we have no
-        // member to attach an equality entry to, this may be
-        // the case when a class inherits from a trait. This
-        // is fine as the entry will have been attached to another
-        // list.
-        if(member == NULL)
-          return true;
+      const char* type_name = ast_name(ast_child(type));
+      const char* member_name = ast_name(ast_childidx(member, 1));
 
-        assert(type != NULL);
-        assert(member != NULL);
+      equality_entry_t* entry = search_equality(opt->check.equality_tab,
+                                                type_name, member_name);
 
-        const char* type_name = ast_name(ast_child(type));
-        const char* member_name = ast_name(ast_childidx(member, 1));
-
-        equality_entry_t* entry = search_equality(opt->check.equality_tab,
-                                                  type_name, member_name);
-
-        // This condition is a slight optimisation as this method is called
-        // from eq_typeargs so all entries would appear twice. This improves
-        // compilation time and error messages.
-        if(entry == NULL || !ast_equal(sub_value, entry->current->lhs))
-          mark_check_equality(opt->check.equality_tab, type_name, member_name,
-                              super_value, sub_value);
-      }
-
-      return true;
+      // This condition is a slight optimisation as this method is called
+      // from eq_typeargs so all entries would appear twice. This improves
+      // compilation time and error messages.
+      if(entry == NULL || !ast_equal(sub_value, entry->current->lhs))
+        mark_check_equality(opt->check.equality_tab, type_name, member_name,
+                            super_value, sub_value);
     }*/
 
-    default:
-      assert(0);
+    return true;
   }
+  else
+  {
+    ast_t* sub_underlying_type = ast_type(sub);
+    pony_assert(sub_underlying_type != NULL);
+
+    return is_x_sub_x(sub_underlying_type, super, check_cap, errorf, opt);
+  }
+
   return false;
 }
 
@@ -1774,7 +1850,7 @@ static bool is_x_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
       return is_typeparam_sub_x(sub, super, check_cap, errorf, opt);
 
     case TK_VALUEFORMALPARAMREF:
-      return is_typevalue_sub_x(sub, super, check_cap, errorf, opt);
+      return is_typevalueparam_sub_x(sub, super, check_cap, errorf, opt);
 
     case TK_ARROW:
       return is_arrow_sub_x(sub, super, check_cap, errorf, opt);

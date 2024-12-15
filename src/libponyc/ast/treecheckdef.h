@@ -83,7 +83,10 @@ RULE(method,
   CHILD(string, none),
   TK_FUN, TK_NEW, TK_BE);
 
-RULE(type_params, ONE_OR_MORE(type_param), TK_TYPEPARAMS);
+RULE(type_params, ONE_OR_MORE(type_param, value_formal_param), TK_TYPEPARAMS);
+
+GROUP(any_literal,
+  int_literal, float_literal, bool_literal, string);
 
 RULE(type_param,
   HAS_DATA // Original typeparam definition
@@ -92,7 +95,14 @@ RULE(type_param,
   CHILD(type, none),  // Default
   TK_TYPEPARAM);
 
-RULE(type_args, ONE_OR_MORE(type), TK_TYPEARGS);
+RULE(value_formal_param,
+  HAS_DATA // Original typeparam definition
+  CHILD(id)
+  CHILD(type, none)  // type
+  CHILD(none),
+  TK_VALUEFORMALPARAM);
+
+RULE(type_args, ONE_OR_MORE(type, any_literal, value_formal_param_ref), TK_TYPEARGS);
 
 RULE(params,
   ZERO_OR_MORE(param)
@@ -547,6 +557,13 @@ RULE(type_param_ref,
   CHILD(cap, gencap, none)
   CHILD(aliased, ephemeral, none),
   TK_TYPEPARAMREF);
+
+RULE(value_formal_param_ref,
+  HAS_DATA  // Definition of referred type parameter
+  CHILD(id),
+  //OPTIONAL(cap, gencap, none)
+  //OPTIONAL(aliased, ephemeral, none),
+  TK_VALUEFORMALPARAMREF);
 
 RULE(at, LEAF, TK_AT);
 RULE(bool_literal, HAS_TYPE(type), TK_TRUE, TK_FALSE);

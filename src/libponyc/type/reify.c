@@ -14,6 +14,13 @@ static void reify_typeparamref(ast_t** astp, ast_t* typeparam, ast_t* typearg)
 {
   ast_t* ast = *astp;
   pony_assert(ast_id(ast) == TK_TYPEPARAMREF);
+
+  // Value type parameters cannot be checked against type parameters.
+  if (ast_id(typeparam) == TK_VALUEFORMALPARAM)
+  {
+    return;
+  }
+
   pony_assert(ast_id(typeparam) == TK_TYPEPARAM);
 
   ast_t* ref_def = (ast_t*)ast_data(ast);
@@ -122,10 +129,17 @@ static void reify_reference(ast_t** astp, ast_t* typeparam, ast_t* typearg)
   if(ref_def != param_def)
     return;
 
-  ast_setid(ast, TK_TYPEREF);
-  ast_add(ast, ast_from(ast, TK_NONE));    // 1st child: package reference
-  ast_append(ast, ast_from(ast, TK_NONE)); // 3rd child: type args
-  ast_settype(ast, typearg);
+  if(ast_id(ref_def) == TK_VALUEFORMALPARAM)
+  {
+    ast_replace(astp, typearg);
+  }
+  else
+  {
+    ast_setid(ast, TK_TYPEREF);
+    ast_add(ast, ast_from(ast, TK_NONE));    // 1st child: package reference
+    ast_append(ast, ast_from(ast, TK_NONE)); // 3rd child: type args
+    ast_settype(ast, typearg);
+  }
 }
 
 static void reify_one(pass_opt_t* opt, ast_t** astp, ast_t* typeparam, ast_t* typearg)
@@ -243,6 +257,11 @@ ast_t* reify(ast_t* ast, ast_t* typeparams, ast_t* typeargs, pass_opt_t* opt,
   else
     r_ast = ast;
 
+  // We may need to reify some constraints of the typeparameters when we need to
+  // ensure that a value argument satisfies the constraints of another type
+  // parameter.
+  typeparams = ast_dup(typeparams);
+
   // Iterate pairwise through the typeparams and typeargs.
   ast_t* typeparam = ast_child(typeparams);
   ast_t* typearg = ast_child(typeargs);
@@ -250,6 +269,9 @@ ast_t* reify(ast_t* ast, ast_t* typeparams, ast_t* typeargs, pass_opt_t* opt,
   while((typeparam != NULL) && (typearg != NULL))
   {
     reify_one(opt, &r_ast, typeparam, typearg);
+    // we reify the type parameter for values which depend on other supplied
+    // types
+    reify_one(opt, &typeparams, typeparam, typearg);
     typeparam = ast_sibling(typeparam);
     typearg = ast_sibling(typearg);
   }
@@ -407,36 +429,6 @@ void deferred_reify_free(deferred_reification_t* deferred)
   }
 }
 
-bool coerce_valueformalargs(ast_t* typeparams, ast_t* typeargs,
-  bool report_errors, pass_opt_t* opt)
-{
-  // This function goes through the typeargs 'list' for arguments that
-  // are literals and tries to coerse the literal from the type in the
-  // class or struct declaration.
-
-  ast_t* typeparam_elem = ast_child(typeparams);
-  ast_t* typearg_elem = ast_child(typeargs);
-
-  while (typearg_elem != NULL)
-  {
-    if (is_any_literal(typearg_elem))
-    {
-      // type check the typeparam in case it is a value typeparameter
-      if (ast_visit(&typeparam_elem, NULL, pass_expr, opt, PASS_EXPR) != AST_OK)
-        return false;
-
-      if (!coerce_literals(&typearg_elem, ast_childidx(typeparam_elem, 1), opt))
-        return false;
-    }
-
-    typeparam_elem = ast_sibling(typeparam_elem);
-    typearg_elem = ast_sibling(typearg_elem);
-  }
-
-  return true;
-}
-
-
 bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
   bool report_errors, pass_opt_t* opt)
 {
@@ -500,13 +492,12 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
         break;
       }
 
-      case TK_VALUEFORMALPARAMREF:
-        typeparam = ast_sibling(typeparam);
-        typearg = ast_sibling(typearg);
-        continue;
-
       default: {}
     }
+
+    // type check the typeparam in case it is a value typeparameter
+    if (ast_visit(&typeparam, NULL, pass_expr, opt, PASS_EXPR) != AST_OK)
+      return false;
 
     // Reify the constraint.
     ast_t* constraint = ast_childidx(typeparam, 1);
@@ -518,7 +509,32 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
     errorframe_t* infop = (report_errors ? &info : NULL);
 
     // A bound type must be a subtype of the constraint.
-    if(!is_any_literal(typearg) && !is_subtype_constraint(typearg, r_constraint, infop, opt))
+    if(is_any_literal(typearg))
+    {
+      if (!coerce_literals(&typearg, r_constraint, opt))
+        return false;
+
+      ast_t* value_type = ast_type(typearg);
+      if (is_typecheck_error(value_type))
+        return false;
+
+      if (!is_subtype(value_type, r_constraint, report_errors ? &info : NULL, opt))
+      {
+        if (report_errors)
+        {
+          ast_error(opt->check.errors, orig,
+            "value argument type is outside its constraint");
+          ast_error_continue(opt->check.errors, typearg,
+            "argument type: %s", ast_print_type(ast_type(typearg)));
+          ast_error_continue(opt->check.errors, typeparam,
+            "constraint: %s", ast_print_type(r_constraint));
+        }
+
+        ast_free_unattached(r_constraint);
+        return false;
+      }
+    }
+    else if(!is_subtype_constraint(typearg, r_constraint, infop, opt))
     {
       if(report_errors)
       {

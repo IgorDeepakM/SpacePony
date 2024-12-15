@@ -458,6 +458,51 @@ static ast_result_t rescope(ast_t** astp, pass_opt_t* options)
   return AST_OK;
 }
 
+static bool ast_equal(ast_t* left, ast_t* right)
+{
+  if (left == NULL || right == NULL)
+    return left == NULL && right == NULL;
+
+  // Look through all of the constant expression directives
+  if (ast_id(left) == TK_CONSTANT)
+    return ast_equal(ast_child(left), right);
+
+  if (ast_id(right) == TK_CONSTANT)
+    return ast_equal(left, ast_child(right));
+
+  if (ast_id(left) != ast_id(right))
+    return false;
+
+  switch (ast_id(left))
+  {
+  case TK_ID:
+  case TK_STRING:
+    return ast_name(left) == ast_name(right);
+
+  case TK_INT:
+    return lexint_cmp(ast_int(left), ast_int(right)) == 0;
+
+  case TK_FLOAT:
+    return ast_float(left) == ast_float(right);
+
+  default:
+    break;
+  }
+
+  ast_t* l_child = ast_child(left);
+  ast_t* r_child = ast_child(right);
+
+  while (l_child != NULL && r_child != NULL)
+  {
+    if (!ast_equal(l_child, r_child))
+      return false;
+
+    l_child = ast_sibling(l_child);
+    r_child = ast_sibling(r_child);
+  }
+
+  return l_child == NULL && r_child == NULL;
+}
 
 // Combine the given inherited method with the existing one, if any, in the
 // given entity.
@@ -531,6 +576,15 @@ static bool add_method_from_trait(ast_t* entity, ast_t* method,
     (info->body_donor != NULL) &&
     (ast_id(method_body) != TK_NONE) &&
     (info->body_donor != (ast_t*)ast_data(method));
+
+  // We may have it that we inherit from two instances of the same trait
+  // but with different typeargs, this would cause us to have mutliple bodies
+  if (info->body_donor == (ast_t*)ast_data(method))
+  {
+    ast_t* typeargs_donor = ast_childidx(info->trait_ref, 2);
+    ast_t* typeargs = ast_childidx(trait_ref, 2);
+    multiple_bodies |= !ast_equal(typeargs_donor, typeargs);
+  }
 
   if(multiple_bodies ||
     ast_checkflag(existing_method, AST_FLAG_AMBIGUOUS) ||

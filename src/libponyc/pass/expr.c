@@ -654,6 +654,7 @@ ast_result_t pass_expr(ast_t** astp, pass_opt_t* options)
 
     case TK_FFICALL:
       r = expr_ffi(options, ast);
+      break;
 
     default: {}
   }
