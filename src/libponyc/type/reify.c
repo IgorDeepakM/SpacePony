@@ -435,18 +435,6 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
   ast_t* typeparam = ast_child(typeparams);
   ast_t* typearg = ast_child(typeargs);
 
-  bool reference_type_is_pointer = false;
-  if(orig != NULL)
-  {
-    ast_t* typeref = (ast_t*)ast_child(orig);
-    if(typeref != NULL)
-    {
-      ast_t* typerefdef = (ast_t*)ast_type(typeref);
-      ast_t* data = (ast_t*)ast_data(typerefdef);
-      reference_type_is_pointer = is_pointer(typerefdef);
-    }
-  }
-
   while(typeparam != NULL)
   {
     if(!is_any_literal(typearg) && is_bare(typearg))
@@ -466,7 +454,7 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
       {
         ast_t* def = (ast_t*)ast_data(typearg);
 
-        if(ast_id(def) == TK_STRUCT && !reference_type_is_pointer)
+        if(ast_id(def) == TK_STRUCT)
         {
           if(report_errors)
           {

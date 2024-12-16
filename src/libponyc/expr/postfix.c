@@ -10,6 +10,7 @@
 #include "../type/reify.h"
 #include "../type/assemble.h"
 #include "../type/lookup.h"
+#include "../type/subtype.h"
 #include "ponyassert.h"
 #include <string.h>
 #include <stdlib.h>
@@ -448,7 +449,16 @@ bool expr_qualify(pass_opt_t* opt, ast_t** astp)
       if(!reify_defaults(typeparams, right, true, opt))
         return false;
 
-      if(!check_constraints(left, typeparams, right, true, opt))
+      // If the underlying type is a pointer then we jump skip check_constraints
+      bool is_left_pointer = false;
+      ast_t* typeref = ast_child(left);
+      if(typeref != NULL)
+      {
+        ast_t* underlying_type = ast_type(typeref);
+        is_left_pointer = is_pointer(underlying_type);
+      }
+
+      if(!is_left_pointer && !check_constraints(left, typeparams, right, true, opt))
         return false;
 
       type = reify(type, typeparams, right, opt, true);
