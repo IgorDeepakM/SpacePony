@@ -429,6 +429,17 @@ void deferred_reify_free(deferred_reification_t* deferred)
   }
 }
 
+static bool compatible_argument(ast_t* typeparam, ast_t* typearg)
+{
+  bool is_value_argument = is_any_literal(typearg) ||
+    (ast_id(typearg) == TK_VALUEFORMALPARAMREF);
+
+  token_id typeparam_id = ast_id(typeparam);
+
+  return (typeparam_id == TK_VALUEFORMALPARAM && is_value_argument) ||
+         (typeparam_id == TK_TYPEPARAM && !is_value_argument);
+}
+
 bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
   bool report_errors, pass_opt_t* opt)
 {
@@ -481,6 +492,19 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
       }
 
       default: {}
+    }
+
+    if (!compatible_argument(typeparam, typearg))
+    {
+      token_id typeparam_id = ast_id(typeparam);
+      bool is_typeparam = typeparam_id == TK_TYPEPARAM;
+      ast_error(opt->check.errors, orig,
+        "invalid parameterisation");
+      ast_error_continue(opt->check.errors, typeparam,
+        "expected %s argument", is_typeparam ? "type" : "value");
+      ast_error_continue(opt->check.errors, typearg,
+        "provided %s argument", is_typeparam ? "value" : "type");
+      return false;
     }
 
     // type check the typeparam in case it is a value typeparameter
