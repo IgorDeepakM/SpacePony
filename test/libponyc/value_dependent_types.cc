@@ -417,6 +417,24 @@ TEST_F(VDTTest, TestMultipleTraitInstantiationWithMethod)
   TEST_ERROR(src);
 }
 
+TEST_F(VDTTest, TestNestedReachabilityCreatingTyperef)
+{
+  const char* src =
+    "class C1[u:USize]\n"
+    "  fun get() : USize =>\n"
+    "    u\n"
+    "class C2[n:USize]\n"
+    "  let c1 : C1[n] = C1[n]\n"
+    "  fun get() : USize =>\n"
+    "    c1.get()\n"
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    var c2 = C2[22]\n"
+    "    let x = c2.get()\n";
+
+  TEST_COMPILE(src);
+}
+
 TEST_F(VDTTest, DISABLED_TestNestedReifications)
 {
   const char* src =
