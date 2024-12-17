@@ -336,11 +336,12 @@ bool expr_typeref(pass_opt_t* opt, ast_t** astp)
       (ast_id(package) != TK_NONE) ? ast_name(ast_child(package)) : NULL;
 
     // This is needed in order to evaluate the value type arguments and give them a type
-    // for type references.
+    // for type references. If Array or Pointer, skip the check.
     if (ast_id(typeargs) != TK_NONE)
     {
       ast_t* underlying_type = (ast_t*)ast_data(ast);
       if(underlying_type != NULL && strcmp(ast_name(ast_child(underlying_type)), "Pointer") != 0 &&
+        strcmp(ast_name(ast_child(underlying_type)), "Array") != 0 &&
         (ast_id(underlying_type) == TK_CLASS || ast_id(underlying_type) == TK_STRUCT) ||
          ast_id(underlying_type) == TK_TRAIT || ast_id(underlying_type) == TK_INTERFACE)
       {
