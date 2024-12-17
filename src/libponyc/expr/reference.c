@@ -340,8 +340,7 @@ bool expr_typeref(pass_opt_t* opt, ast_t** astp)
     if (ast_id(typeargs) != TK_NONE)
     {
       ast_t* underlying_type = (ast_t*)ast_data(ast);
-      if(underlying_type != NULL && strcmp(ast_name(ast_child(underlying_type)), "Pointer") != 0 &&
-        strcmp(ast_name(ast_child(underlying_type)), "Array") != 0 &&
+      if(underlying_type != NULL &&
         (ast_id(underlying_type) == TK_CLASS || ast_id(underlying_type) == TK_STRUCT) ||
          ast_id(underlying_type) == TK_TRAIT || ast_id(underlying_type) == TK_INTERFACE)
       {
@@ -980,13 +979,6 @@ bool expr_nominal(pass_opt_t* opt, ast_t** astp)
   // If still nominal, check constraints.
   ast_t* def = (ast_t*)ast_data(ast);
   pony_assert(def != NULL);
-
-  // Special case: don't check the constraint of a Pointer or an Array. These
-  // builtin types have no contraint on their type parameter, and it is safe
-  // to bind a struct as a type argument (which is not safe on any user defined
-  // type, as that type might then be used for pattern matching).
-  if(is_pointer(ast) || is_literal(ast, "Array"))
-    return true;
 
   ast_t* typeparams = ast_childidx(def, 1);
   ast_t* typeargs = ast_childidx(ast, 2);

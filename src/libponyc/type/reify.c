@@ -9,6 +9,8 @@
 #include "ponyassert.h"
 #include "../expr/literal.h"
 #include "../pass/expr.h"
+#include "typeparam.h"
+
 
 static void reify_typeparamref(ast_t** astp, ast_t* typeparam, ast_t* typearg)
 {
@@ -448,7 +450,32 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
 
   while(typeparam != NULL)
   {
-    if(!is_any_literal(typearg) && is_bare(typearg))
+    // Check if the constraint is name "AnyNoCheck" which will
+    // skip any checks for the type parameter. This is used by
+    // the builtin types like Pointer and Array among others.
+    ast_t* constraint_id = NULL;
+    ast_t* ref_or_type = ast_childidx(typeparam, 1);
+    if(ast_id(ref_or_type) == TK_NOMINAL)
+    {
+      constraint_id = ast_childidx(ref_or_type, 1);
+    }
+    else if(ast_id(ref_or_type) == TK_TYPEPARAMREF)
+    {
+      ast_t* constraint = typeparam_constraint(ref_or_type);
+      if(constraint != NULL && ast_id(constraint) == TK_NOMINAL)
+      {
+        constraint_id = ast_childidx(constraint, 1);
+      }
+    }
+
+    if (constraint_id != NULL && strcmp(ast_name(constraint_id), "AnyNoCheck") == 0)
+    {
+      typeparam = ast_sibling(typeparam);
+      typearg = ast_sibling(typearg);
+      continue;
+    }
+
+    if (!is_any_literal(typearg) && is_bare(typearg))
     {
       if(report_errors)
       {

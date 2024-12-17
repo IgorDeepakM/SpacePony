@@ -1,4 +1,4 @@
-struct Pointer[A]
+struct Pointer[A: AnyNoCheck]
   """
   A Pointer[A] is a raw memory pointer. It has no descriptor and thus can't be
   included in a union or intersection, or be a subtype of any interface. Most
@@ -41,7 +41,7 @@ struct Pointer[A]
     """
     compile_intrinsic
 
-  fun convert[B](): this->Pointer[B] =>
+  fun convert[B: AnyNoCheck](): this->Pointer[B] =>
     """
     Convert from Pointer[A] to Pointer[B].
     """

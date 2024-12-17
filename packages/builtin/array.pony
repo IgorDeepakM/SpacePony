@@ -1,4 +1,4 @@
-class Array[A] is Seq[A]
+class Array[A : AnyNoCheck] is Seq[A]
   """
   Contiguous, resizable memory to store elements of type A.
 
