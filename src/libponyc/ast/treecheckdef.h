@@ -155,7 +155,7 @@ GROUP(expr,
   disposing_block, match, try_expr, lambda, barelambda, array_literal,
   object_literal, int_literal, float_literal, string, bool_literal, id, rawseq,
   package_ref, location, this_ref, ref, fun_ref, type_ref, field_ref,
-  tuple_elem_ref, local_ref, param_ref);
+  tuple_elem_ref, local_ref, param_ref, value_formal_param_ref);
 
 RULE(local,
   HAS_TYPE(type)
@@ -559,6 +559,7 @@ RULE(type_param_ref,
   TK_TYPEPARAMREF);
 
 RULE(value_formal_param_ref,
+  HAS_TYPE(type)
   HAS_DATA  // Definition of referred type parameter
   CHILD(id),
   //OPTIONAL(cap, gencap, none)
