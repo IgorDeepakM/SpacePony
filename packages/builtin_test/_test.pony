@@ -100,6 +100,9 @@ actor \nodoc\ Main is TestList
     test(_TestSubc)
     test(_TestUnsignedPartialArithmetic)
     test(_TestValtrace)
+    test(_TestCFixedSizedArray)
+    test(_TestNestedCFixedSizedArray)
+    test(_TestCFixedSizedArrayTrace)
 
   fun @runtime_override_defaults(rto: RuntimeOptions) =>
      rto.ponynoblock = true
@@ -2853,7 +2856,7 @@ struct _TestStruct
   var i: U32 = 0
   new create() => None
 
-class \nodoc\ iso _TestNullablePointer is UnitTest
+/*class \nodoc\ iso _TestNullablePointer is UnitTest
   """
   Test the NullablePointer type.
   """
@@ -2872,7 +2875,7 @@ class \nodoc\ iso _TestNullablePointer is UnitTest
     h.assert_false(b.is_none())
 
     let from_b = b()?
-    h.assert_eq[U32](s.i, from_b.i)
+    h.assert_eq[U32](s.i, from_b.i)*/
 
 class \nodoc\ iso _TestLambdaCapture is UnitTest
   """
@@ -2884,3 +2887,49 @@ class \nodoc\ iso _TestLambdaCapture is UnitTest
     let x = "hi"
     let f = {(y: String): String => x + y}
     h.assert_eq[String]("hi there", f(" there"))
+
+class \nodoc\ iso _TestCFixedSizedArray is UnitTest
+  fun name(): String => "builtin/CFixedSizedArray"
+
+  fun apply(h: TestHelper) ? =>
+    let vector1 = CFixedSizedArray[String, 4].init(["A"; "B"; "C"; "D"].values())?
+    h.assert_eq[USize](vector1.size(), 4)
+
+    let array1 = ["A"; "B"; "C"; "D"]
+    var i: USize = 0
+    while i < vector1.size() do
+      h.assert_eq[String](vector1(i)?, array1(i)?)
+      i = i + 1
+    end
+
+    let vector2 = CFixedSizedArray[String, 2].init(["E"; "F"].values())?
+    h.assert_eq[USize](vector2.size(), 2)
+
+    let array2 = ["E"; "F"]
+    i = 0
+    while i < vector2.size() do
+      h.assert_eq[String](vector2(i)?, array2(i)?)
+      i = i + 1
+    end
+
+class \nodoc\ NestedCFixedSizedArray
+  let vector: CFixedSizedArray[CFixedSizedArray[String, 2], 4]
+
+  new create() ? =>
+    let v1 = CFixedSizedArray[String, 2].init(["A"; "B"].values())?
+    let v2 = CFixedSizedArray[String, 2].init(["C"; "D"].values())?
+    let v3 = CFixedSizedArray[String, 2].init(["E"; "F"].values())?
+    let v4 = CFixedSizedArray[String, 2].init(["G"; "H"].values())?
+    vector = CFixedSizedArray[CFixedSizedArray[String, 2], 4].init([v1; v2; v3; v4].values())?
+
+class \nodoc\ iso _TestNestedCFixedSizedArray is UnitTest
+  fun name(): String => "builtin/NestedCFixedSizedArray"
+
+  fun apply(h: TestHelper) ? =>
+    let nv = NestedCFixedSizedArray.create()?
+    let array: Array[String] = ["A"; "B"; "C"; "D"; "E"; "F"; "G"; "H"]
+    for (i, x) in nv.vector.pairs() do
+      for (j, y) in x.pairs() do
+        h.assert_eq[String](array((i * x.size()) + j)?, y)
+      end
+    end

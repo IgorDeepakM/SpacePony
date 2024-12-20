@@ -3,9 +3,19 @@ struct CFixedSizedArray[A: AnyNoCheck, _size: USize]
   Contiguous, fixed sized memory to store elements of type A.
   """
 
+  new create(fill_with: A^) =>
+    """
+    Create a CFixedSizedArray, filled with a gived value
+    """
+    let p = cpointer().convert[A]()
+    var i: USize = 0
+    while i < _size do
+        p._update(i = i + 1, fill_with)
+    end
+
   new init(from: Iterator[A^]) ? =>
     """
-    Create a vector, initialised from the given sequence.
+    Create a CFixedSizedArray, initialised from the given sequence.
     """
     let p = cpointer().convert[A]()
     var i: USize = 0
@@ -15,7 +25,7 @@ struct CFixedSizedArray[A: AnyNoCheck, _size: USize]
 
   new uninitialized() =>
     """
-    Creates an fixed sized array with unitialized memory
+    Creates an CFixedSizedArray with unitialized memory
     """
     None
 
