@@ -321,6 +321,51 @@ bool expr_fieldref(pass_opt_t* opt, ast_t* ast, ast_t* find, token_id tid)
   return true;
 }
 
+static bool check_nullable_pointer(ast_t* ast, ast_t* typeparams, ast_t* typeargs,
+                                   pass_opt_t* opt)
+{
+  // NullablePointer[A] must be bound to a struct.
+  pony_assert(ast_childcount(typeargs) == 1);
+  ast_t* typeparam = ast_child(typeparams);
+  ast_t* typearg = ast_child(typeargs);
+  bool ok = false;
+
+  switch (ast_id(typearg))
+  {
+    case TK_NOMINAL:
+    {
+      ast_t* def = (ast_t*)ast_data(typearg);
+      pony_assert(def != NULL);
+
+      ok = ast_id(def) == TK_STRUCT;
+      break;
+    }
+
+    case TK_TYPEPARAMREF:
+    {
+      ast_t* def = (ast_t*)ast_data(typearg);
+      pony_assert(def != NULL);
+
+      ok = def == typeparam;
+      break;
+    }
+
+    default: {}
+  }
+
+  if (!ok)
+  {
+    ast_error(opt->check.errors, ast,
+      "%s is not allowed: "
+      "the type argument to NullablePointer must be a struct",
+      ast_print_type(ast));
+
+    return false;
+  }
+
+  return true;
+}
+
 bool expr_typeref(pass_opt_t* opt, ast_t** astp)
 {
   ast_t* ast = *astp;
@@ -345,7 +390,15 @@ bool expr_typeref(pass_opt_t* opt, ast_t** astp)
          ast_id(underlying_type) == TK_TRAIT || ast_id(underlying_type) == TK_INTERFACE)
       {
         ast_t* typeparams = ast_childidx(underlying_type, 1);
-        if (!check_constraints(*astp, typeparams, typeargs, true, opt))
+
+        // Nullable pointer check is handled differently as it can only be used
+        // with structs as type parameter
+        if (strcmp(ast_name(ast_child(underlying_type)), "NullablePointer") == 0)
+        {
+          if(!check_nullable_pointer(ast, typeparams, typeargs, opt))
+            return false;
+        }
+        else if (!check_constraints(*astp, typeparams, typeargs, true, opt))
         {
           return false;
         }
@@ -992,48 +1045,11 @@ bool expr_nominal(pass_opt_t* opt, ast_t** astp)
   if(!reify_defaults(typeparams, typeargs, true, opt))
     return false;
 
+  // Nullable pointer check is handled differently as it can only be used
+  // with structs as type parameter
   if(is_nullable_pointer(ast))
   {
-    // NullablePointer[A] must be bound to a struct.
-    pony_assert(ast_childcount(typeargs) == 1);
-    ast_t* typeparam = ast_child(typeparams);
-    ast_t* typearg = ast_child(typeargs);
-    bool ok = false;
-
-    switch(ast_id(typearg))
-    {
-      case TK_NOMINAL:
-      {
-        ast_t* def = (ast_t*)ast_data(typearg);
-        pony_assert(def != NULL);
-
-        ok = ast_id(def) == TK_STRUCT;
-        break;
-      }
-
-      case TK_TYPEPARAMREF:
-      {
-        ast_t* def = (ast_t*)ast_data(typearg);
-        pony_assert(def != NULL);
-
-        ok = def == typeparam;
-        break;
-      }
-
-      default: {}
-    }
-
-    if(!ok)
-    {
-      ast_error(opt->check.errors, ast,
-        "%s is not allowed: "
-        "the type argument to NullablePointer must be a struct",
-        ast_print_type(ast));
-
-      return false;
-    }
-
-    return true;
+    return check_nullable_pointer(ast, typeparams, typeargs, opt);
   }
 
   return check_constraints(typeargs, typeparams, typeargs, true, opt);

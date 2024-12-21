@@ -2856,7 +2856,7 @@ struct _TestStruct
   var i: U32 = 0
   new create() => None
 
-/*class \nodoc\ iso _TestNullablePointer is UnitTest
+class \nodoc\ iso _TestNullablePointer is UnitTest
   """
   Test the NullablePointer type.
   """
@@ -2875,7 +2875,7 @@ struct _TestStruct
     h.assert_false(b.is_none())
 
     let from_b = b()?
-    h.assert_eq[U32](s.i, from_b.i)*/
+    h.assert_eq[U32](s.i, from_b.i)
 
 class \nodoc\ iso _TestLambdaCapture is UnitTest
   """
