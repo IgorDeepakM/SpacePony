@@ -398,9 +398,17 @@ bool expr_typeref(pass_opt_t* opt, ast_t** astp)
           if(!check_nullable_pointer(ast, typeparams, typeargs, opt))
             return false;
         }
-        else if (!check_constraints(*astp, typeparams, typeargs, true, opt))
+        else
         {
-          return false;
+          if(!reify_defaults(typeparams, typeargs, true, opt))
+          {
+            return false;
+          }
+
+          if (!check_constraints(*astp, typeparams, typeargs, true, opt))
+          {
+            return false;
+          }
         }
       }
     }

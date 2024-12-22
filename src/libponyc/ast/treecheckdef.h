@@ -92,14 +92,14 @@ RULE(type_param,
   HAS_DATA // Original typeparam definition
   CHILD(id)
   CHILD(type, none)   // Constraint
-  CHILD(type, none),  // Default
+  CHILD(type, any_literal, none),  // Default
   TK_TYPEPARAM);
 
 RULE(value_formal_param,
   HAS_DATA // Original typeparam definition
   CHILD(id)
   CHILD(type, none)  // type
-  CHILD(none),
+  CHILD(any_literal, none),
   TK_VALUEFORMALPARAM);
 
 RULE(type_args, ONE_OR_MORE(type, any_literal, value_formal_param_ref), TK_TYPEARGS);

@@ -222,7 +222,17 @@ bool reify_defaults(ast_t* typeparams, ast_t* typeargs, bool errors,
     if(ast_id(defarg) == TK_NONE)
       break;
 
+    // We might have to visit the literals for the default arguments because
+    // they might not have been processed yet in the AST tree. This depends on
+    // where they are defined in the code.
+    if(is_any_literal(defarg) && ast_type(defarg) == NULL &&
+       opt->program_pass == PASS_EXPR)
+    {
+      pass_expr(&defarg, opt);
+    }
+
     ast_append(typeargs, defarg);
+
     typeparam = ast_sibling(typeparam);
   }
 

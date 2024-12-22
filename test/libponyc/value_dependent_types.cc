@@ -435,6 +435,23 @@ TEST_F(VDTTest, TestNestedReachabilityCreatingTyperef)
   TEST_COMPILE(src);
 }
 
+TEST_F(VDTTest, TestDefaultValueTypeParameters)
+{
+  const char* src =
+    "class C1[n:USize = 5]\n"
+    "  fun get() : USize =>\n"
+    "    n\n"
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    let c1 = C1\n"
+    "    c1.get()\n"
+    "    get()\n"
+    "  fun get[u:USize = 8]() : USize =>\n"
+    "    u\n";
+
+  TEST_COMPILE(src);
+}
+
 TEST_F(VDTTest, DISABLED_TestNestedReifications)
 {
   const char* src =
