@@ -16,7 +16,7 @@ struct Pointer[A: AnyNoCheck]
     """
     compile_intrinsic
   
-  new from_any[B](from: B) =>
+  new from_any[B: AnyNoCheck](from: B) =>
     """
     This initializes from any type to a NullablePointer. This is useful when
     initializing a NullablePointer[None] from a struct.
