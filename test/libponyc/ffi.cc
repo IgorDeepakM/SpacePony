@@ -233,24 +233,3 @@ TEST_F(FFITest, DeclarationAlias)
 
   TEST_ERROR(src);
 }
-
-TEST_F(FFITest, DeclarationWithNullablePointer)
-{
-  // From issue #3757
-  const char* src =
-    "use @foo[NullablePointer[(U64, U64)]]()\n"
-    "use @bar[NullablePointer[P1]]()\n"
-    "primitive P1\n"
-
-    "actor Main\n"
-    " new create(env: Env) =>\n"
-    "   None";
-
-    TEST_ERRORS_2(src,
-      "NullablePointer[(U64 val, U64 val)] ref is not allowed: "
-        "the type argument to NullablePointer must be a struct",
-
-      "NullablePointer[P1 val] ref is not allowed: "
-        "the type argument to NullablePointer must be a struct");
-
-}

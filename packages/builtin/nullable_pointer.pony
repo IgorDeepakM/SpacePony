@@ -1,4 +1,4 @@
-struct NullablePointer[A]
+struct NullablePointer[A: AnyNoCheck]
   """
   A NullablePointer[A] is used to encode a possibly-null type. It should
   _only_ be used for structs that need to be passed to and from the C FFI.
