@@ -112,6 +112,14 @@ struct Pointer[A: AnyNoCheck]
     """
     compile_intrinsic
 
+  fun to_reftype_no_check(): this->A =>
+    """
+    This re-encodes the type of `this` from Pointer[A] to A, allowing
+    `this` to be assigned to a field of variable of type A. This method
+    does not check for null pointer and will assign it regardless.
+    """
+    compile_intrinsic
+
   fun tag is_null(): Bool =>
     """
     Return true for a null pointer, false for anything else.
