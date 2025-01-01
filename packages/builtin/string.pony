@@ -211,13 +211,13 @@ actor Main
     """
     Copy `copy_len` bytes from this to that at specified offsets.
     """
-    _ptr._offset(from_offset)._copy_to(ptr._offset(to_offset), copy_len)
+    _ptr.pointer_at_offset(from_offset)._copy_to(ptr.pointer_at_offset(to_offset), copy_len)
 
   fun cpointer(offset: USize = 0): Pointer[U8] tag =>
     """
     Returns a C compatible pointer to the underlying string allocation.
     """
-    _ptr._offset(offset)
+    _ptr.pointer_at_offset(offset)
 
   fun cstring(): Pointer[U8] tag =>
     """
@@ -379,7 +379,7 @@ actor Main
     if _alloc == 0 then
       _ptr = Pointer[U8]
     else
-      _ptr = _ptr._offset(offset)
+      _ptr = _ptr.pointer_at_offset(offset)
     end
 
   fun val trim(from: USize = 0, to: USize = -1): String val =>
@@ -400,7 +400,7 @@ actor Main
       let alloc = if last == _size then _alloc - offset else size' end
 
       if size' > 0 then
-        from_cpointer(_ptr._offset(offset)._unsafe(), size', alloc)
+        from_cpointer(_ptr.pointer_at_offset(offset)._unsafe(), size', alloc)
       else
         create()
       end
@@ -755,7 +755,7 @@ actor Main
     let i = offset_to_index(offset)
 
     if (i + s.size()) <= _size then
-      @memcmp(_ptr._offset(i), s._ptr, s._size) == 0
+      @memcmp(_ptr.pointer_at_offset(i), s._ptr, s._size) == 0
     else
       false
     end
@@ -769,7 +769,7 @@ actor Main
     if i < _size then
       let n = len.min(_size - i)
       _size = _size - n
-      _ptr._offset(i)._delete(n, _size - i)
+      _ptr.pointer_at_offset(i)._delete(n, _size - i)
       _set(_size, 0)
     end
 
@@ -788,7 +788,7 @@ actor Main
     if (start < _size) and (start < finish) then
       let len = finish - start
       let str = recover String(len) end
-      _ptr._offset(start)._copy_to(str._ptr._unsafe(), len)
+      _ptr.pointer_at_offset(start)._copy_to(str._ptr._unsafe(), len)
       str._size = len
       str._set(len, 0)
       str
@@ -886,7 +886,7 @@ actor Main
     """
     if _size > 0 then
       _size = _size - 1
-      _ptr._offset(_size)._delete(1, 0)
+      _ptr.pointer_at_offset(_size)._delete(1, 0)
     else
       error
     end
@@ -1002,7 +1002,7 @@ actor Main
     let index = offset_to_index(offset).min(_size)
     @memmove(_ptr.usize() + index + that._size,
       _ptr.usize() + index, _size - index)
-    that._ptr._copy_to(_ptr._offset(index), that._size)
+    that._ptr._copy_to(_ptr.pointer_at_offset(index), that._size)
     _size = _size + that._size
     _set(_size, 0)
 

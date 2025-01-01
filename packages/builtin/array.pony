@@ -151,13 +151,13 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     Copy copy_len elements from this to that at specified offsets.
     """
-    _ptr._offset(from_offset)._copy_to(ptr._offset(to_offset), copy_len)
+    _ptr.pointer_at_offset(from_offset)._copy_to(ptr.pointer_at_offset(to_offset), copy_len)
 
   fun cpointer(offset: USize = 0): Pointer[A] tag =>
     """
     Return the underlying C-style pointer.
     """
-    _ptr._offset(offset)
+    _ptr.pointer_at_offset(offset)
 
   fun size(): USize =>
     """
@@ -217,7 +217,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     Reads a U8 from offset. This is only allowed for an array of U8s.
     """
     if offset < _size then
-      _ptr._offset(offset).convert[U8]()._apply(0)
+      _ptr.pointer_at_offset(offset).convert[U8]()._apply(0)
     else
       error
     end
@@ -228,7 +228,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u16_bytes = U16(0).bytewidth()
     if (offset + u16_bytes) <= _size then
-      _ptr._offset(offset).convert[U16]()._apply(0)
+      _ptr.pointer_at_offset(offset).convert[U16]()._apply(0)
     else
       error
     end
@@ -239,7 +239,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u32_bytes = U32(0).bytewidth()
     if (offset + u32_bytes) <= _size then
-      _ptr._offset(offset).convert[U32]()._apply(0)
+      _ptr.pointer_at_offset(offset).convert[U32]()._apply(0)
     else
       error
     end
@@ -250,7 +250,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u64_bytes = U64(0).bytewidth()
     if (offset + u64_bytes) <= _size then
-      _ptr._offset(offset).convert[U64]()._apply(0)
+      _ptr.pointer_at_offset(offset).convert[U64]()._apply(0)
     else
       error
     end
@@ -261,7 +261,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u128_bytes = U128(0).bytewidth()
     if (offset + u128_bytes) <= _size then
-      _ptr._offset(offset).convert[U128]()._apply(0)
+      _ptr.pointer_at_offset(offset).convert[U128]()._apply(0)
     else
       error
     end
@@ -281,7 +281,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     Write a U8 at offset. This is only allowed for an array of U8s.
     """
     if offset < _size then
-      _ptr._offset(offset).convert[U8]()._update(0, value)
+      _ptr.pointer_at_offset(offset).convert[U8]()._update(0, value)
     else
       error
     end
@@ -292,7 +292,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u16_bytes = U16(0).bytewidth()
     if (offset + u16_bytes) <= _size then
-      _ptr._offset(offset).convert[U16]()._update(0, value)
+      _ptr.pointer_at_offset(offset).convert[U16]()._update(0, value)
     else
       error
     end
@@ -303,7 +303,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u32_bytes = U32(0).bytewidth()
     if (offset + u32_bytes) <= _size then
-      _ptr._offset(offset).convert[U32]()._update(0, value)
+      _ptr.pointer_at_offset(offset).convert[U32]()._update(0, value)
     else
       error
     end
@@ -314,7 +314,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u64_bytes = U64(0).bytewidth()
     if (offset + u64_bytes) <= _size then
-      _ptr._offset(offset).convert[U64]()._update(0, value)
+      _ptr.pointer_at_offset(offset).convert[U64]()._update(0, value)
     else
       error
     end
@@ -325,7 +325,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u128_bytes = U128(0).bytewidth()
     if (offset + u128_bytes) <= _size then
-      _ptr._offset(offset).convert[U128]()._update(0, value)
+      _ptr.pointer_at_offset(offset).convert[U128]()._update(0, value)
     else
       error
     end
@@ -360,7 +360,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     if i <= _size then
       reserve(_size + 1)
-      _ptr._offset(i)._insert(1, _size - i)
+      _ptr.pointer_at_offset(i)._insert(1, _size - i)
       _ptr._update(i, consume value)
       _size = _size + 1
     else
@@ -376,7 +376,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     if i < _size then
       _size = _size - 1
-      _ptr._offset(i)._delete(1, _size - i)
+      _ptr.pointer_at_offset(i)._delete(1, _size - i)
     else
       error
     end
@@ -405,14 +405,14 @@ class Array[A : AnyNoCheck] is Seq[A]
     _size = size'
 
     // if _alloc == 0 then we've trimmed all the memory originally allocated.
-    // if we do _ptr._offset, we will spill into memory not allocated/owned
+    // if we do _ptr.offset, we will spill into memory not allocated/owned
     // by this array and could potentially cause a segfault if we cross
     // a pagemap boundary into a pagemap address that hasn't been allocated
     // yet when `reserve` is called next.
     if _alloc == 0 then
       _ptr = Pointer[A]
     else
-      _ptr = _ptr._offset(offset)
+      _ptr = _ptr.pointer_at_offset(offset)
     end
 
   fun val trim(from: USize = 0, to: USize = -1): Array[A] val =>
@@ -433,7 +433,7 @@ class Array[A : AnyNoCheck] is Seq[A]
       let alloc = if last == _size then _alloc - offset else size' end
 
       if size' > 0 then
-        from_cpointer(_ptr._offset(offset)._unsafe(), size', alloc)
+        from_cpointer(_ptr.pointer_at_offset(offset)._unsafe(), size', alloc)
       else
         create()
       end
@@ -537,7 +537,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     Only works for Array[U8].
     """
     reserve(dst_idx + len)
-    src._ptr._offset(src_idx)._copy_to(_ptr.convert[U8]()._offset(dst_idx), len)
+    src._ptr.pointer_at_offset(src_idx)._copy_to(_ptr.convert[U8]().pointer_at_offset(dst_idx), len)
 
     if _size < (dst_idx + len) then
       _size = dst_idx + len
@@ -556,7 +556,7 @@ class Array[A : AnyNoCheck] is Seq[A]
       let count = len.min(_size - src_idx)
       if count > 0 then
         dst.reserve(dst_idx + count)
-        _ptr._offset(src_idx)._copy_to(dst._ptr._offset(dst_idx), count)
+        _ptr.pointer_at_offset(src_idx)._copy_to(dst._ptr.pointer_at_offset(dst_idx), count)
 
         if dst._size < (dst_idx + count) then
           dst._size = dst_idx + count
@@ -571,7 +571,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     if i < _size then
       let count = n.min(_size - i)
       _size = _size - count
-      _ptr._offset(i)._delete(count, _size - i)
+      _ptr.pointer_at_offset(i)._delete(count, _size - i)
     end
 
   fun ref clear() =>
@@ -586,7 +586,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u8_bytes = U8(0).bytewidth()
     reserve(_size + u8_bytes)
-    _ptr._offset(_size).convert[U8]()._update(0, value)
+    _ptr.pointer_at_offset(_size).convert[U8]()._update(0, value)
     _size = _size + u8_bytes
 
   fun ref push_u16[B: (A & Real[B] val & U8) = A](value: U16) =>
@@ -595,7 +595,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u16_bytes = U16(0).bytewidth()
     reserve(_size + u16_bytes)
-    _ptr._offset(_size).convert[U16]()._update(0, value)
+    _ptr.pointer_at_offset(_size).convert[U16]()._update(0, value)
     _size = _size + u16_bytes
 
   fun ref push_u32[B: (A & Real[B] val & U8) = A](value: U32) =>
@@ -604,7 +604,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u32_bytes = U32(0).bytewidth()
     reserve(_size + u32_bytes)
-    _ptr._offset(_size).convert[U32]()._update(0, value)
+    _ptr.pointer_at_offset(_size).convert[U32]()._update(0, value)
     _size = _size + u32_bytes
 
   fun ref push_u64[B: (A & Real[B] val & U8) = A](value: U64) =>
@@ -613,7 +613,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u64_bytes = U64(0).bytewidth()
     reserve(_size + u64_bytes)
-    _ptr._offset(_size).convert[U64]()._update(0, value)
+    _ptr.pointer_at_offset(_size).convert[U64]()._update(0, value)
     _size = _size + u64_bytes
 
   fun ref push_u128[B: (A & Real[B] val & U8) = A](value: U128) =>
@@ -622,7 +622,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u128_bytes = U128(0).bytewidth()
     reserve(_size + u128_bytes)
-    _ptr._offset(_size).convert[U128]()._update(0, value)
+    _ptr.pointer_at_offset(_size).convert[U128]()._update(0, value)
     _size = _size + u128_bytes
 
   fun ref push(value: A) =>

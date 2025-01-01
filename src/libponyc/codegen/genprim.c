@@ -275,12 +275,12 @@ static void pointer_update(compile_t* c, reach_type_t* t,
   codegen_finishfun(c);
 }
 
-static void pointer_offset(compile_t* c, void* data, token_id cap)
+static void pointer_pointer_at_offset(compile_t* c, void* data, token_id cap)
 {
   reach_type_t* t = ((reach_type_t**)data)[0];
   compile_type_t* t_elem = ((compile_type_t**)data)[1];
 
-  FIND_METHOD("_offset", cap);
+  FIND_METHOD("pointer_at_offset", cap);
 
   LLVMTypeRef params[3];
   params[0] = c_t->use_type;
@@ -527,7 +527,7 @@ void genprim_pointer_methods(compile_t* c, reach_type_t* t)
   GENERIC_FUNCTION("convert", pointer_convert, NULL);
   BOX_FUNCTION(pointer_apply, box_args);
   pointer_update(c, t, t_elem);
-  BOX_FUNCTION(pointer_offset, c_box_args);
+  BOX_FUNCTION(pointer_pointer_at_offset, c_box_args);
   pointer_element_size(c, t, c_t_elem);
   pointer_insert(c, t, c_t_elem);
   pointer_delete(c, t, t_elem);

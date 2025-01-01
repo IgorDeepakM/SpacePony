@@ -59,7 +59,7 @@ struct Pointer[A: AnyNoCheck]
     """
     compile_intrinsic
 
-  fun _offset(n: USize): this->Pointer[A] =>
+  fun pointer_at_offset(n: USize): this->Pointer[A] =>
     """
     Return a pointer to the n-th element.
     """
@@ -69,7 +69,7 @@ struct Pointer[A: AnyNoCheck]
     """
     Return a tag pointer to the n-th element.
     """
-     _unsafe()._offset(n)
+    _unsafe().pointer_at_offset(n)
 
   fun tag _element_size(): USize =>
     """
