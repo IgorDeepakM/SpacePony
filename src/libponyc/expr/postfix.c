@@ -228,33 +228,56 @@ static bool type_access(pass_opt_t* opt, ast_t** astp)
     case TK_EMBED:
     case TK_BE:
     {
-      // Make this a lookup on a default constructed object.
-      if(!strcmp(ast_name(right), "create"))
+      // Scan up in AST if this is a offsetof expression, then
+      // handle differently
+      ast_t* parent = ast_parent(ast);
+      while(ast_id(parent) == TK_DOT)
       {
-        ast_error(opt->check.errors, right,
-          "create is not a constructor on this type");
-        return false;
+        parent = ast_parent(parent);
       }
 
-      ast_t* dot = ast_from(ast, TK_DOT);
-      ast_add(dot, ast_from_string(ast, "create"));
-      ast_swap(left, dot);
-      ast_add(dot, left);
+      if(ast_id(parent) == TK_OFFSETOF)
+      {
+        ast_t* typeref = ast_child(ast);
+        pony_assert(ast_id(typeref) == TK_TYPEREF);
 
-      ast_t* call = ast_from(ast, TK_CALL);
-      ast_swap(dot, call);
-      ast_add(call, ast_from(ast, TK_NONE)); // question
-      ast_add(call, ast_from(ast, TK_NONE)); // named
-      ast_add(call, ast_from(ast, TK_NONE)); // positional
-      ast_add(call, dot);
+        ast_t* type_id = ast_sibling(typeref);
 
-      if(!expr_dot(opt, &dot))
-        return false;
+        deferred_reification_t* find_o = lookup(opt, ast, find->thistype, ast_name(type_id));
 
-      if(!expr_call(opt, &call))
-        return false;
+        ast_setid(ast, TK_FVARREF);
+        ast_settype(ast, ast_type(find->ast));
+      }
+      else
+      {
+        // Make this a lookup on a default constructed object.
+        if(!strcmp(ast_name(right), "create"))
+        {
+          ast_error(opt->check.errors, right,
+            "create is not a constructor on this type");
+          return false;
+        }
 
-      ret = expr_dot(opt, astp);
+        ast_t* dot = ast_from(ast, TK_DOT);
+        ast_add(dot, ast_from_string(ast, "create"));
+        ast_swap(left, dot);
+        ast_add(dot, left);
+
+        ast_t* call = ast_from(ast, TK_CALL);
+        ast_swap(dot, call);
+        ast_add(call, ast_from(ast, TK_NONE)); // question
+        ast_add(call, ast_from(ast, TK_NONE)); // named
+        ast_add(call, ast_from(ast, TK_NONE)); // positional
+        ast_add(call, dot);
+
+        if(!expr_dot(opt, &dot))
+          return false;
+
+        if(!expr_call(opt, &call))
+          return false;
+
+        ret = expr_dot(opt, astp);
+      }
       break;
     }
 

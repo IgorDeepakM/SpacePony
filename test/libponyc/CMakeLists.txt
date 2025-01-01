@@ -54,6 +54,7 @@ add_executable(libponyc.tests
     value_dependent_types.cc
     verify.cc
     with.cc
+    x_of_operator.cc
 )
 
 target_compile_definitions(libponyc.tests PRIVATE

@@ -657,11 +657,6 @@ bool expr_addressof(pass_opt_t* opt, ast_t* ast)
         "can't take the address of a let field");
       return false;
 
-    //case TK_EMBEDREF:
-    //  ast_error(opt->check.errors, ast,
-    //    "can't take the address of an embed field");
-    //  return false;
-
     case TK_TUPLEELEMREF:
       ast_error(opt->check.errors, ast,
         "can't take the address of a tuple element");
@@ -764,6 +759,66 @@ bool expr_addressof(pass_opt_t* opt, ast_t* ast)
       type = type_pointer_to(opt, expr_type);
       break;
   }
+
+  ast_settype(ast, type);
+  return true;
+}
+
+bool expr_offsetof(pass_opt_t* opt, ast_t* ast)
+{
+  ast_t* expr = ast_child(ast);
+
+  switch (ast_id(expr))
+  {
+    case TK_FVARREF:
+    case TK_FUNREF:
+    case TK_BEREF:
+    case TK_EMBEDREF:
+    case TK_TYPEREF:
+      break;
+
+    case TK_FLETREF:
+      ast_error(opt->check.errors, ast,
+        "can't take the offset of a let field");
+      return false;
+
+    case TK_VARREF:
+      ast_error(opt->check.errors, ast,
+        "can't take the offset of a var local");
+      return false;
+
+    case TK_TUPLEELEMREF:
+      ast_error(opt->check.errors, ast,
+        "can't take the offset of a tuple element");
+      return false;
+
+    case TK_LETREF:
+      ast_error(opt->check.errors, ast,
+        "can't take the offset of a let local");
+      return false;
+
+    case TK_PARAMREF:
+      ast_error(opt->check.errors, ast,
+        "can't take the offset of a function parameter");
+      return false;
+
+    case TK_VALUEFORMALPARAMREF:
+      ast_error(opt->check.errors, ast,
+        "can't take the offset of a value type parameter");
+      return false;
+
+    default:
+      ast_error(opt->check.errors, ast,
+        "can only take the offset of a field");
+      return false;
+  }
+
+  ast_t* expr_type = ast_type(expr);
+
+  if (is_typecheck_error(expr_type))
+    return false;
+
+  ast_t* type = type_builtin(opt, expr_type, "USize");
 
   ast_settype(ast, type);
   return true;

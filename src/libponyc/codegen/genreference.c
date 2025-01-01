@@ -82,6 +82,31 @@ static LLVMValueRef make_fieldptr(compile_t* c, LLVMValueRef l_value,
   return LLVMBuildStructGEP2(c->builder, l_c_t->structure, l_value, index, "");
 }
 
+static LLVMValueRef make_fieldoffset(compile_t* c, ast_t* l_type, ast_t* right)
+{
+  pony_assert(ast_id(l_type) == TK_NOMINAL);
+  pony_assert(ast_id(right) == TK_ID);
+
+  ast_t* def;
+  ast_t* field;
+  uint32_t index;
+  get_fieldinfo(l_type, right, &def, &field, &index);
+
+  if (ast_id(def) != TK_STRUCT)
+    index++;
+
+  if (ast_id(def) == TK_ACTOR)
+    index++;
+
+  reach_type_t* l_t = reach_type(c->reach, l_type);
+  pony_assert(l_t != NULL);
+  compile_type_t* l_c_t = (compile_type_t*)l_t->c_type;
+
+  LLVMValueRef zero_ptr = LLVMConstNull(c->intptr);
+  LLVMValueRef ptr_to_member = LLVMBuildStructGEP2(c->builder, l_c_t->structure, zero_ptr, index, "");
+  return LLVMBuildPtrToInt(c->builder, ptr_to_member, c->intptr, "");
+}
+
 LLVMValueRef gen_fieldptr(compile_t* c, ast_t* ast)
 {
   AST_GET_CHILDREN(ast, left, right);
@@ -95,6 +120,33 @@ LLVMValueRef gen_fieldptr(compile_t* c, ast_t* ast)
   LLVMValueRef ret = make_fieldptr(c, l_value, l_type, right);
   ast_free_unattached(l_type);
   return ret;
+}
+
+LLVMValueRef gen_fieldoffset(compile_t* c, ast_t* ast)
+{
+  if(ast_childidx(ast, 1) == NULL)
+    return NULL;
+
+  AST_GET_CHILDREN(ast, left, right);
+
+  if(ast == NULL || ast_id(left) == TK_NONE)
+    return NULL;
+
+  LLVMValueRef l_value = gen_fieldoffset(c, left);
+
+  ast_t* l_type = deferred_reify(c->frame->reify, ast_type(left), c->opt);
+  LLVMValueRef ret = make_fieldoffset(c, l_type, right);
+  ast_free_unattached(l_type);
+
+  if(l_value != NULL)
+  {
+    LLVMValueRef added = LLVMBuildAdd(c->builder, l_value, ret, "");
+    return added;
+  }
+  else
+  {
+    return ret;
+  }
 }
 
 LLVMValueRef gen_fieldload(compile_t* c, ast_t* ast)
@@ -320,6 +372,24 @@ LLVMValueRef gen_addressof(compile_t* c, ast_t* ast)
     case TK_BEREF:
       return gen_funptr(c, expr);
 
+    default: {}
+  }
+
+  pony_assert(0);
+  return NULL;
+}
+
+LLVMValueRef gen_offsetof(compile_t* c, ast_t* ast)
+{
+  ast_t* expr = ast_child(ast);
+
+  switch (ast_id(expr))
+  {
+    case TK_FVARREF:
+    case TK_EMBEDREF:
+    {
+      return gen_fieldoffset(c, expr);
+    }
     default: {}
   }
 
