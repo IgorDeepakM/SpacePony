@@ -622,7 +622,6 @@ bool expr_paramref(pass_opt_t* opt, ast_t* ast)
 
 bool expr_valueformalparamref(pass_opt_t* opt, ast_t** astp)
 {
-  typecheck_t* t = &opt->check;
   ast_t* ast = *astp;
 
   pony_assert(ast_id(ast) == TK_VALUEFORMALPARAMREF);

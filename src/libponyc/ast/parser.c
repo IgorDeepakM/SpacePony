@@ -103,20 +103,6 @@ DEF(const_expr);
   RULE("formal argument value", postfix);
   DONE();
 
-// literal
-/*DEF(typeargliteral);
-  AST_NODE(TK_VALUEFORMALARG);
-  PRINT_INLINE();
-  RULE("type argument", literal);
-  DONE();
-
-// HASH postfix
-DEF(typeargconst);
-  AST_NODE(TK_VALUEFORMALARG);
-  PRINT_INLINE();
-  RULE("formal argument value", const_expr);
-  DONE();*/
-
 // type | typeargliteral | typeargconst
 DEF(typearg);
   RULE("type argument", type, literal, const_expr);

@@ -562,8 +562,6 @@ bool refer_reference(pass_opt_t* opt, ast_t** astp)
 
     case TK_VALUEFORMALPARAM:
     {
-      ast_t* constraint = ast_childidx(def, 1);
-      ast_settype(ast, constraint);
       ast_setid(ast, TK_VALUEFORMALPARAMREF);
       return true;
     }
