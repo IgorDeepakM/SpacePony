@@ -85,24 +85,31 @@ RULE(method,
 
 RULE(type_params, ONE_OR_MORE(type_param, value_formal_param), TK_TYPEPARAMS);
 
-GROUP(any_literal,
+GROUP(value_formal_literal,
   int_literal, float_literal, bool_literal, string);
+
+RULE(value_formal_arg,
+  CHILD(value_formal_literal)
+  HAS_TYPE(type),
+  TK_VALUEFORMALARG);
 
 RULE(type_param,
   HAS_DATA // Original typeparam definition
   CHILD(id)
   CHILD(type, none)   // Constraint
-  CHILD(type, any_literal, none),  // Default
+  CHILD(type, value_formal_arg, none),  // Default
   TK_TYPEPARAM);
 
 RULE(value_formal_param,
   HAS_DATA // Original typeparam definition
   CHILD(id)
   CHILD(type, none)  // type
-  CHILD(any_literal, none),
+  CHILD(value_formal_arg, none),
   TK_VALUEFORMALPARAM);
 
-RULE(type_args, ONE_OR_MORE(type, any_literal, value_formal_param_ref), TK_TYPEARGS);
+
+
+RULE(type_args, ONE_OR_MORE(type, value_formal_arg, value_formal_param_ref), TK_TYPEARGS);
 
 RULE(params,
   ZERO_OR_MORE(param)

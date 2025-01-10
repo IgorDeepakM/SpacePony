@@ -267,16 +267,26 @@ static bool is_eq_typeargs(ast_t* a, ast_t* b, errorframe_t* errorf,
 
   while((a_arg != NULL) && (b_arg != NULL))
   {
-    if (is_value_formal_arg_literal(a_arg))
+    if(ast_id(a_arg) != TK_VALUEFORMALARG && ast_id(b_arg) != TK_VALUEFORMALARG)
     {
-      if (!is_literal_equal(a_arg, b_arg))
-      {
+      if (!is_eqtype(a_arg, b_arg, errorf, opt))
         ret = false;
-      }
     }
+    else if(ast_id(a_arg) == TK_VALUEFORMALARG && ast_id(b_arg) == TK_VALUEFORMALARG)
+    {
+      ast_t* lit_a = ast_child(a_arg);
+      ast_t* lit_b = ast_child(b_arg);
 
-    if(!is_eqtype(a_arg, b_arg, errorf, opt))
+      if (!is_literal_equal(lit_a, lit_b))
+        ret = false;
+
+      if (!is_eqtype(ast_type(lit_a), ast_type(lit_b), errorf, opt))
+        ret = false;
+    }
+    else
+    {
       ret = false;
+    }
 
     a_arg = ast_sibling(a_arg);
     b_arg = ast_sibling(b_arg);
@@ -1599,12 +1609,12 @@ static bool is_typevalueparam_sub_x(ast_t* sub, ast_t* super, check_cap_t check_
 
     return is_x_sub_x(sub, super_underlying_type, check_cap, errorf, opt);
   }
-  else if(is_value_formal_arg_literal(super))
+  else if(ast_id(super) == TK_VALUEFORMALARG)
   {
-    //ast_t* sub_value = ast_child(sub);
-    //ast_t *super_value = ast_child(super);
-    ast_t *super_type = ast_type(sub);
-    ast_t *sub_type = ast_type(super);
+    ast_t* sub_value = ast_child(sub);
+    ast_t *super_value = ast_child(super);
+    ast_t *super_type = ast_type(sub_value);
+    ast_t *sub_type = ast_type(super_value);
 
     // The type of these should be equal so we first check this
     if(!is_eqtype(super_type, sub_type, errorf, opt))
@@ -2257,7 +2267,9 @@ bool is_bare(ast_t* type)
       return is_bare(ast_childidx(type, 1));
 
     case TK_TYPEPARAMREF:
+    case TK_VALUEFORMALPARAM:
     case TK_VALUEFORMALPARAMREF:
+    case TK_VALUEFORMALARG:
     case TK_FUNTYPE:
     case TK_INFERTYPE:
     case TK_ERRORTYPE:

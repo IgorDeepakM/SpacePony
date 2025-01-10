@@ -405,9 +405,11 @@ static bool make_c_fixed_sized_array_struct(compile_t* c, reach_type_t* t)
   compile_type_t* c_t = (compile_type_t*)t->c_type;
 
   ast_t* typeargs = ast_childidx(t->ast, 2);
-  AST_GET_CHILDREN(typeargs, elem_type, size);
+  AST_GET_CHILDREN(typeargs, elem_type, size_arg);
 
-  pony_assert(ast_id(size) == TK_INT);
+  pony_assert(ast_id(size_arg) == TK_VALUEFORMALARG &&
+              ast_id(ast_child(size_arg)) == TK_INT);
+  ast_t *size = ast_child(size_arg);
   lexint_t* size_val = ast_int(size);
 
   // Do we need a reify here?

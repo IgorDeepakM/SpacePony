@@ -291,6 +291,7 @@ static const lextoken_t abstract[] =
   { "typeref", TK_TYPEREF },
   { "typeparamref", TK_TYPEPARAMREF },
   { "valueformalparamref", TK_VALUEFORMALPARAMREF },
+  { "valueformalarg", TK_VALUEFORMALARG },
   { "newref", TK_NEWREF },
   { "newberef", TK_NEWBEREF },
   { "beref", TK_BEREF },

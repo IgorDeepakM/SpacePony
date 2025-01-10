@@ -106,9 +106,14 @@ DEF(const_expr);
   RULE("formal argument value", postfix);
   DONE();
 
+DEF(valueformalarg);
+  AST_NODE(TK_VALUEFORMALARG);
+  RULE("value formal argument value", literal);
+  DONE();
+
 // type | typeargliteral | typeargconst
 DEF(typearg);
-  RULE("type argument", type, literal, const_expr);
+  RULE("type argument", type, valueformalarg);
   DONE();
 
 // ID [COLON type] [ASSIGN typearg]

@@ -861,9 +861,10 @@ static reach_type_t* add_nominal(reach_t* r, ast_t* type, pass_opt_t* opt)
 
   while(typearg != NULL)
   {
-    if (is_value_formal_arg_literal(typearg))
+    if(ast_id(typearg) == TK_VALUEFORMALARG)
     {
-      ast_t* literal_type = ast_type(typearg);
+      ast_t* literal = ast_child(typearg);
+      ast_t* literal_type = ast_type(literal);
       add_type(r, literal_type, opt);
     }
     else
@@ -1028,6 +1029,9 @@ static reach_type_t* add_type(reach_t* r, ast_t* type, pass_opt_t* opt)
 
     case TK_NOMINAL:
       return add_nominal(r, type, opt);
+
+    case TK_VALUEFORMALARG:
+      return add_type(r, ast_type(ast_child(type)), opt);
 
     default:
       pony_assert(0);

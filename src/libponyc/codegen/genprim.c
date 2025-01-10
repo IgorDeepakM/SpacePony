@@ -661,7 +661,9 @@ static void trace_c_fixed_sized_array_elements(compile_t* c, reach_type_t* t,
   LLVMBasicBlockRef post_block = codegen_block(c, "post");
 
   // Build the count node.
-  lexint_t* size = ast_int(num_elems);
+  pony_assert(ast_id(num_elems) == TK_VALUEFORMALARG &&
+              ast_id(ast_child(num_elems)) == TK_INT);
+  lexint_t* size = ast_int(ast_child(num_elems));
   pony_assert(lexint_cmp64(size, UINT32_MAX) <= 0);
   LLVMValueRef count = LLVMConstInt(c->intptr, size->low, false);
   LLVMBuildBr(c->builder, cond_block);
@@ -750,7 +752,9 @@ void genprim_c_fixed_sized_array_serialise(compile_t* c, reach_type_t* t)
   reach_type_t* t_elem = reach_type(c->reach, elem_type);
   compile_type_t* c_t_elem = (compile_type_t*)t_elem->c_type;
 
-  lexint_t* lex_size = ast_int(num_elems);
+  pony_assert(ast_id(num_elems) == TK_VALUEFORMALARG &&
+              ast_id(ast_child(num_elems)) == TK_INT);
+  lexint_t* lex_size = ast_int(ast_child(num_elems));
   pony_assert(lexint_cmp64(lex_size, UINT32_MAX) <= 0);
   size_t abisize = (size_t)LLVMABISizeOfType(c->target_data, c_t_elem->use_type);
   LLVMValueRef size = LLVMConstInt(c->intptr, lex_size->low * abisize, false);
@@ -835,7 +839,9 @@ void genprim_c_fixed_sized_array_deserialise(compile_t* c, reach_type_t* t)
 
   if(t_elem->underlying != TK_PRIMITIVE)
   {
-    lexint_t* lex_size = ast_int(num_elems);
+    pony_assert(ast_id(num_elems) == TK_VALUEFORMALARG &&
+                ast_id(ast_child(num_elems)) == TK_INT);
+    lexint_t* lex_size = ast_int(ast_child(num_elems));
     pony_assert(lexint_cmp64(lex_size, UINT32_MAX) <= 0);
     LLVMValueRef size = LLVMConstInt(c->intptr, lex_size->low, false);
 

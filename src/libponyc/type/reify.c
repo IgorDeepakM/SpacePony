@@ -99,6 +99,11 @@ static void reify_valueformalparamref(ast_t** astp, ast_t* typeparam, ast_t* typ
   if (strcmp(ast_name(ref_name), ast_name(param_name)))
     return;
 
+  if(ast_id(typearg) == TK_VALUEFORMALARG)
+  {
+    ast_t* type = ast_childidx(typeparam, 1);
+    ast_settype(typearg, type);
+  }
   ast_replace(astp, typearg);
 }
 
@@ -143,6 +148,11 @@ static void reify_reference(ast_t** astp, ast_t* typeparam, ast_t* typearg)
 
   if(ast_id(ref_def) == TK_VALUEFORMALPARAM)
   {
+    if (ast_id(typearg) == TK_VALUEFORMALARG)
+    {
+      ast_t* type = ast_childidx(typeparam, 1);
+      ast_settype(typearg, type);
+    }
     ast_replace(astp, typearg);
   }
   else
@@ -235,10 +245,11 @@ bool reify_defaults(ast_t* typeparams, ast_t* typeargs, bool errors,
     // We might have to visit the literals for the default arguments because
     // they might not have been processed yet in the AST tree. This depends on
     // where they are defined in the code.
-    if(is_value_formal_arg_literal(defarg) && ast_type(defarg) == NULL &&
+    if(ast_id(defarg) == TK_VALUEFORMALARG && ast_type(ast_child(defarg)) == NULL &&
        opt->program_pass == PASS_EXPR)
     {
-      pass_expr(&defarg, opt);
+      ast_t* lit_child = ast_child(defarg);
+      pass_expr(&lit_child, opt);
     }
 
     ast_append(typeargs, defarg);
@@ -453,7 +464,7 @@ void deferred_reify_free(deferred_reification_t* deferred)
 
 static bool compatible_argument(ast_t* typeparam, ast_t* typearg)
 {
-  bool is_value_argument = is_value_formal_arg_literal(typearg) ||
+  bool is_value_argument = ast_id(typearg) == TK_VALUEFORMALARG ||
     (ast_id(typearg) == TK_VALUEFORMALPARAMREF);
 
   token_id typeparam_id = ast_id(typeparam);
@@ -564,12 +575,13 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
     errorframe_t* infop = (report_errors ? &info : NULL);
 
     // A bound type must be a subtype of the constraint.
-    if(is_value_formal_arg_literal(typearg))
+    if(ast_id(typearg) == TK_VALUEFORMALARG)
     {
-      if (!coerce_literals(&typearg, r_constraint, opt))
+      ast_t* literal = ast_child(typearg);
+      if (!coerce_literals(&literal, r_constraint, opt))
         return false;
 
-      ast_t* value_type = ast_type(typearg);
+      ast_t* value_type = ast_type(literal);
       if (is_typecheck_error(value_type))
         return false;
 
@@ -579,8 +591,8 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
         {
           ast_error(opt->check.errors, orig,
             "value argument type is outside its constraint");
-          ast_error_continue(opt->check.errors, typearg,
-            "argument type: %s", ast_print_type(ast_type(typearg)));
+          ast_error_continue(opt->check.errors, literal,
+            "argument type: %s", ast_print_type(ast_type(literal)));
           ast_error_continue(opt->check.errors, typeparam,
             "constraint: %s", ast_print_type(r_constraint));
         }
@@ -611,8 +623,8 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
     ast_free_unattached(r_constraint);
 
     // A constructable constraint can only be fulfilled by a concrete typearg.
-    if (is_constructable(constraint) && !is_value_formal_arg_literal(typearg) &&
-        !is_concrete(typearg))
+    if (is_constructable(constraint) && ast_id(typearg) != TK_VALUEFORMALARG &&
+       !is_concrete(typearg))
     {
       if (report_errors)
       {
