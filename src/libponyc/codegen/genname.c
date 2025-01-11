@@ -58,14 +58,14 @@ static void type_append(printbuf_t* buf, ast_t* type, bool first)
       return;
     }
 
-    case TK_TRUE:
-    case TK_FALSE:
-    case TK_STRING:
-    case TK_INT:
-      printbuf(buf, ast_get_print(type));
-      return;
-
-    default: {}
+    default:
+    {
+      if(is_value_formal_arg_literal(type))
+      {
+        printbuf(buf, ast_get_print(type));
+        return;
+      }
+    }
   }
 
   pony_assert(0);

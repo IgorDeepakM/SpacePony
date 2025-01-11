@@ -268,7 +268,7 @@ static bool is_eq_typeargs(ast_t* a, ast_t* b, errorframe_t* errorf,
 
   while((a_arg != NULL) && (b_arg != NULL))
   {
-    if (is_any_literal(a_arg))
+    if (is_value_formal_arg_literal(a_arg))
     {
       if (!is_literal_equal(a_arg, b_arg, errorf, opt))
       {
@@ -1580,7 +1580,7 @@ static bool is_typevalueparam_sub_x(ast_t* sub, ast_t* super, check_cap_t check_
 
     return is_x_sub_x(sub, super_underlying_type, check_cap, errorf, opt);
   }
-  else if(is_any_literal(super))
+  else if(is_value_formal_arg_literal(super))
   {
     //ast_t* sub_value = ast_child(sub);
     //ast_t *super_value = ast_child(super);
@@ -1917,7 +1917,7 @@ bool is_literal(ast_t* type, const char* name)
   return !strcmp(ast_name(ast_childidx(type, 1)), name);
 }
 
-bool is_any_literal(ast_t* ast)
+bool is_value_formal_arg_literal(ast_t* ast)
 {
   if (ast == NULL)
     return false;
@@ -2245,7 +2245,14 @@ bool is_bare(ast_t* type)
     case TK_DONTCARETYPE:
       return false;
 
-    default : {}
+    default:
+    {
+      if(is_value_formal_arg_literal(type))
+      {
+        return false;
+      }
+      break;
+    }
   }
 
   pony_assert(0);

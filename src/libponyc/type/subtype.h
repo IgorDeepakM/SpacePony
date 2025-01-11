@@ -31,7 +31,7 @@ bool is_sub_provides(ast_t* type, ast_t* provides, errorframe_t* errorf,
 
 bool is_pointer(ast_t* type);
 
-bool is_any_literal(ast_t* ast);
+bool is_value_formal_arg_literal(ast_t* ast);
 
 bool is_nullable_pointer(ast_t* type);
 

@@ -221,7 +221,7 @@ bool reify_defaults(ast_t* typeparams, ast_t* typeargs, bool errors,
     // We might have to visit the literals for the default arguments because
     // they might not have been processed yet in the AST tree. This depends on
     // where they are defined in the code.
-    if(is_any_literal(defarg) && ast_type(defarg) == NULL &&
+    if(is_value_formal_arg_literal(defarg) && ast_type(defarg) == NULL &&
        opt->program_pass == PASS_EXPR)
     {
       pass_expr(&defarg, opt);
@@ -439,7 +439,7 @@ void deferred_reify_free(deferred_reification_t* deferred)
 
 static bool compatible_argument(ast_t* typeparam, ast_t* typearg)
 {
-  bool is_value_argument = is_any_literal(typearg) ||
+  bool is_value_argument = is_value_formal_arg_literal(typearg) ||
     (ast_id(typearg) == TK_VALUEFORMALPARAMREF);
 
   token_id typeparam_id = ast_id(typeparam);
@@ -481,7 +481,7 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
       continue;
     }
 
-    if (!is_any_literal(typearg) && is_bare(typearg))
+    if (is_bare(typearg))
     {
       if(report_errors)
       {
@@ -550,7 +550,7 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
     errorframe_t* infop = (report_errors ? &info : NULL);
 
     // A bound type must be a subtype of the constraint.
-    if(is_any_literal(typearg))
+    if(is_value_formal_arg_literal(typearg))
     {
       if (!coerce_literals(&typearg, r_constraint, opt))
         return false;
@@ -597,7 +597,8 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
     ast_free_unattached(r_constraint);
 
     // A constructable constraint can only be fulfilled by a concrete typearg.
-    if (is_constructable(constraint) && !is_any_literal(typearg) && !is_concrete(typearg))
+    if (is_constructable(constraint) && !is_value_formal_arg_literal(typearg) &&
+        !is_concrete(typearg))
     {
       if (report_errors)
       {
