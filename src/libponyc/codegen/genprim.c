@@ -738,7 +738,7 @@ void genprim_c_fixed_sized_array_serialise(compile_t* c, reach_type_t* t)
   LLVMValueRef offset_addr = LLVMBuildInBoundsGEP2(c->builder, c->i8, addr,
     &offset, 1, "");
 
-  genserialise_typeid(c, t, offset_addr);
+  genserialise_serialiseid(c, t, offset_addr);
 
   // Don't serialise our contents if we are opaque.
   LLVMBasicBlockRef body_block = codegen_block(c, "body");
@@ -828,7 +828,7 @@ void genprim_c_fixed_sized_array_deserialise(compile_t* c, reach_type_t* t)
 
   LLVMValueRef ctx = LLVMGetParam(c_t->deserialise_fn, 0);
   LLVMValueRef object = LLVMGetParam(c_t->deserialise_fn, 1);
-  gendeserialise_typeid(c, c_t, object);
+  genserialise_serialiseid(c, t, object);
 
   ast_t* typeargs = ast_childidx(t->ast, 2);
   AST_GET_CHILDREN(typeargs, elem_type, num_elems);
