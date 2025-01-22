@@ -35,6 +35,7 @@ DECL(whileloop);
 DECL(forloop);
 DECL(caseatom);
 DECL(caseparampattern);
+DECL(annotations);
 
 /* Precedence
  *
@@ -80,6 +81,7 @@ DEF(defaultarg);
 // ID [COLON type] [ASSIGN defaultarg]
 DEF(param);
   AST_NODE(TK_PARAM);
+  ANNOTATE(annotations);
   TOKEN("parameter name", TK_ID);
   SKIP("mandatory type declaration on parameter", TK_COLON);
   RULE("parameter type", type);
@@ -160,6 +162,7 @@ DEF(bare);
 // ID [DOT ID] [typeargs] [CAP] [EPHEMERAL | ALIASED]
 DEF(nominal);
   AST_NODE(TK_NOMINAL);
+  ANNOTATE(annotations);
   TOKEN("name", TK_ID);
   IFELSE(TK_DOT,
     TOKEN("name", TK_ID),

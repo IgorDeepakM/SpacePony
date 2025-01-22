@@ -1003,7 +1003,7 @@ LLVMValueRef gen_pattern_eq(compile_t* c, ast_t* pattern, LLVMValueRef r_value)
 }
 
 static LLVMTypeRef ffi_return_type(compile_t* c, reach_type_t* t,
-  bool intrinsic)
+  bool intrinsic, bool return_by_value)
 {
   compile_type_t* c_t = (compile_type_t*)t->c_type;
 
@@ -1035,7 +1035,7 @@ static LLVMTypeRef ffi_return_type(compile_t* c, reach_type_t* t,
       false);
     ponyint_pool_free_size(buf_size, e_types);
     return r_type;
-  } else if(is_none(t->ast_cap)) {
+  } else if(is_none(t->ast_cap) || return_by_value) {
     return c->void_type;
   } else {
     return c_t->use_type;
@@ -1043,7 +1043,7 @@ static LLVMTypeRef ffi_return_type(compile_t* c, reach_type_t* t,
 }
 
 static LLVMValueRef declare_ffi(compile_t* c, const char* f_name,
-  reach_type_t* t, ast_t* args, bool intrinsic)
+  reach_type_t* t, ast_t* args, ast_t* ret_ast, bool intrinsic)
 {
   bool is_varargs = false;
   ast_t* last_arg = ast_childlast(args);
@@ -1055,14 +1055,34 @@ static LLVMValueRef declare_ffi(compile_t* c, const char* f_name,
     param_count--;
   }
 
+  bool return_by_value = ast_has_annotation(ast_child(ret_ast), "passbyvalue");
+
+  if(return_by_value)
+  {
+    param_count++;
+  }
+
+  int orig_param_count = param_count;
+
   size_t buf_size = 0;
   LLVMTypeRef* f_params = NULL;
+  reach_type_t** f_param_reified_reach_types = NULL;
+  size_t reified_reach_types_size = 0;
   // Don't allocate argument list if all arguments are optional
   if(param_count != 0)
   {
     buf_size = param_count * sizeof(LLVMTypeRef);
     f_params = (LLVMTypeRef*)ponyint_pool_alloc_size(buf_size);
+    reified_reach_types_size = param_count * sizeof(reach_type_t*);
+    f_param_reified_reach_types = (reach_type_t**)ponyint_pool_alloc_size(reified_reach_types_size);
     param_count = 0;
+
+    if(return_by_value)
+    {
+      compile_type_t* ret_c_t = (compile_type_t*)t->c_type;
+      f_params[param_count] = ret_c_t->use_type;
+      param_count++;
+    }
 
     ast_t* arg = ast_child(args);
 
@@ -1078,18 +1098,66 @@ static LLVMValueRef declare_ffi(compile_t* c, const char* f_name,
       p_type = deferred_reify(reify, p_type, c->opt);
       reach_type_t* pt = reach_type(c->reach, p_type);
       pony_assert(pt != NULL);
-      f_params[param_count++] = ((compile_type_t*)pt->c_type)->use_type;
+      f_param_reified_reach_types[param_count] = pt;
+      f_params[param_count] = ((compile_type_t*)pt->c_type)->use_type;
+      param_count++;
       ast_free_unattached(p_type);
       arg = ast_sibling(arg);
     }
   }
 
-  LLVMTypeRef r_type = ffi_return_type(c, t, intrinsic);
+  LLVMTypeRef r_type = ffi_return_type(c, t, intrinsic, return_by_value);
   LLVMTypeRef f_type = LLVMFunctionType(r_type, f_params, param_count, is_varargs);
   LLVMValueRef func = LLVMAddFunction(c->module, f_name, f_type);
 
+  ast_t* arg = ast_child(args);
+  param_count = 0;
+
+  if(return_by_value)
+  {
+    param_count++;
+  }
+
+  if(orig_param_count != 0)
+  {
+    deferred_reification_t* reify = c->frame->reify;
+
+    while ((arg != NULL) && (ast_id(arg) != TK_ELLIPSIS))
+    {
+      if(ast_has_annotation(arg, "passbyvalue"))
+      {
+        reach_type_t* pt = f_param_reified_reach_types[param_count];
+
+        unsigned int kind = LLVMGetEnumAttributeKindForName("byval", sizeof("byval") - 1);
+        compile_type_t* ty = ((compile_type_t*)pt->c_type);
+        LLVMAttributeRef byvalue_attr = LLVMCreateTypeAttribute(
+          c->context,
+          kind,
+          ((compile_type_t*)pt->c_type)->structure);
+        // index 0 = return type, 1 ... paramters
+        LLVMAddAttributeAtIndex(func, param_count + 1, byvalue_attr);
+      }
+      arg = ast_sibling(arg);
+      param_count++;
+    }
+  }
+
+  if(return_by_value)
+  {
+    unsigned int kind = LLVMGetEnumAttributeKindForName("sret", sizeof("sret") - 1);
+    compile_type_t* ret_c_t = (compile_type_t*)t->c_type;
+    LLVMAttributeRef byvalue_attr = LLVMCreateTypeAttribute(
+      c->context,
+      kind,
+      ret_c_t->structure);
+    // index 1 = sret return type
+    LLVMAddAttributeAtIndex(func, 1, byvalue_attr);
+  }
+
   if(f_params != NULL)
     ponyint_pool_free_size(buf_size, f_params);
+  if (f_param_reified_reach_types != NULL)
+    ponyint_pool_free_size(reified_reach_types_size, f_param_reified_reach_types);
 
   return func;
 }
@@ -1173,6 +1241,8 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
   ffi_decl_t* ffi_decl;
   bool is_func = false;
   LLVMValueRef func = LLVMGetNamedGlobal(c->module, f_name);
+  bool return_by_value = false;
+  LLVMValueRef assign_side = GEN_NOTNEEDED;
 
   if(func == NULL)
   {
@@ -1189,7 +1259,36 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
     bool is_intrinsic = (!strncmp(f_name, "llvm.", 5) || !strncmp(f_name, "internal.", 9));
     AST_GET_CHILDREN(decl, decl_id, decl_ret, decl_params, decl_named_params, decl_err);
     err = (ast_id(decl_err) == TK_QUESTION);
-    func = declare_ffi(c, f_name, t, decl_params, is_intrinsic);
+    func = declare_ffi(c, f_name, t, decl_params, decl_ret, is_intrinsic);
+
+    return_by_value = ast_has_annotation(ast_child(decl_ret), "passbyvalue");
+
+    // Because LLVM return by value using sret requires a pointer to an existing
+    // structure, the left side of a potential assignment must first be created.
+    if (return_by_value)
+    {
+      if (ast_id(ast_parent(ast)) == TK_ASSIGN)
+      {
+        ast_t* assign_ast = ast_parent(ast);
+        ast_t* ret_ast = ast_child(assign_ast);
+        assign_side = gen_expr(c, ret_ast);
+
+        if(ast_id(ret_ast) == TK_VAR || ast_id(ret_ast) == TK_LET)
+        {
+          ast_t* type = deferred_reify(reify, ast_child(decl_ret), c->opt);
+          reach_type_t* ret_reach = reach_type(c->reach, type);
+          assign_side = gencall_allocstruct(c, ret_reach);
+        }
+      }
+      else
+      {
+        // If there is an FFI call without any assignment despite the FFI
+        // function returns a value, the just create an area using alloca
+        // that the callee can use.
+        compile_type_t* ret_c_t = (compile_type_t*)t->c_type;
+        assign_side = LLVMBuildAlloca(c->builder, ret_c_t->structure, "");
+      }
+    }
 
     size_t index = HASHMAP_UNKNOWN;
 
@@ -1233,9 +1332,16 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
   LLVMTypeRef* f_params = NULL;
   bool vararg = (LLVMIsFunctionVarArg(f_type) != 0);
 
+  int llvm_arg_count = count;
+
   if(!vararg)
   {
-    if(count != (int)LLVMCountParamTypes(f_type))
+    if(return_by_value)
+    {
+      llvm_arg_count++;
+    }
+
+    if(llvm_arg_count != (int)LLVMCountParamTypes(f_type))
     {
       ast_error(c->opt->check.errors, ast,
         "conflicting declarations for FFI function: declarations have an "
@@ -1254,7 +1360,14 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
 
   ast_t* arg = ast_child(args);
 
-  for(int i = 0; i < count; i++)
+  int arg_start = 0;
+  if (return_by_value)
+  {
+    f_args[arg_start] = assign_side;
+    arg_start++;
+  }
+
+  for(int i = arg_start; i < llvm_arg_count; i++)
   {
     f_args[i] = gen_expr(c, arg);
 
@@ -1277,9 +1390,9 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
   codegen_debugloc(c, ast);
 
   if(err && (c->frame->invoke_target != NULL))
-    result = invoke_fun(c, f_type, func, f_args, count, "", false);
+    result = invoke_fun(c, f_type, func, f_args, llvm_arg_count, "", false);
   else
-    result = LLVMBuildCall2(c->builder, f_type, func, f_args, count, "");
+    result = LLVMBuildCall2(c->builder, f_type, func, f_args, llvm_arg_count, "");
 
   codegen_debugloc(c, NULL);
   ponyint_pool_free_size(buf_size, f_args);
@@ -1293,10 +1406,16 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
   bool isnone = is_none(t->ast);
   bool isvoid = LLVMGetReturnType(f_type) == c->void_type;
 
-  if(isnone && isvoid)
+  if(return_by_value)
+  {
+    result = assign_side;
+  }
+  else if(isnone && isvoid)
   {
     result = c_t->instance;
-  } else if(isnone != isvoid) {
+  }
+  else if(isnone != isvoid)
+  {
     report_ffi_type_err(c, ffi_decl, ast, "return values");
     return NULL;
   }

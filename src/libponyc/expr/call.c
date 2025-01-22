@@ -82,12 +82,12 @@ static bool extend_positional_args(pass_opt_t* opt, ast_t* params,
   size_t param_len = ast_childcount(params);
   size_t arg_len = ast_childcount(positional);
 
-  if(arg_len > param_len)
+  /*if(arg_len > param_len)
   {
     ast_error(opt->check.errors, positional, "too many arguments");
     ast_error_continue(opt->check.errors, params, "definition is here");
     return false;
-  }
+  }*/
 
   while(arg_len < param_len)
   {
