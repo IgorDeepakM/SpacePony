@@ -196,6 +196,7 @@ static void set_method_types(reach_t* r, reach_method_t* m,
       m->params[i].name = ast_name(ast_child(param));
       m->params[i].ast = p_type;
       m->params[i].type = add_type(r, p_type, opt);
+      m->params[i].pass_by_value = ast_has_annotation(p_type, "passbyvalue");
 
       if((ast_id(p_type) != TK_NOMINAL) && (ast_id(p_type) != TK_TYPEPARAMREF))
         m->params[i].cap = TK_REF;
@@ -270,6 +271,7 @@ static void add_rmethod_to_subtype(reach_t* r, reach_type_t* t,
     mangled->typeargs = ast_dup(m->typeargs);
 
   mangled->forwarding = true;
+  mangled->return_by_value = m->return_by_value;
 
   mangled->param_count = m->param_count;
   mangled->params = (reach_param_t*)ponyint_pool_alloc_size(
@@ -347,12 +349,19 @@ static reach_method_t* add_rmethod(reach_t* r, reach_type_t* t,
   m->vtable_index = (uint32_t)-1;
   m->internal = internal;
   m->intrinsic = internal;
+  m->return_by_value = false;
 
   if(!internal)
   {
     ast_t* r_ast = set_cap_and_ephemeral(t->ast, cap, TK_NONE);
     deferred_reification_t* fun = lookup(NULL, NULL, r_ast, n->name);
     pony_assert(fun != NULL);
+
+    if(cap == TK_AT &&
+       ast_has_annotation(ast_childidx(fun->ast, 4), "passbyvalue"))
+    {
+      m->return_by_value = true;
+    }
 
     // The typeargs and thistype are in the scope of r_ast but we're going to
     // free it. Change the scope to a durable AST.

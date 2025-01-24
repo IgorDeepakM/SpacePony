@@ -258,6 +258,79 @@ static bool is_expr_constructor(ast_t* ast)
   }
 }
 
+static bool is_expr_ffi_return_by_value(ast_t* ast)
+{
+  pony_assert(ast != NULL);
+  switch (ast_id(ast))
+  {
+    case TK_CALL:
+    {
+      ast_t* def = ast_type(ast_child(ast));
+      ast_t* at = ast_child(def);
+      if(ast_id(at) == TK_AT)
+      {
+        ast_t* ret_decl = ast_childidx(def, 3);
+        if(ast_has_annotation(ret_decl, "passbyvalue"))
+        {
+          return true;
+        }
+      }
+
+      return false;
+    }
+    case TK_FFICALL:
+    {
+      ast_t* def = (ast_t*)ast_data(ast);
+      ast_t* ret_decl = ast_child(ast_childidx(def, 1));
+      if (ast_has_annotation(ret_decl, "passbyvalue"))
+      {
+        return true;
+      }
+
+      return false;
+    }
+    case TK_SEQ:
+      return is_expr_ffi_return_by_value(ast_childlast(ast));
+    case TK_IF:
+    case TK_WHILE:
+    case TK_REPEAT:
+    {
+      ast_t* body = ast_childidx(ast, 1);
+      ast_t* else_expr = ast_childidx(ast, 2);
+      return is_expr_ffi_return_by_value(body) && is_expr_ffi_return_by_value(else_expr);
+    }
+    case TK_TRY:
+    {
+      ast_t* body = ast_childidx(ast, 0);
+      ast_t* else_expr = ast_childidx(ast, 1);
+      return is_expr_ffi_return_by_value(body) && is_expr_ffi_return_by_value(else_expr);
+    }
+    case TK_DISPOSING_BLOCK:
+    {
+      ast_t* body = ast_childidx(ast, 0);
+      return is_expr_ffi_return_by_value(body);
+    }
+    case TK_MATCH:
+    {
+      ast_t* cases = ast_childidx(ast, 1);
+      ast_t* else_expr = ast_childidx(ast, 2);
+      ast_t* the_case = ast_child(cases);
+
+      while (the_case != NULL)
+      {
+        if (!is_expr_ffi_return_by_value(ast_childidx(the_case, 2)))
+          return false;
+        the_case = ast_sibling(the_case);
+      }
+      return is_expr_ffi_return_by_value(else_expr);
+    }
+    case TK_RECOVER:
+      return is_expr_ffi_return_by_value(ast_childidx(ast, 1));
+    default:
+      return false;
+    }
+}
+
 static bool tuple_contains_embed(ast_t* ast)
 {
   pony_assert(ast_id(ast) == TK_TUPLE);
@@ -283,7 +356,7 @@ static bool check_embed_construction(pass_opt_t* opt, ast_t* left, ast_t* right)
   bool result = true;
   if(ast_id(left) == TK_EMBEDREF)
   {
-    if(!is_expr_constructor(right))
+    if(!is_expr_constructor(right) && !is_expr_ffi_return_by_value(right))
     {
       ast_error(opt->check.errors, left,
         "an embedded field must be assigned using a constructor");

@@ -51,6 +51,9 @@ struct reach_method_t
   // Mark as true if the method is a forwarding method.
   bool forwarding;
 
+  // Set to true if the function returns by value rather than reference
+  bool return_by_value;
+
   // Linked list of instantiations that use the same func.
   reach_method_t* subordinate;
 
@@ -84,6 +87,7 @@ struct reach_param_t
   ast_t* ast;
   reach_type_t* type;
   token_id cap;
+  bool pass_by_value;
 };
 
 struct reach_type_t

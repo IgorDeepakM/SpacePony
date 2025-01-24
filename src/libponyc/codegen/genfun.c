@@ -88,7 +88,10 @@ static void make_signature(compile_t* c, reach_type_t* t,
   // Count the parameters, including the receiver if the method isn't bare.
   size_t count = m->param_count;
   size_t offset = 0;
-  if(m->cap != TK_AT)
+
+  bool bare_lambda = m->cap == TK_AT;
+
+  if(!bare_lambda || m->return_by_value)
   {
     count++;
     offset++;
@@ -113,9 +116,17 @@ static void make_signature(compile_t* c, reach_type_t* t,
   compile_type_t* c_t = (compile_type_t*)t->c_type;
   compile_method_t* c_m = (compile_method_t*)m->c_method;
 
-  if(m->cap == TK_AT)
+  if(bare_lambda)
   {
     bare_void = is_none(m->result->ast);
+    if(!bare_void && m->return_by_value)
+    {
+      // First argument when return by value is a pointer where the
+      // value should be stored.
+      tparams[0] = ((compile_type_t*)m->result->c_type)->use_type;
+      // When return by value, the LLVM return type should be void
+      bare_void = true;
+    }
   } else {
     // Get a type for the receiver.
     tparams[0] = c_t->use_type;

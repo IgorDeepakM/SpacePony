@@ -726,6 +726,45 @@ static bool can_inline_message_send(reach_type_t* t, reach_method_t* m,
   return true;
 }
 
+static LLVMValueRef gen_alloc_return_value(compile_t* c, reach_type_t* ret_reach,
+  ast_t* ast)
+{
+  LLVMValueRef assign_side;
+
+  // Because LLVM return by value using sret requires a pointer to an existing
+  // structure, the left side of a potential assignment must first be created.
+  if (ast_id(ast_parent(ast)) == TK_ASSIGN)
+  {
+    ast_t* assign_ast = ast_parent(ast);
+    ast_t* ret_ast = ast_child(assign_ast);
+
+    if(ast_id(ret_ast) == TK_EMBEDREF)
+    {
+      assign_side = gen_expr(c, ret_ast);
+    }
+    else
+    {
+      // TODO:
+      // Right now a new struct is allocated for each FFI value return
+      // assignment. This is unnecessary as the old struct can be reused.
+      // This is only applicable in constructors as in other methods the
+      // struct is guaranteed to be allocated. This is also only applicable
+      // for structs as classes has _final.
+      assign_side = gencall_allocstruct(c, ret_reach);
+    }
+  }
+  else
+  {
+    // If there is an FFI call without any assignment despite the FFI
+    // function returns a value, the just create an area using alloca
+    // that the callee can use.
+    compile_type_t* ret_c_t = (compile_type_t*)ret_reach->c_type;
+    assign_side = LLVMBuildAlloca(c->builder, ret_c_t->structure, "");
+  }
+
+  return assign_side;
+}
+
 LLVMValueRef gen_call(compile_t* c, ast_t* ast)
 {
   // Special case calls.
@@ -770,11 +809,23 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
 
   // Generate the arguments.
   size_t count = m->param_count + 1;
+  if(m->return_by_value)
+  {
+    count++;
+  }
   size_t buf_size = count * sizeof(void*);
 
   LLVMValueRef* args = (LLVMValueRef*)ponyint_pool_alloc_size(buf_size);
   ast_t* arg = ast_child(positional);
   int i = 1;
+
+  LLVMValueRef assign_side;
+  if (m->return_by_value)
+  {
+    assign_side = gen_alloc_return_value(c, m->result, ast);
+    args[i] = assign_side;
+    i++;
+  }
 
   while(arg != NULL)
   {
@@ -877,6 +928,10 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
     // semantics as assignment.
     arg = ast_child(positional);
     i = 1;
+    if (m->return_by_value)
+    {
+      i++;
+    }
 
     while(arg != NULL)
     {
@@ -905,6 +960,40 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
       else
         r = codegen_call(c, func_type, func, args + arg_offset, i, !bare);
 
+      int llvm_argument_shift = 1;
+      if(m->return_by_value)
+      {
+        llvm_argument_shift++;
+      }
+
+      // Go through each parameter and add byval attribute if passed by value
+      for(size_t i = 0; i < m->param_count; i++)
+      {
+        if (m->params[i].pass_by_value)
+        {
+          unsigned int kind = LLVMGetEnumAttributeKindForName("byval", sizeof("byval") - 1);
+          compile_type_t* p_c_t = (compile_type_t*)m->params[i].type->c_type;
+          LLVMAttributeRef byvalue_attr = LLVMCreateTypeAttribute(
+            c->context,
+            kind,
+            p_c_t->structure);
+          // index 0 = return type, 1 ... paramters
+          LLVMAddCallSiteAttribute(r, i + llvm_argument_shift, byvalue_attr);
+        }
+      }
+
+      if(m->return_by_value)
+      {
+        unsigned int kind = LLVMGetEnumAttributeKindForName("sret", sizeof("sret") - 1);
+        compile_type_t* ret_c_t = (compile_type_t*)m->result->c_type;
+        LLVMAttributeRef byvalue_attr = LLVMCreateTypeAttribute(
+          c->context,
+          kind,
+          ret_c_t->structure);
+        // index 1 = sret return type
+        LLVMAddCallSiteAttribute(r, 1, byvalue_attr);
+      }
+
       if(is_new_call)
       {
         LLVMValueRef md = LLVMMDNodeInContext(c->context, NULL, 0);
@@ -920,6 +1009,11 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
   // value.
   if(bare && is_none(m->result->ast))
     r = c->none_instance;
+
+  if(m->return_by_value)
+  {
+    return assign_side;
+  }
 
   // Class constructors return void, expression result is the receiver.
   if(((ast_id(postfix) == TK_NEWREF) || (ast_id(postfix) == TK_NEWBEREF)) &&
@@ -1263,31 +1357,9 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
 
     return_by_value = ast_has_annotation(ast_child(decl_ret), "passbyvalue");
 
-    // Because LLVM return by value using sret requires a pointer to an existing
-    // structure, the left side of a potential assignment must first be created.
-    if (return_by_value)
+    if(return_by_value)
     {
-      if (ast_id(ast_parent(ast)) == TK_ASSIGN)
-      {
-        ast_t* assign_ast = ast_parent(ast);
-        ast_t* ret_ast = ast_child(assign_ast);
-        assign_side = gen_expr(c, ret_ast);
-
-        if(ast_id(ret_ast) == TK_VAR || ast_id(ret_ast) == TK_LET)
-        {
-          ast_t* type = deferred_reify(reify, ast_child(decl_ret), c->opt);
-          reach_type_t* ret_reach = reach_type(c->reach, type);
-          assign_side = gencall_allocstruct(c, ret_reach);
-        }
-      }
-      else
-      {
-        // If there is an FFI call without any assignment despite the FFI
-        // function returns a value, the just create an area using alloca
-        // that the callee can use.
-        compile_type_t* ret_c_t = (compile_type_t*)t->c_type;
-        assign_side = LLVMBuildAlloca(c->builder, ret_c_t->structure, "");
-      }
+      assign_side = gen_alloc_return_value(c, t, ast);
     }
 
     size_t index = HASHMAP_UNKNOWN;
