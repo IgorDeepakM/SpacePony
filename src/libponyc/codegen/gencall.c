@@ -742,15 +742,20 @@ static LLVMValueRef gen_alloc_return_value(compile_t* c, reach_type_t* ret_reach
     {
       assign_side = gen_expr(c, ret_ast);
     }
+    else if(ast_id(ret_ast) == TK_VAR || ast_id(ret_ast) == TK_LET ||
+            ast_checkflag(assign_ast, AST_FLAG_FIRST_ASSIGNMENT) ||
+            ret_reach->underlying != TK_STRUCT)
+    {
+      // If this is a first assignment then the return value needs to
+      // be allocated, otherwise it can just be dereferenced.
+      // This is an optimization to avoid a new allocation for every
+      // value return. Only valid for structs as classes has _final.
+
+      assign_side = gencall_allocstruct(c, ret_reach);
+    }
     else
     {
-      // TODO:
-      // Right now a new struct is allocated for each FFI value return
-      // assignment. This is unnecessary as the old struct can be reused.
-      // This is only applicable in constructors as in other methods the
-      // struct is guaranteed to be allocated. This is also only applicable
-      // for structs as classes has _final.
-      assign_side = gencall_allocstruct(c, ret_reach);
+      assign_side = gen_expr(c, ret_ast);
     }
   }
   else
@@ -1357,11 +1362,6 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
 
     return_by_value = ast_has_annotation(ast_child(decl_ret), "passbyvalue");
 
-    if(return_by_value)
-    {
-      assign_side = gen_alloc_return_value(c, t, ast);
-    }
-
     size_t index = HASHMAP_UNKNOWN;
 
 #ifndef PONY_NDEBUG
@@ -1392,7 +1392,19 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
       return NULL;
     }
 
+    // ffi_decl is null means possible internal pony call
+    if(ffi_decl != NULL)
+    {
+      ast_t* decl_ret = ast_childidx(ffi_decl->decl, 1);
+      return_by_value = ast_has_annotation(ast_child(decl_ret), "passbyvalue");
+    }
+
     pony_assert(is_func);
+  }
+
+  if (return_by_value)
+  {
+    assign_side = gen_alloc_return_value(c, t, ast);
   }
 
   // Generate the arguments.

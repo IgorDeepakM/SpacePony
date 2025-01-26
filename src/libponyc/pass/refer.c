@@ -332,7 +332,15 @@ static bool valid_reference(pass_opt_t* opt, ast_t* ast, sym_status_t status)
 
     case SYM_UNDEFINED:
       if(is_assigned_to(opt, ast, true))
+      {
+        ast_t* assign_node = ast_parent(ast);
+        if (ast_id(assign_node) == TK_ASSIGN)
+        {
+          ast_setflag(assign_node, AST_FLAG_FIRST_ASSIGNMENT);
+        }
+
         return true;
+      }
 
       ast_error(opt->check.errors, ast,
         "can't use an undefined variable in an expression");
