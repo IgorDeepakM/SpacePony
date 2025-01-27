@@ -103,6 +103,9 @@ actor \nodoc\ Main is TestList
     test(_TestCFixedSizedArray)
     test(_TestNestedCFixedSizedArray)
     test(_TestCFixedSizedArrayTrace)
+    test(_TestFixedSizedArray)
+    test(_TestNestedFixedSizedArray)
+    test(_TestFixedSizedArrayTrace)
 
   fun @runtime_override_defaults(rto: RuntimeOptions) =>
      rto.ponynoblock = true
@@ -2927,6 +2930,52 @@ class \nodoc\ iso _TestNestedCFixedSizedArray is UnitTest
 
   fun apply(h: TestHelper) ? =>
     let nv = NestedCFixedSizedArray.create()?
+    let array: Array[String] = ["A"; "B"; "C"; "D"; "E"; "F"; "G"; "H"]
+    for (i, x) in nv.vector.pairs() do
+      for (j, y) in x.pairs() do
+        h.assert_eq[String](array((i * x.size()) + j)?, y)
+      end
+    end
+
+class \nodoc\ iso _TestFixedSizedArray is UnitTest
+  fun name(): String => "builtin/FixedSizedArray"
+
+  fun apply(h: TestHelper) ? =>
+    let vector1 = FixedSizedArray[String, 4].init(["A"; "B"; "C"; "D"].values())?
+    h.assert_eq[USize](vector1.size(), 4)
+
+    let array1 = ["A"; "B"; "C"; "D"]
+    var i: USize = 0
+    while i < vector1.size() do
+      h.assert_eq[String](vector1(i)?, array1(i)?)
+      i = i + 1
+    end
+
+    let vector2 = FixedSizedArray[String, 2].init(["E"; "F"].values())?
+    h.assert_eq[USize](vector2.size(), 2)
+
+    let array2 = ["E"; "F"]
+    i = 0
+    while i < vector2.size() do
+      h.assert_eq[String](vector2(i)?, array2(i)?)
+      i = i + 1
+    end
+
+class \nodoc\ NestedFixedSizedArray
+  let vector: FixedSizedArray[FixedSizedArray[String, 2], 4]
+
+  new create() ? =>
+    let v1 = FixedSizedArray[String, 2].init(["A"; "B"].values())?
+    let v2 = FixedSizedArray[String, 2].init(["C"; "D"].values())?
+    let v3 = FixedSizedArray[String, 2].init(["E"; "F"].values())?
+    let v4 = FixedSizedArray[String, 2].init(["G"; "H"].values())?
+    vector = FixedSizedArray[FixedSizedArray[String, 2], 4].init([v1; v2; v3; v4].values())?
+
+class \nodoc\ iso _TestNestedFixedSizedArray is UnitTest
+  fun name(): String => "builtin/NestedFixedSizedArray"
+
+  fun apply(h: TestHelper) ? =>
+    let nv = NestedFixedSizedArray.create()?
     let array: Array[String] = ["A"; "B"; "C"; "D"; "E"; "F"; "G"; "H"]
     for (i, x) in nv.vector.pairs() do
       for (j, y) in x.pairs() do

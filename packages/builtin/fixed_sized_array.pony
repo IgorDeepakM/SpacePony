@@ -1,63 +1,38 @@
-struct CFixedSizedArray[A: AnyNoCheck, _size: USize]
+class FixedSizedArray[A: AnyNoCheck, _size: USize]
   """
   Contiguous, fixed sized memory to store elements of type A.
-  Useful for FFI interfaces and does not contain any extra
-  type descriptor member.
   """
+  embed _array: CFixedSizedArray[A, _size]
 
   new create(fill_with: A^) =>
     """
-    Create a CFixedSizedArray, filled with a gived value
+    Create a FixedSizedArray, filled with a gived value
     """
-    let p = cpointer().convert[A]()
-    var i: USize = 0
-    while i < _size do
-        p._update(i = i + 1, fill_with)
-    end
+    _array = CFixedSizedArray[A, _size](fill_with)
 
   new init(from: Iterator[A^]) ? =>
     """
-    Create a CFixedSizedArray, initialised from the given sequence.
+    Create a FixedSizedArray, initialised from the given sequence.
     """
-    let p = cpointer().convert[A]()
-    var i: USize = 0
-    while i < _size do
-      p._update(i = i + 1, from.next()?)
-    end
-
-  new uninitialized() =>
-    """
-    Creates an CFixedSizedArray with unitialized memory
-    """
-    None
+    _array = CFixedSizedArray[A, _size].init(from)?
 
   fun cpointer(): Pointer[A] =>
     """
     Return the underlying C-style pointer.
     """
-    compile_intrinsic
+    _array.cpointer()
 
    fun apply(i: USize): this->A ? =>
     """
     Get the i-th element, raising an error if the index is out of bounds.
     """
-    if i < _size then
-      let p = cpointer().convert[this->A]()
-      p._apply(i)
-    else
-      error
-    end
+    _array(i)?
 
   fun ref update(i: USize, value: A): A^ ? =>
     """
     Change the i-th element, raising an error if the index is out of bounds.
     """
-    if i < _size then
-      let p = cpointer().convert[A]()
-      p._update(i, consume value)
-    else
-      error
-    end
+    _array.update(i, consume value)?
 
   fun size(): USize =>
     """
@@ -156,26 +131,26 @@ struct CFixedSizedArray[A: AnyNoCheck, _size: USize]
       error
     end*/
 
-fun keys(): CFixedSizedArrayKeys[A, _size, this->CFixedSizedArray[A, _size]]^ =>
+fun keys(): FixedSizedArrayKeys[A, _size, this->FixedSizedArray[A, _size]]^ =>
   """
   Return an iterator over the indices in the array.
   """
-  CFixedSizedArrayKeys[A, _size, this->CFixedSizedArray[A, _size]](this)
+  FixedSizedArrayKeys[A, _size, this->FixedSizedArray[A, _size]](this)
 
-fun values(): CFixedSizedArrayValues[A, _size, this->CFixedSizedArray[A, _size]]^ =>
+fun values(): FixedSizedArrayValues[A, _size, this->FixedSizedArray[A, _size]]^ =>
   """
   Return an iterator over the values in the array.
   """
-  CFixedSizedArrayValues[A, _size, this->CFixedSizedArray[A, _size]](this)
+  FixedSizedArrayValues[A, _size, this->FixedSizedArray[A, _size]](this)
 
-fun pairs(): CFixedSizedArrayPairs[A, _size, this->CFixedSizedArray[A, _size]]^ =>
+fun pairs(): FixedSizedArrayPairs[A, _size, this->FixedSizedArray[A, _size]]^ =>
   """
   Return an iterator over the (index, value) pairs in the array.
   """
-  CFixedSizedArrayPairs[A, _size, this->CFixedSizedArray[A, _size]](this)
+  FixedSizedArrayPairs[A, _size, this->FixedSizedArray[A, _size]](this)
 
 
-class CFixedSizedArrayKeys[A, _size: USize, B: CFixedSizedArray[A, _size] #read] is Iterator[USize]
+class FixedSizedArrayKeys[A, _size: USize, B: FixedSizedArray[A, _size] #read] is Iterator[USize]
   let _array: B
   var _i: USize
 
@@ -194,7 +169,7 @@ class CFixedSizedArrayKeys[A, _size: USize, B: CFixedSizedArray[A, _size] #read]
     end
 
 
-class CFixedSizedArrayValues[A, _size: USize, B: CFixedSizedArray[A, _size] #read] is Iterator[B->A]
+class FixedSizedArrayValues[A, _size: USize, B: FixedSizedArray[A, _size] #read] is Iterator[B->A]
   let _array: B
   var _i: USize
 
@@ -209,7 +184,7 @@ class CFixedSizedArrayValues[A, _size: USize, B: CFixedSizedArray[A, _size] #rea
     _array(_i = _i + 1)?
 
 
-class CFixedSizedArrayPairs[A, _size: USize, B: CFixedSizedArray[A, _size] #read] is Iterator[(USize, B->A)]
+class FixedSizedArrayPairs[A, _size: USize, B: FixedSizedArray[A, _size] #read] is Iterator[(USize, B->A)]
   let _array: B
   var _i: USize
 
