@@ -1223,7 +1223,7 @@ static LLVMValueRef declare_ffi(compile_t* c, const char* f_name,
 
     while ((arg != NULL) && (ast_id(arg) != TK_ELLIPSIS))
     {
-      if(ast_has_annotation(arg, "passbyvalue"))
+      if(ast_has_annotation(ast_childidx(arg, 1), "passbyvalue"))
       {
         reach_type_t* pt = f_param_reified_reach_types[param_count];
 

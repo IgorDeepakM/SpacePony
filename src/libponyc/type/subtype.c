@@ -382,6 +382,16 @@ static bool is_reified_fun_sub_fun(ast_t* sub, ast_t* super,
 
         return false;
       }
+
+      // pass by value return types must have the same passbyvalue annotation
+      // otherwise it is not the same type
+      if(ast_has_annotation(sub_result, "passbyvalue") !=
+         ast_has_annotation(super_result, "passbyvalue"))
+      {
+        ast_error_frame(errorf, sub, "%s and %s has different passbyvalue return type annotations",
+            ast_print_type(sub), ast_print_type(super));
+        return false;
+      }
       break;
     }
 
@@ -426,6 +436,16 @@ static bool is_reified_fun_sub_fun(ast_t* sub, ast_t* super,
     if (sub_type == NULL || super_type == NULL)
     {
       // invalid function types
+      return false;
+    }
+
+    // pass by value types must have the same passbyvalue annotation
+    // otherwise it is not the same type
+    if(ast_has_annotation(sub_type, "passbyvalue") !=
+       ast_has_annotation(super_type, "passbyvalue"))
+    {
+      ast_error_frame(errorf, sub, "%s and %s has different passbyvalue annotations",
+          ast_print_type(sub), ast_print_type(super));
       return false;
     }
 

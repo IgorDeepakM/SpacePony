@@ -27,7 +27,24 @@ static void name_param(compile_t* c, reach_type_t* t, reach_method_t* m,
   compile_type_t* c_t = (compile_type_t*)t->c_type;
   compile_method_t* c_m = (compile_method_t*)m->c_method;
 
-  LLVMValueRef value = LLVMGetParam(func, index);
+  int return_by_value_extra = 0;
+  if(m->return_by_value)
+  {
+    return_by_value_extra = 1;
+  }
+
+  LLVMValueRef value = LLVMGetParam(func, index + return_by_value_extra);
+
+  // If passed by value, create an allocated copy of the structure
+  // so that it can be used everywhere and even escape.
+  if(index < m->param_count && m->params[index].pass_by_value &&
+     (t->underlying == TK_STRUCT || t->underlying == TK_CLASS))
+  {
+    LLVMValueRef heap_allocated = gencall_allocstruct(c, t);
+    LLVMValueRef l_size = LLVMConstInt(c->intptr, c_t->abi_size, false);
+    gencall_memcpy(c, heap_allocated, value, l_size);
+    value = heap_allocated;
+  }
   LLVMSetValueName(value, name);
 
   LLVMValueRef alloc = LLVMBuildAlloca(c->builder, c_t->mem_type, name);
@@ -37,14 +54,14 @@ static void name_param(compile_t* c, reach_type_t* t, reach_method_t* m,
 
   LLVMMetadataRef info;
 
-  if(index == 0)
+  if(index + return_by_value_extra == 0)
   {
     info = LLVMDIBuilderCreateArtificialVariable(c->di,
       c_m->di_method, name, index + 1, c_m->di_file,
       (unsigned)ast_line(m->fun->ast), c_t->di_type);
   } else {
     info = LLVMDIBuilderCreateParameterVariable(c->di, c_m->di_method,
-      name, strlen(name), index + 1, c_m->di_file,
+      name, strlen(name), index + 1 + return_by_value_extra, c_m->di_file,
       (unsigned)ast_line(m->fun->ast), c_t->di_type, false, LLVMDIFlagZero);
   }
 
@@ -89,9 +106,9 @@ static void make_signature(compile_t* c, reach_type_t* t,
   size_t count = m->param_count;
   size_t offset = 0;
 
-  bool bare_lambda = m->cap == TK_AT;
+  bool bare_function = m->cap == TK_AT;
 
-  if(!bare_lambda || m->return_by_value)
+  if(!bare_function || m->return_by_value)
   {
     count++;
     offset++;
@@ -116,7 +133,7 @@ static void make_signature(compile_t* c, reach_type_t* t,
   compile_type_t* c_t = (compile_type_t*)t->c_type;
   compile_method_t* c_m = (compile_method_t*)m->c_method;
 
-  if(bare_lambda)
+  if(bare_function)
   {
     bare_void = is_none(m->result->ast);
     if(!bare_void && m->return_by_value)
@@ -516,8 +533,18 @@ static bool genfun_fun(compile_t* c, reach_type_t* t, reach_method_t* m)
   {
     ast_t* r_result = deferred_reify(m->fun, result, c->opt);
 
-    if(finaliser || ((ast_id(cap) == TK_AT) && is_none(r_result)))
+    if(finaliser || ((ast_id(cap) == TK_AT) && is_none(r_result)) ||
+       m->return_by_value)
     {
+      if(m->return_by_value)
+      {
+        LLVMValueRef value_ret_ptr = LLVMGetParam(c_m->func, 0);
+        size_t abi_size = LLVMABISizeOfType(c->target_data,
+          ((compile_type_t*)m->result->c_type)->structure);
+        LLVMValueRef l_size = LLVMConstInt(c->intptr, abi_size, false);
+        gencall_memcpy(c, value_ret_ptr, value, l_size);
+      }
+
       ast_free_unattached(r_result);
       codegen_scope_lifetime_end(c);
       codegen_debugloc(c, ast_childlast(body));
@@ -915,6 +942,20 @@ void genfun_param_attrs(compile_t* c, reach_type_t* t, reach_method_t* m,
     offset = 0;
   }
 
+  if(m->return_by_value)
+  {
+    offset++;
+    unsigned int kind = LLVMGetEnumAttributeKindForName("sret", sizeof("sret") - 1);
+    compile_type_t* ret_c_t = (compile_type_t*)m->result->c_type;
+    LLVMAttributeRef byvalue_attr = LLVMCreateTypeAttribute(
+      c->context,
+      kind,
+      ret_c_t->structure);
+    LLVMAddAttributeAtIndex(fun, 1, byvalue_attr);
+
+    param = LLVMGetNextParam(param);
+  }
+
   while(param != NULL)
   {
     LLVMTypeRef m_type = LLVMTypeOf(param);
@@ -922,8 +963,22 @@ void genfun_param_attrs(compile_t* c, reach_type_t* t, reach_method_t* m,
     {
       if(i > 0)
       {
-        type = m->params[i-1].type;
-        cap = m->params[i-1].cap;
+        type = m->params[i - 1].type;
+        cap = m->params[i - 1].cap;
+
+        if(m->params[i - 1].pass_by_value)
+        {
+          reach_type_t* pt = m->params[i - 1].type;
+
+          unsigned int kind = LLVMGetEnumAttributeKindForName("byval", sizeof("byval") - 1);
+          compile_type_t* ty = ((compile_type_t*)pt->c_type);
+            LLVMAttributeRef byvalue_attr = LLVMCreateTypeAttribute(
+              c->context,
+              kind,
+              ((compile_type_t*)pt->c_type)->structure);
+            // index 0 = return type, 1 ... paramters
+            LLVMAddAttributeAtIndex(fun, i + offset, byvalue_attr);
+        }
       } else if(ast_id(m->fun->ast) == TK_NEW) {
         param = LLVMGetNextParam(param);
         ++i;

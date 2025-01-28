@@ -52,10 +52,31 @@ LLVMValueRef gen_param(compile_t* c, ast_t* ast)
   pony_assert(def != NULL);
   int index = (int)ast_index(def);
 
-  if(!c->frame->bare_function)
-    index++;
+  // Since parameter passed by value generation a heap allocated
+  // shadow variable, it must be instead loaded.
+  if(ast_has_annotation(ast_childidx(def, 1), "passbyvalue"))
+  {
+    return gen_localload(c, ast);
+  }
+  else
+  {
+    if(!c->frame->bare_function)
+      index++;
 
-  return LLVMGetParam(codegen_fun(c), index);
+    ast_t* fun = ast_parent(ast_parent(def));
+    if(ast_id(fun) == TK_FUN)
+    {
+      // If return declaration is passed by value, then
+      // parameters are shifted one step
+      ast_t* ret_decl = ast_childidx(fun, 4);
+      if(ast_has_annotation(ret_decl, "passbyvalue"))
+      {
+        index++;
+      }
+    }
+
+    return LLVMGetParam(codegen_fun(c), index);
+  }
 }
 
 static LLVMValueRef make_fieldptr(compile_t* c, LLVMValueRef l_value,
