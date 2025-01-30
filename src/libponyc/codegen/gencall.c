@@ -7,6 +7,7 @@
 #include "genname.h"
 #include "genopt.h"
 #include "gentrace.h"
+#include "genvaluepass.h"
 #include "../pkg/platformfuns.h"
 #include "../type/cap.h"
 #include "../type/subtype.h"
@@ -1102,7 +1103,7 @@ LLVMValueRef gen_pattern_eq(compile_t* c, ast_t* pattern, LLVMValueRef r_value)
 }
 
 static LLVMTypeRef ffi_return_type(compile_t* c, reach_type_t* t,
-  bool intrinsic, bool return_by_value)
+  bool intrinsic, bool return_by_value, bool return_value_lowering_needed)
 {
   compile_type_t* c_t = (compile_type_t*)t->c_type;
 
@@ -1134,9 +1135,24 @@ static LLVMTypeRef ffi_return_type(compile_t* c, reach_type_t* t,
       false);
     ponyint_pool_free_size(buf_size, e_types);
     return r_type;
-  } else if(is_none(t->ast_cap) || return_by_value) {
+  }
+  else if(return_by_value)
+  {
+    if(return_value_lowering_needed)
+    {
+      return lower_return_value_from_structure_type(c, t);
+    }
+    else
+    {
+      return c->void_type;
+    }
+  }
+  else if(is_none(t->ast_cap))
+  {
     return c->void_type;
-  } else {
+  }
+  else
+  {
     return c_t->use_type;
   }
 }
@@ -1155,8 +1171,9 @@ static LLVMValueRef declare_ffi(compile_t* c, const char* f_name,
   }
 
   bool return_by_value = ast_has_annotation(ast_child(ret_ast), "passbyvalue");
+  bool return_value_lowering = is_return_value_lowering_needed(c, t);
 
-  if(return_by_value)
+  if(return_by_value && !return_value_lowering)
   {
     param_count++;
   }
@@ -1176,7 +1193,7 @@ static LLVMValueRef declare_ffi(compile_t* c, const char* f_name,
     f_param_reified_reach_types = (reach_type_t**)ponyint_pool_alloc_size(reified_reach_types_size);
     param_count = 0;
 
-    if(return_by_value)
+    if(return_by_value && !return_value_lowering)
     {
       compile_type_t* ret_c_t = (compile_type_t*)t->c_type;
       f_params[param_count] = ret_c_t->use_type;
@@ -1198,21 +1215,29 @@ static LLVMValueRef declare_ffi(compile_t* c, const char* f_name,
       reach_type_t* pt = reach_type(c->reach, p_type);
       pony_assert(pt != NULL);
       f_param_reified_reach_types[param_count] = pt;
-      f_params[param_count] = ((compile_type_t*)pt->c_type)->use_type;
+      if(ast_has_annotation(ast_childidx(arg, 1), "passbyvalue") &&
+         is_param_value_lowering_needed(c, pt))
+      {
+        f_params[param_count] = lower_param_value_from_structure_type(c, pt);
+      }
+      else
+      {
+        f_params[param_count] = ((compile_type_t*)pt->c_type)->use_type;
+      }
       param_count++;
       ast_free_unattached(p_type);
       arg = ast_sibling(arg);
     }
   }
 
-  LLVMTypeRef r_type = ffi_return_type(c, t, intrinsic, return_by_value);
+  LLVMTypeRef r_type = ffi_return_type(c, t, intrinsic, return_by_value, return_value_lowering);
   LLVMTypeRef f_type = LLVMFunctionType(r_type, f_params, param_count, is_varargs);
   LLVMValueRef func = LLVMAddFunction(c->module, f_name, f_type);
 
   ast_t* arg = ast_child(args);
   param_count = 0;
 
-  if(return_by_value)
+  if(return_by_value && !return_value_lowering)
   {
     param_count++;
   }
@@ -1227,21 +1252,14 @@ static LLVMValueRef declare_ffi(compile_t* c, const char* f_name,
       {
         reach_type_t* pt = f_param_reified_reach_types[param_count];
 
-        unsigned int kind = LLVMGetEnumAttributeKindForName("byval", sizeof("byval") - 1);
-        compile_type_t* ty = ((compile_type_t*)pt->c_type);
-        LLVMAttributeRef byvalue_attr = LLVMCreateTypeAttribute(
-          c->context,
-          kind,
-          ((compile_type_t*)pt->c_type)->structure);
-        // index 0 = return type, 1 ... paramters
-        LLVMAddAttributeAtIndex(func, param_count + 1, byvalue_attr);
+        apply_function_value_param_attribute(c, pt, func, param_count + 1);
       }
       arg = ast_sibling(arg);
       param_count++;
     }
   }
 
-  if(return_by_value)
+  if(return_by_value && !return_value_lowering)
   {
     unsigned int kind = LLVMGetEnumAttributeKindForName("sret", sizeof("sret") - 1);
     compile_type_t* ret_c_t = (compile_type_t*)t->c_type;
@@ -1277,7 +1295,7 @@ static void report_ffi_type_err(compile_t* c, ffi_decl_t* decl, ast_t* ast,
 }
 
 static LLVMValueRef cast_ffi_arg(compile_t* c, ffi_decl_t* decl, ast_t* ast,
-  LLVMValueRef arg, LLVMTypeRef param, const char* name)
+  LLVMValueRef arg, LLVMTypeRef param, const char* name, bool pass_by_value)
 {
   if(arg == NULL)
     return NULL;
@@ -1287,7 +1305,8 @@ static LLVMValueRef cast_ffi_arg(compile_t* c, ffi_decl_t* decl, ast_t* ast,
   if(param == arg_type)
     return arg;
 
-  if((LLVMABISizeOfType(c->target_data, param) !=
+  if(!pass_by_value &&
+    (LLVMABISizeOfType(c->target_data, param) !=
     LLVMABISizeOfType(c->target_data, arg_type)))
   {
     report_ffi_type_err(c, decl, ast, name);
@@ -1304,13 +1323,29 @@ static LLVMValueRef cast_ffi_arg(compile_t* c, ffi_decl_t* decl, ast_t* ast,
 
     case LLVMIntegerTypeKind:
       if(LLVMGetTypeKind(arg_type) == LLVMPointerTypeKind)
-        return LLVMBuildPtrToInt(c->builder, arg, param, "");
-
+      {
+        if(pass_by_value)
+        {
+          return LLVMBuildLoad2(c->builder, param, arg, "");
+        }
+        else
+        {
+          return LLVMBuildPtrToInt(c->builder, arg, param, "");
+        }
+      }
       break;
 
     case LLVMStructTypeKind:
-      pony_assert(LLVMGetTypeKind(arg_type) == LLVMStructTypeKind);
-      return arg;
+      if(pass_by_value)
+      {
+        return LLVMBuildLoad2(c->builder, param, arg, "");
+      }
+      else
+      {
+        pony_assert(LLVMGetTypeKind(arg_type) == LLVMStructTypeKind);
+        return arg;
+      }
+      break;
 
     default: {}
   }
@@ -1341,6 +1376,7 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
   bool is_func = false;
   LLVMValueRef func = LLVMGetNamedGlobal(c->module, f_name);
   bool return_by_value = false;
+  bool return_value_lowering = false;
   LLVMValueRef assign_side = GEN_NOTNEEDED;
 
   if(func == NULL)
@@ -1361,6 +1397,7 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
     func = declare_ffi(c, f_name, t, decl_params, decl_ret, is_intrinsic);
 
     return_by_value = ast_has_annotation(ast_child(decl_ret), "passbyvalue");
+    return_value_lowering = is_return_value_lowering_needed(c, t);
 
     size_t index = HASHMAP_UNKNOWN;
 
@@ -1397,6 +1434,7 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
     {
       ast_t* decl_ret = ast_childidx(ffi_decl->decl, 1);
       return_by_value = ast_has_annotation(ast_child(decl_ret), "passbyvalue");
+      return_value_lowering = is_return_value_lowering_needed(c, t);
     }
 
     pony_assert(is_func);
@@ -1420,7 +1458,7 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
 
   if(!vararg)
   {
-    if(return_by_value)
+    if(return_by_value && !return_value_lowering)
     {
       llvm_arg_count++;
     }
@@ -1445,10 +1483,18 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
   ast_t* arg = ast_child(args);
 
   int arg_start = 0;
-  if (return_by_value)
+  if (return_by_value && !return_value_lowering)
   {
     f_args[arg_start] = assign_side;
     arg_start++;
+  }
+
+  ast_t* param_decl = NULL;
+
+  if(ffi_decl != NULL)
+  {
+    ast_t* params_decl = ast_childidx(ffi_decl->decl, 2);
+    param_decl = ast_child(params_decl);
   }
 
   for(int i = arg_start; i < llvm_arg_count; i++)
@@ -1456,8 +1502,11 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
     f_args[i] = gen_expr(c, arg);
 
     if(!vararg)
+    {
       f_args[i] = cast_ffi_arg(c, ffi_decl, ast, f_args[i], f_params[i],
-        "parameters");
+        "parameters",
+        param_decl != NULL && ast_has_annotation(ast_childidx(param_decl, 1), "passbyvalue"));
+    }
 
     if(f_args[i] == NULL)
     {
@@ -1466,6 +1515,10 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
     }
 
     arg = ast_sibling(arg);
+    if(param_decl != NULL)
+    {
+      param_decl = ast_sibling(param_decl);
+    }
   }
 
   // If we can error out and we have an invoke target, generate an invoke
@@ -1492,6 +1545,10 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
 
   if(return_by_value)
   {
+    if(return_value_lowering)
+    {
+      copy_lowered_return_value(c, assign_side, result);
+    }
     result = assign_side;
   }
   else if(isnone && isvoid)
@@ -1505,7 +1562,7 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
   }
 
   result = cast_ffi_arg(c, ffi_decl, ast, result, c_t->use_type,
-    "return values");
+    "return values", return_by_value);
   result = gen_assign_cast(c, c_t->use_type, result, t->ast_cap);
 
   return result;
