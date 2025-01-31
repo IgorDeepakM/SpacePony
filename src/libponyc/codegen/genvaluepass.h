@@ -22,6 +22,14 @@ void copy_lowered_return_value(compile_t* c, LLVMValueRef destination,
 void apply_function_value_param_attribute(compile_t* c, reach_type_t* pt, LLVMValueRef func,
   LLVMAttributeIndex param_nr);
 
+void apply_call_site_value_param_attribute(compile_t* c, reach_type_t* pt, LLVMValueRef func,
+  LLVMAttributeIndex param_nr);
+
+void apply_function_value_return_attribute(compile_t* c, reach_type_t* pt, LLVMValueRef func);
+
+void apply_call_site_value_return_attribute(compile_t* c, reach_type_t* pt,
+  LLVMValueRef func);
+
 PONY_EXTERN_C_END
 
 #endif

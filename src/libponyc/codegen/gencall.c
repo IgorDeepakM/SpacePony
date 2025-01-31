@@ -815,9 +815,11 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
 
   // Generate the arguments.
   size_t count = m->param_count + 1;
+  bool return_value_lowering = false;
   if(m->return_by_value)
   {
     count++;
+    return_value_lowering = is_return_value_lowering_needed(c, m->result);
   }
   size_t buf_size = count * sizeof(void*);
 
@@ -825,12 +827,15 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
   ast_t* arg = ast_child(positional);
   int i = 1;
 
-  LLVMValueRef assign_side;
-  if (m->return_by_value)
+  LLVMValueRef assign_side = NULL;
+  if(m->return_by_value)
   {
     assign_side = gen_alloc_return_value(c, m->result, ast);
-    args[i] = assign_side;
-    i++;
+    if(!return_value_lowering)
+    {
+      args[i] = assign_side;
+      i++;
+    }
   }
 
   while(arg != NULL)
@@ -934,18 +939,35 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
     // semantics as assignment.
     arg = ast_child(positional);
     i = 1;
-    if (m->return_by_value)
+    if (m->return_by_value && !return_value_lowering)
     {
       i++;
     }
 
+    int param_pos = 0;
+
     while(arg != NULL)
     {
       ast_t* arg_type = deferred_reify(reify, ast_type(arg), c->opt);
-      args[i] = gen_assign_cast(c, params[i], args[i], arg_type);
+      reach_type_t* pt = reach_type(c->reach, arg_type);
+
+      if(m->params[param_pos].pass_by_value &&
+         is_param_value_lowering_needed(c, pt))
+      {
+        args[i] = LLVMBuildLoad2(c->builder, params[i], args[i], "");
+      }
+      else
+      {
+        ast_t* arg_type = deferred_reify(reify, ast_type(arg), c->opt);
+        args[i] = gen_assign_cast(c, params[i], args[i], arg_type);
+        ast_free_unattached(arg_type);
+      }
+
       ast_free_unattached(arg_type);
+
       arg = ast_sibling(arg);
       i++;
+      param_pos++;
     }
 
     uintptr_t arg_offset = 0;
@@ -967,7 +989,7 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
         r = codegen_call(c, func_type, func, args + arg_offset, i, !bare);
 
       int llvm_argument_shift = 1;
-      if(m->return_by_value)
+      if(m->return_by_value && !return_value_lowering)
       {
         llvm_argument_shift++;
       }
@@ -977,27 +999,14 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
       {
         if (m->params[i].pass_by_value)
         {
-          unsigned int kind = LLVMGetEnumAttributeKindForName("byval", sizeof("byval") - 1);
-          compile_type_t* p_c_t = (compile_type_t*)m->params[i].type->c_type;
-          LLVMAttributeRef byvalue_attr = LLVMCreateTypeAttribute(
-            c->context,
-            kind,
-            p_c_t->structure);
-          // index 0 = return type, 1 ... paramters
-          LLVMAddCallSiteAttribute(r, i + llvm_argument_shift, byvalue_attr);
+          apply_call_site_value_param_attribute(c, m->params[i].type, r,
+            i + llvm_argument_shift);
         }
       }
 
       if(m->return_by_value)
       {
-        unsigned int kind = LLVMGetEnumAttributeKindForName("sret", sizeof("sret") - 1);
-        compile_type_t* ret_c_t = (compile_type_t*)m->result->c_type;
-        LLVMAttributeRef byvalue_attr = LLVMCreateTypeAttribute(
-          c->context,
-          kind,
-          ret_c_t->structure);
-        // index 1 = sret return type
-        LLVMAddCallSiteAttribute(r, 1, byvalue_attr);
+        apply_call_site_value_return_attribute(c, m->result, r);
       }
 
       if(is_new_call)
@@ -1018,17 +1027,23 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
 
   if(m->return_by_value)
   {
-    return assign_side;
+    if(return_value_lowering)
+    {
+      copy_lowered_return_value(c, assign_side, r);
+    }
+    r = assign_side;
   }
+  else
+  {
+    // Class constructors return void, expression result is the receiver.
+    if(((ast_id(postfix) == TK_NEWREF) || (ast_id(postfix) == TK_NEWBEREF)) &&
+       (t->underlying == TK_CLASS))
+      r = args[0];
 
-  // Class constructors return void, expression result is the receiver.
-  if(((ast_id(postfix) == TK_NEWREF) || (ast_id(postfix) == TK_NEWBEREF)) &&
-     (t->underlying == TK_CLASS))
-    r = args[0];
-
-  // Chained methods forward their receiver.
-  if((ast_id(postfix) == TK_BECHAIN) || (ast_id(postfix) == TK_FUNCHAIN))
-    r = args[0];
+    // Chained methods forward their receiver.
+    if((ast_id(postfix) == TK_BECHAIN) || (ast_id(postfix) == TK_FUNCHAIN))
+      r = args[0];
+  }
 
   ponyint_pool_free_size(buf_size, args);
   return r;
@@ -1251,7 +1266,6 @@ static LLVMValueRef declare_ffi(compile_t* c, const char* f_name,
       if(ast_has_annotation(ast_childidx(arg, 1), "passbyvalue"))
       {
         reach_type_t* pt = f_param_reified_reach_types[param_count];
-
         apply_function_value_param_attribute(c, pt, func, param_count + 1);
       }
       arg = ast_sibling(arg);
@@ -1259,16 +1273,9 @@ static LLVMValueRef declare_ffi(compile_t* c, const char* f_name,
     }
   }
 
-  if(return_by_value && !return_value_lowering)
+  if(return_by_value)
   {
-    unsigned int kind = LLVMGetEnumAttributeKindForName("sret", sizeof("sret") - 1);
-    compile_type_t* ret_c_t = (compile_type_t*)t->c_type;
-    LLVMAttributeRef byvalue_attr = LLVMCreateTypeAttribute(
-      c->context,
-      kind,
-      ret_c_t->structure);
-    // index 1 = sret return type
-    LLVMAddAttributeAtIndex(func, 1, byvalue_attr);
+    apply_function_value_return_attribute(c, t, func);
   }
 
   if(f_params != NULL)

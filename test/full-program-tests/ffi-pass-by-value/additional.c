@@ -61,6 +61,26 @@ EXPORT_SYMBOL S1Large FFI_add_large(S1Large s1, S1Large s2)
   {
     ret.ar[i] = s1.ar[i] + s2.ar[i];
   }
-  
+
   return ret;	
+}
+
+EXPORT_SYMBOL void (*get_FFI_clobber_small())(S1Small, S1Small)
+{
+  return &FFI_clobber_small;
+}
+
+EXPORT_SYMBOL void (*get_FFI_clobber_large())(S1Large, S1Large)
+{
+  return &FFI_clobber_large;
+}
+
+EXPORT_SYMBOL S1Small (*get_FFI_add_small())(S1Small, S1Small)
+{
+  return &FFI_add_small;
+}
+
+EXPORT_SYMBOL S1Large (*get_FFI_add_large())(S1Large, S1Large)
+{
+  return &FFI_add_large;
 }

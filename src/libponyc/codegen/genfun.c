@@ -5,6 +5,7 @@
 #include "gencontrol.h"
 #include "genexpr.h"
 #include "genreference.h"
+#include "genvaluepass.h"
 #include "../pass/names.h"
 #include "../type/assemble.h"
 #include "../type/subtype.h"
@@ -28,7 +29,8 @@ static void name_param(compile_t* c, reach_type_t* t, reach_method_t* m,
   compile_method_t* c_m = (compile_method_t*)m->c_method;
 
   int return_by_value_extra = 0;
-  if(m->return_by_value)
+  bool return_value_lowering = is_return_value_lowering_needed(c, m->result);
+  if(m->return_by_value && !return_value_lowering)
   {
     return_by_value_extra = 1;
   }
@@ -41,8 +43,15 @@ static void name_param(compile_t* c, reach_type_t* t, reach_method_t* m,
      (t->underlying == TK_STRUCT || t->underlying == TK_CLASS))
   {
     LLVMValueRef heap_allocated = gencall_allocstruct(c, t);
-    LLVMValueRef l_size = LLVMConstInt(c->intptr, c_t->abi_size, false);
-    gencall_memcpy(c, heap_allocated, value, l_size);
+    if(is_param_value_lowering_needed(c, t))
+    {
+      LLVMBuildStore(c->builder, value, heap_allocated);
+    }
+    else
+    {
+      LLVMValueRef l_size = LLVMConstInt(c->intptr, c_t->abi_size, false);
+      gencall_memcpy(c, heap_allocated, value, l_size);
+    }
     value = heap_allocated;
   }
   LLVMSetValueName(value, name);
@@ -54,7 +63,7 @@ static void name_param(compile_t* c, reach_type_t* t, reach_method_t* m,
 
   LLVMMetadataRef info;
 
-  if(index + return_by_value_extra == 0)
+  if((index + return_by_value_extra) == 0 && !m->return_by_value)
   {
     info = LLVMDIBuilderCreateArtificialVariable(c->di,
       c_m->di_method, name, index + 1, c_m->di_file,
@@ -108,7 +117,14 @@ static void make_signature(compile_t* c, reach_type_t* t,
 
   bool bare_function = m->cap == TK_AT;
 
-  if(!bare_function || m->return_by_value)
+  bool return_value_lowering = false;
+
+  if(m->return_by_value)
+  {
+    return_value_lowering = is_return_value_lowering_needed(c, m->result);
+  }
+
+  if(!bare_function || (m->return_by_value && !return_value_lowering))
   {
     count++;
     offset++;
@@ -132,17 +148,19 @@ static void make_signature(compile_t* c, reach_type_t* t,
   bool bare_void = false;
   compile_type_t* c_t = (compile_type_t*)t->c_type;
   compile_method_t* c_m = (compile_method_t*)m->c_method;
+  LLVMTypeRef return_type = NULL;
 
   if(bare_function)
   {
     bare_void = is_none(m->result->ast);
-    if(!bare_void && m->return_by_value)
+    if(m->return_by_value)
     {
-      // First argument when return by value is a pointer where the
-      // value should be stored.
-      tparams[0] = ((compile_type_t*)m->result->c_type)->use_type;
-      // When return by value, the LLVM return type should be void
-      bare_void = true;
+      if(!return_value_lowering)
+      {
+        // First argument when return by value is a pointer where the
+        // value should be stored.
+        tparams[0] = ((compile_type_t*)m->result->c_type)->use_type;
+      }
     }
   } else {
     // Get a type for the receiver.
@@ -152,23 +170,47 @@ static void make_signature(compile_t* c, reach_type_t* t,
   // Get a type for each parameter.
   for(size_t i = 0; i < m->param_count; i++)
   {
+    reach_type_t* rt = m->params[i].type;
     compile_type_t* p_c_t = (compile_type_t*)m->params[i].type->c_type;
-    tparams[i + offset] = p_c_t->use_type;
+
+    if(m->params[i].pass_by_value && is_param_value_lowering_needed(c, rt))
+    {
+      tparams[i + offset] = lower_param_value_from_structure_type(c, rt);
+    }
+    else
+    {
+      tparams[i + offset] = p_c_t->use_type;
+    }
 
     if(message_type)
       mparams[i + offset + 2] = p_c_t->mem_type;
   }
 
+  if(m->return_by_value)
+  {
+    if(return_value_lowering)
+    {
+      return_type = lower_return_value_from_structure_type(c, m->result);
+    }
+    else
+    {
+      return_type = c->void_type;
+    }
+  }
+  else if(bare_void || (n->name == c->str__final) ||
+    ((ast_id(m->fun->ast) == TK_NEW) && (t->underlying == TK_CLASS)))
+  {
+    return_type = c->void_type;
+  }
+  else
+  {
+    return_type = ((compile_type_t*)m->result->c_type)->use_type;
+  }
+
   // Generate the function type.
   // Bare methods returning None return void to maintain compatibility with C.
   // Class constructors return void to avoid clobbering nocapture information.
-  if(bare_void || (n->name == c->str__final) ||
-    ((ast_id(m->fun->ast) == TK_NEW) && (t->underlying == TK_CLASS)))
-    c_m->func_type = LLVMFunctionType(c->void_type, tparams, (int)count, false);
-  else
-    c_m->func_type = LLVMFunctionType(
-      ((compile_type_t*)m->result->c_type)->use_type, tparams, (int)count,
-      false);
+  c_m->func_type = LLVMFunctionType(return_type, tparams, (int)count, false);
 
   if(message_type)
   {
@@ -533,8 +575,10 @@ static bool genfun_fun(compile_t* c, reach_type_t* t, reach_method_t* m)
   {
     ast_t* r_result = deferred_reify(m->fun, result, c->opt);
 
+    bool return_value_lowered = is_return_value_lowering_needed(c, m->result);
+
     if(finaliser || ((ast_id(cap) == TK_AT) && is_none(r_result)) ||
-       m->return_by_value)
+       (m->return_by_value && !return_value_lowered))
     {
       if(m->return_by_value)
       {
@@ -554,10 +598,18 @@ static bool genfun_fun(compile_t* c, reach_type_t* t, reach_method_t* m)
       LLVMTypeRef f_type = LLVMGlobalGetValueType(c_m->func);
       LLVMTypeRef r_type = LLVMGetReturnType(f_type);
 
-      ast_t* body_type = deferred_reify(m->fun, ast_type(body), c->opt);
-      LLVMValueRef ret = gen_assign_cast(c, r_type, value, body_type);
+      LLVMValueRef ret = NULL;
+      if(m->return_by_value && return_value_lowered)
+      {
+        ret = LLVMBuildLoad2(c->builder, r_type, value, "");
+      }
+      else
+      {
+        ast_t* body_type = deferred_reify(m->fun, ast_type(body), c->opt);
+        ret = gen_assign_cast(c, r_type, value, body_type);
+        ast_free_unattached(body_type);
+      }
 
-      ast_free_unattached(body_type);
       ast_free_unattached(r_result);
 
       if(ret == NULL)
@@ -944,16 +996,12 @@ void genfun_param_attrs(compile_t* c, reach_type_t* t, reach_method_t* m,
 
   if(m->return_by_value)
   {
-    offset++;
-    unsigned int kind = LLVMGetEnumAttributeKindForName("sret", sizeof("sret") - 1);
-    compile_type_t* ret_c_t = (compile_type_t*)m->result->c_type;
-    LLVMAttributeRef byvalue_attr = LLVMCreateTypeAttribute(
-      c->context,
-      kind,
-      ret_c_t->structure);
-    LLVMAddAttributeAtIndex(fun, 1, byvalue_attr);
-
-    param = LLVMGetNextParam(param);
+    apply_function_value_return_attribute(c, m->result, fun);
+    if(!is_return_value_lowering_needed(c, m->result))
+    {
+      offset++;
+      param = LLVMGetNextParam(param);
+    }
   }
 
   while(param != NULL)
@@ -969,15 +1017,7 @@ void genfun_param_attrs(compile_t* c, reach_type_t* t, reach_method_t* m,
         if(m->params[i - 1].pass_by_value)
         {
           reach_type_t* pt = m->params[i - 1].type;
-
-          unsigned int kind = LLVMGetEnumAttributeKindForName("byval", sizeof("byval") - 1);
-          compile_type_t* ty = ((compile_type_t*)pt->c_type);
-            LLVMAttributeRef byvalue_attr = LLVMCreateTypeAttribute(
-              c->context,
-              kind,
-              ((compile_type_t*)pt->c_type)->structure);
-            // index 0 = return type, 1 ... paramters
-            LLVMAddAttributeAtIndex(fun, i + offset, byvalue_attr);
+          apply_function_value_param_attribute(c, pt, fun, i + offset);
         }
       } else if(ast_id(m->fun->ast) == TK_NEW) {
         param = LLVMGetNextParam(param);

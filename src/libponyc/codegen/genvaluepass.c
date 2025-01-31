@@ -319,3 +319,53 @@ void apply_function_value_param_attribute(compile_t* c, reach_type_t* pt, LLVMVa
     LLVMAddAttributeAtIndex(func, param_nr, byvalue_attr);
   }
 }
+
+
+void apply_call_site_value_param_attribute(compile_t* c, reach_type_t* pt, LLVMValueRef func,
+  LLVMAttributeIndex param_nr)
+{
+  if(!is_param_value_lowering_needed(c, pt))
+  {
+    unsigned int kind = LLVMGetEnumAttributeKindForName("byval", sizeof("byval") - 1);
+    compile_type_t* p_c_t = (compile_type_t*)pt->c_type;
+    LLVMAttributeRef byvalue_attr = LLVMCreateTypeAttribute(
+      c->context,
+      kind,
+      p_c_t->structure);
+    // index 0 = return type, 1 ... paramters
+    LLVMAddCallSiteAttribute(func, param_nr, byvalue_attr);
+  }
+}
+
+
+void apply_function_value_return_attribute(compile_t* c, reach_type_t* pt, LLVMValueRef func)
+{
+  if(!is_return_value_lowering_needed(c, pt))
+  {
+    unsigned int kind = LLVMGetEnumAttributeKindForName("sret", sizeof("sret") - 1);
+    compile_type_t* ret_c_t = (compile_type_t*)pt->c_type;
+    LLVMAttributeRef sret_attr = LLVMCreateTypeAttribute(
+      c->context,
+      kind,
+      ret_c_t->structure);
+    // index 1 = sret return type
+    LLVMAddAttributeAtIndex(func, 1, sret_attr);
+  }
+}
+
+
+void apply_call_site_value_return_attribute(compile_t* c, reach_type_t* pt,
+  LLVMValueRef func)
+{
+  if(!is_return_value_lowering_needed(c, pt))
+  {
+    unsigned int kind = LLVMGetEnumAttributeKindForName("sret", sizeof("sret") - 1);
+    compile_type_t* ret_c_t = (compile_type_t*)pt->c_type;
+    LLVMAttributeRef sret_attr = LLVMCreateTypeAttribute(
+      c->context,
+      kind,
+      ret_c_t->structure);
+    // index 1 = sret return type
+    LLVMAddCallSiteAttribute(func, 1, sret_attr);
+  }
+}
