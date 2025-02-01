@@ -7,6 +7,7 @@
 #include "genname.h"
 #include "genopt.h"
 #include "gentype.h"
+#include "genvaluepass.h"
 #include "../expr/literal.h"
 #include "../reach/subtype.h"
 #include "../type/cap.h"
@@ -69,7 +70,11 @@ LLVMValueRef gen_param(compile_t* c, ast_t* ast)
       // If return declaration is passed by value, then
       // parameters are shifted one step
       ast_t* ret_decl = ast_childidx(fun, 4);
-      if(ast_has_annotation(ret_decl, "passbyvalue"))
+      ast_t* reified_ret = deferred_reify(c->frame->reify, ret_decl, c->opt);
+      reach_type_t* t = reach_type(c->reach, reified_ret);
+      ast_free_unattached(reified_ret);
+      if(ast_has_annotation(reified_ret, "passbyvalue") &&
+         !is_param_value_lowering_needed(c, t))
       {
         index++;
       }
