@@ -69,15 +69,17 @@ LLVMValueRef gen_param(compile_t* c, ast_t* ast)
     {
       // If return declaration is passed by value, then
       // parameters are shifted one step
+      // TODO: this can be done better by having a return_by_value
+      // in the frame structure like bare_function.
       ast_t* ret_decl = ast_childidx(fun, 4);
       ast_t* reified_ret = deferred_reify(c->frame->reify, ret_decl, c->opt);
       reach_type_t* t = reach_type(c->reach, reified_ret);
-      ast_free_unattached(reified_ret);
       if(ast_has_annotation(reified_ret, "passbyvalue") &&
-         !is_param_value_lowering_needed(c, t))
+         !is_return_value_lowering_needed(c, t))
       {
         index++;
       }
+      ast_free_unattached(reified_ret);
     }
 
     return LLVMGetParam(codegen_fun(c), index);

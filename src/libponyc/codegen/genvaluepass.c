@@ -2,6 +2,7 @@
 #include "gentype.h"
 #include "ponyassert.h"
 #include "genopt.h"
+#include "gencall.h"
 
 #define MAX_REG_TYPES 4
 
@@ -27,11 +28,14 @@ bool is_pass_by_value_lowering_supported(compile_t* c)
 
   if(target_is_x86(triple) && target_is_windows(triple) && target_is_llp64(triple))
   {
-    if(target_is_llp64(triple))
+    if(target_is_llp64(triple) || target_is_ilp32(triple))
     {
       ret = true;
     }
-    else if(target_is_ilp32(triple))
+  }
+  else if(target_is_arm(triple))
+  {
+    if(target_is_ilp32(triple))
     {
       ret = true;
     }
@@ -58,6 +62,16 @@ bool is_param_value_lowering_needed(compile_t* c, reach_type_t* pt)
     }
     // 32-bit Windows always use byval when value passing, so always false
   }
+  else if(target_is_arm(triple))
+  {
+    if(target_is_ilp32(triple))
+    {
+      if(p_t->abi_size <= 64)
+      {
+        ret = true;
+      }
+    }
+  }
 
   return ret;
 }
@@ -80,17 +94,20 @@ bool is_return_value_lowering_needed(compile_t* c, reach_type_t* pt)
     }
     else if(target_is_ilp32(triple))
     {
-      if(p_t->abi_size <= 4 && is_power_of_2(p_t->abi_size))
+      if(p_t->abi_size <= 4)
       {
         ret = true;
       }
     }
   }
-  else if(target_is_arm32(triple))
+  else if(target_is_arm(triple))
   {
-    if(p_t->abi_size <= 4)
+    if(target_is_ilp32(triple))
     {
-      ret = true;
+      if(p_t->abi_size <= 4)
+      {
+        ret = true;
+      }
     }
   }
 
@@ -230,6 +247,25 @@ LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach_type_t* pt
   {
     ret = get_type_from_size(c, p_t->abi_size);
   }
+  else if(target_is_arm(triple))
+  {
+    if(target_is_ilp32(triple))
+    {
+      size_t align = (size_t)LLVMABIAlignmentOfType(c->target_data, p_t->structure);
+      if(align < 4)
+      {
+        align = 4;
+      }
+      size_t type_size = p_t->abi_size;
+      size_t array_size = type_size / align;
+      if((type_size % align) != 0)
+      {
+        array_size++;
+      }
+      LLVMTypeRef array_type = get_type_from_size(c, align);
+      ret = LLVMArrayType(array_type, array_size);
+    }
+  }
   else
   {
     size_t ptr_size = (size_t)LLVMABISizeOfType(c->target_data, c->intptr);
@@ -263,8 +299,12 @@ LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reach_type_t* p
   {
     ret = get_type_from_size(c, p_t->abi_size);
   }
-  else if(target_is_arm32(triple))
+  else if(target_is_arm(triple))
   {
+    if(target_is_ilp32(triple))
+    {
+      ret = get_type_from_size(c, next_power_of_2(p_t->abi_size));
+    }
   }
   else
   {
@@ -287,15 +327,142 @@ LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reach_type_t* p
   return ret;
 }
 
-void copy_lowered_return_value(compile_t* c, LLVMValueRef destination,
-  LLVMValueRef return_value)
+LLVMValueRef load_lowered_param_value(compile_t* c, LLVMValueRef ptr,
+  LLVMTypeRef param_type, reach_type_t* real_type)
+{
+  LLVMValueRef ret = NULL;
+  char* triple = c->opt->triple;
+
+  if(target_is_x86(triple) && target_is_windows(triple) &&
+     (target_is_llp64(triple) || target_is_ilp32(triple)))
+  {
+    // x86 only lowers structs with size of power of 2
+    // so it can be loaded directely without a cast
+    ret = LLVMBuildLoad2(c->builder, param_type, ptr, "");
+  }
+  else if(target_is_arm(c->opt->triple))
+  {
+    compile_type_t* p_c_t = (compile_type_t*)real_type->c_type;
+    if(p_c_t->abi_size == (size_t)LLVMABISizeOfType(c->target_data, param_type))
+    {
+      ret = LLVMBuildLoad2(c->builder, param_type, ptr, "");
+    }
+    else
+    {
+      LLVMValueRef tmp_array = LLVMBuildAlloca(c->builder, param_type, "");
+      LLVMValueRef cpy_size = LLVMConstInt(c->intptr, p_c_t->abi_size, false);
+      LLVMValueRef zero = LLVMConstInt(c->i8, 0, false);
+      LLVMBuildMemSet(c->builder, tmp_array, zero, cpy_size, LLVMGetAlignment(tmp_array));
+      gencall_memcpy(c, tmp_array, ptr, cpy_size);
+      ret = LLVMBuildLoad2(c->builder, param_type, tmp_array, "");
+    }
+  }
+  else
+  {
+    pony_assert(false);
+  }
+
+  return ret;
+}
+
+
+LLVMValueRef load_lowered_return_value(compile_t* c, LLVMValueRef ptr,
+  LLVMTypeRef return_type, reach_type_t* real_type)
+{
+  LLVMValueRef ret = NULL;
+  char* triple = c->opt->triple;
+
+  if(target_is_x86(triple) && target_is_windows(triple) &&
+     (target_is_llp64(triple) || target_is_ilp32(triple)))
+  {
+    // x86 only lowers structs with size of power of 2
+    // so it can be loaded directely without a cast
+    ret = LLVMBuildLoad2(c->builder, return_type, ptr, "");
+  }
+  else if(target_is_arm(c->opt->triple))
+  {
+    compile_type_t* p_c_t = (compile_type_t*)real_type->c_type;
+    if(p_c_t->abi_size == (size_t)LLVMABISizeOfType(c->target_data, return_type))
+    {
+      ret = LLVMBuildLoad2(c->builder, return_type, ptr, "");
+    }
+    else
+    {
+      LLVMValueRef tmp_array = LLVMBuildAlloca(c->builder, return_type, "");
+      LLVMValueRef cpy_size = LLVMConstInt(c->intptr, p_c_t->abi_size, false);
+      LLVMValueRef zero = LLVMConstInt(c->i8, p_c_t->abi_size, false);
+      LLVMBuildMemSet(c->builder, tmp_array, zero, cpy_size, LLVMGetAlignment(tmp_array));
+      gencall_memcpy(c, tmp_array, ptr, cpy_size);
+      ret = LLVMBuildLoad2(c->builder, return_type, tmp_array, "");
+    }
+  }
+  else
+  {
+    pony_assert(false);
+  }
+
+  return ret;
+}
+
+
+void copy_lowered_param_value(compile_t* c, LLVMValueRef dest_ptr,
+  LLVMValueRef param_value, reach_type_t* real_target_type)
 {
   char* triple = c->opt->triple;
 
   if(target_is_x86(triple) && target_is_windows(triple) &&
      (target_is_llp64(triple) || target_is_ilp32(triple)))
   {
-    LLVMBuildStore(c->builder, return_value, destination);
+    LLVMBuildStore(c->builder, param_value, dest_ptr);
+  }
+  else if(target_is_arm(c->opt->triple))
+  {
+    compile_type_t* p_c_t = (compile_type_t*)real_target_type->c_type;
+    LLVMTypeRef param_type = LLVMTypeOf(param_value);
+    if(p_c_t->abi_size == (size_t)LLVMABISizeOfType(c->target_data, param_type))
+    {
+      LLVMBuildStore(c->builder, param_value, dest_ptr);
+    }
+    else
+    {
+      LLVMValueRef tmp_array = LLVMBuildAlloca(c->builder, param_type, "");
+      LLVMBuildStore(c->builder, param_value, tmp_array);
+      LLVMValueRef cpy_size = LLVMConstInt(c->intptr, p_c_t->abi_size, false);
+      gencall_memcpy(c, dest_ptr, tmp_array, cpy_size);
+    }
+  }
+  else
+  {
+    pony_assert(false);
+  }
+}
+
+
+void copy_lowered_return_value(compile_t* c, LLVMValueRef dest_ptr,
+  LLVMValueRef return_value, reach_type_t* real_target_type)
+{
+  char* triple = c->opt->triple;
+
+  if(target_is_x86(triple) && target_is_windows(triple) &&
+     (target_is_llp64(triple) || target_is_ilp32(triple)))
+  {
+    LLVMBuildStore(c->builder, return_value, dest_ptr);
+  }
+  else if(target_is_arm(c->opt->triple))
+  {
+    compile_type_t* p_c_t = (compile_type_t*)real_target_type->c_type;
+    LLVMTypeRef return_type = LLVMTypeOf(return_value);
+    if(p_c_t->abi_size == (size_t)LLVMABISizeOfType(c->target_data, return_type))
+    {
+      LLVMBuildStore(c->builder, return_value, dest_ptr);
+    }
+    else
+    {
+      LLVMValueRef tmp_array = LLVMBuildAlloca(c->builder, return_type, "");
+      LLVMBuildStore(c->builder, return_value, tmp_array);
+      LLVMValueRef cpy_size = LLVMConstInt(c->intptr, p_c_t->abi_size, false);
+      gencall_memcpy(c, dest_ptr, tmp_array, cpy_size);
+    }
   }
   else
   {
@@ -307,6 +474,12 @@ void copy_lowered_return_value(compile_t* c, LLVMValueRef destination,
 void apply_function_value_param_attribute(compile_t* c, reach_type_t* pt, LLVMValueRef func,
   LLVMAttributeIndex param_nr)
 {
+  // Aarch64 Doesn't use byval
+  if(target_is_arm(c->opt->triple) && target_is_lp64(c->opt->triple))
+  {
+    return;
+  }
+
   if(!is_param_value_lowering_needed(c, pt))
   {
     unsigned int kind = LLVMGetEnumAttributeKindForName("byval", sizeof("byval") - 1);
@@ -324,6 +497,12 @@ void apply_function_value_param_attribute(compile_t* c, reach_type_t* pt, LLVMVa
 void apply_call_site_value_param_attribute(compile_t* c, reach_type_t* pt, LLVMValueRef func,
   LLVMAttributeIndex param_nr)
 {
+  // Aarch64 Doesn't use byval
+  if(target_is_arm(c->opt->triple) && target_is_lp64(c->opt->triple))
+  {
+    return;
+  }
+
   if(!is_param_value_lowering_needed(c, pt))
   {
     unsigned int kind = LLVMGetEnumAttributeKindForName("byval", sizeof("byval") - 1);

@@ -23,29 +23,23 @@ static void compile_method_free(void* p)
 }
 
 static void name_param(compile_t* c, reach_type_t* t, reach_method_t* m,
-  LLVMValueRef func, const char* name, unsigned index, size_t line, size_t pos)
+  LLVMValueRef func, const char* name, reach_param_t* param, unsigned index,
+  size_t line, size_t pos)
 {
   compile_type_t* c_t = (compile_type_t*)t->c_type;
   compile_method_t* c_m = (compile_method_t*)m->c_method;
 
-  int return_by_value_extra = 0;
-  bool return_value_lowering = is_return_value_lowering_needed(c, m->result);
-  if(m->return_by_value && !return_value_lowering)
-  {
-    return_by_value_extra = 1;
-  }
-
-  LLVMValueRef value = LLVMGetParam(func, index + return_by_value_extra);
+  LLVMValueRef value = LLVMGetParam(func, index);
 
   // If passed by value, create an allocated copy of the structure
   // so that it can be used everywhere and even escape.
-  if(index < m->param_count && m->params[index].pass_by_value &&
+  if(param != NULL && param->pass_by_value &&
      (t->underlying == TK_STRUCT || t->underlying == TK_CLASS))
   {
     LLVMValueRef heap_allocated = gencall_allocstruct(c, t);
     if(is_param_value_lowering_needed(c, t))
     {
-      LLVMBuildStore(c->builder, value, heap_allocated);
+      copy_lowered_param_value(c, heap_allocated, value, t);
     }
     else
     {
@@ -63,14 +57,14 @@ static void name_param(compile_t* c, reach_type_t* t, reach_method_t* m,
 
   LLVMMetadataRef info;
 
-  if((index + return_by_value_extra) == 0 && !m->return_by_value)
+  if(index == 0)
   {
     info = LLVMDIBuilderCreateArtificialVariable(c->di,
       c_m->di_method, name, index + 1, c_m->di_file,
       (unsigned)ast_line(m->fun->ast), c_t->di_type);
   } else {
     info = LLVMDIBuilderCreateParameterVariable(c->di, c_m->di_method,
-      name, strlen(name), index + 1 + return_by_value_extra, c_m->di_file,
+      name, strlen(name), index + 1, c_m->di_file,
       (unsigned)ast_line(m->fun->ast), c_t->di_type, false, LLVMDIFlagZero);
   }
 
@@ -89,9 +83,14 @@ static void name_params(compile_t* c, reach_type_t* t, reach_method_t* m,
   if(m->cap != TK_AT)
   {
     // Name the receiver 'this'.
-    name_param(c, t, m, func, c->str_this, 0, ast_line(m->fun->ast),
+    name_param(c, t, m, func, c->str_this, NULL, 0, ast_line(m->fun->ast),
       ast_pos(m->fun->ast));
     offset = 1;
+  }
+
+  if(m->return_by_value && !is_return_value_lowering_needed(c, m->result))
+  {
+    offset++;
   }
 
   ast_t* params = ast_childidx(m->fun->ast, 3);
@@ -101,8 +100,8 @@ static void name_params(compile_t* c, reach_type_t* t, reach_method_t* m,
   for(size_t i = 0; i < m->param_count; i++)
   {
     reach_param_t* r_param = &m->params[i];
-    name_param(c, r_param->type, m, func, r_param->name, (unsigned)i + offset,
-      ast_line(param), ast_pos(param));
+    name_param(c, r_param->type, m, func, r_param->name, r_param,
+      (unsigned)i + offset, ast_line(param), ast_pos(param));
 
     param = ast_sibling(param);
   }
@@ -583,10 +582,9 @@ static bool genfun_fun(compile_t* c, reach_type_t* t, reach_method_t* m)
       if(m->return_by_value)
       {
         LLVMValueRef value_ret_ptr = LLVMGetParam(c_m->func, 0);
-        size_t abi_size = LLVMABISizeOfType(c->target_data,
-          ((compile_type_t*)m->result->c_type)->structure);
-        LLVMValueRef l_size = LLVMConstInt(c->intptr, abi_size, false);
-        gencall_memcpy(c, value_ret_ptr, value, l_size);
+        size_t abi_size = ((compile_type_t*)m->result->c_type)->abi_size;
+        LLVMValueRef cpy_size = LLVMConstInt(c->intptr, abi_size, false);
+        gencall_memcpy(c, value_ret_ptr, value, cpy_size);
       }
 
       ast_free_unattached(r_result);
@@ -601,7 +599,7 @@ static bool genfun_fun(compile_t* c, reach_type_t* t, reach_method_t* m)
       LLVMValueRef ret = NULL;
       if(m->return_by_value && return_value_lowered)
       {
-        ret = LLVMBuildLoad2(c->builder, r_type, value, "");
+        ret = load_lowered_return_value(c, value, r_type, m->result);
       }
       else
       {

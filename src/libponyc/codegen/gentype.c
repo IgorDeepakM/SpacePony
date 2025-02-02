@@ -406,7 +406,12 @@ static bool make_c_fixed_sized_array_struct(compile_t* c, reach_type_t* t)
 
   ast_t* typeargs = ast_childidx(t->ast, 2);
   AST_GET_CHILDREN(typeargs, elem_type, size);
+
+  pony_assert(ast_id(size) == TK_INT);
   lexint_t* size_val = ast_int(size);
+
+  // Do we need a reify here?
+  pony_assert(ast_id(elem_type) != TK_TYPEPARAMREF);
 
   size_t buf_size = sizeof(LLVMTypeRef);
   LLVMTypeRef* elements = (LLVMTypeRef*)ponyint_pool_alloc_size(buf_size);
@@ -840,6 +845,20 @@ bool gentypes(compile_t* c)
     make_global_instance(c, t);
   }
 
+  // Now when all the structs have been created, loop through them and set the
+  // abi size. Why? Because all sizes must be known before creating the functions
+  // because of value parameter passing.
+  i = HASHMAP_BEGIN;
+
+  while((t = reach_types_next(&c->reach->types, &i)) != NULL)
+  {
+    compile_type_t* c_t = (compile_type_t*)t->c_type;
+
+    // The ABI size for machine words and tuples is the boxed size.
+    if(c_t->structure != NULL)
+      c_t->abi_size = (size_t)LLVMABISizeOfType(c->target_data, c_t->structure);
+  }
+
   genprim_signature(c);
 
   // Cache the instance of None, which is used as the return value for
@@ -856,12 +875,6 @@ bool gentypes(compile_t* c)
 
   while((t = reach_types_next(&c->reach->types, &i)) != NULL)
   {
-    compile_type_t* c_t = (compile_type_t*)t->c_type;
-
-    // The ABI size for machine words and tuples is the boxed size.
-    if(c_t->structure != NULL)
-      c_t->abi_size = (size_t)LLVMABISizeOfType(c->target_data, c_t->structure);
-
     make_debug_final(c, t);
     make_intrinsic_methods(c, t);
 
