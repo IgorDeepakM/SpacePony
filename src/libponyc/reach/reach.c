@@ -1129,6 +1129,25 @@ static void reachable_addressof(reach_t* r, deferred_reification_t* reify,
   }
 }
 
+static void reachable_sizeof(reach_t* r, deferred_reification_t* reify,
+  ast_t* ast, pass_opt_t* opt)
+{
+  ast_t* expr = ast_child(ast);
+
+  switch(ast_id(expr))
+  {
+    case TK_TYPEREF:
+    {
+      ast_t* r_type = deferred_reify(reify, ast_type(expr), opt);
+      add_type(r, r_type, opt);
+      ast_free_unattached(r_type);
+      break;
+    }
+
+    default: {}
+  }
+}
+
 static void reachable_call(reach_t* r, deferred_reification_t* reify,
   ast_t* ast, pass_opt_t* opt)
 {
@@ -1235,6 +1254,10 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
 
     case TK_ADDRESS:
       reachable_addressof(r, reify, ast, opt);
+      break;
+
+    case TK_SIZEOF:
+      reachable_sizeof(r, reify, ast, opt);
       break;
 
     case TK_IF:

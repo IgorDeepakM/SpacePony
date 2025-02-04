@@ -105,3 +105,26 @@ TEST_F(XOfOperatorTest, OffsetOfFailOnlyType)
 
     TEST_ERRORS_1(src, "can only take the offset of a field");
 }
+
+TEST_F(XOfOperatorTest, SizeOfSuccess)
+{
+  const char* src =
+    "struct S\n"
+    "  var a: U32 = 0\n"
+    "  let b: U32 = 1\n"
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    var v: I32 = 0\n"
+    "    let v2: I32 = 0\n"
+    "    var s: S = S\n"
+    "    sizeof S\n"
+    "    sizeof s\n"
+    "    sizeof S.a\n"
+    "    sizeof s.b\n"
+    "    sizeof v\n"
+    "    sizeof v2\n"
+    "    sizeof USize\n"
+    "    sizeof F64\n";
+
+  TEST_COMPILE(src);
+}

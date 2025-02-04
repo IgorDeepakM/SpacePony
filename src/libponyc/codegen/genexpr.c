@@ -192,6 +192,10 @@ LLVMValueRef gen_expr(compile_t* c, ast_t* ast)
       ret = gen_offsetof(c, ast);
       break;
 
+    case TK_SIZEOF:
+      ret = gen_sizeof(c, ast);
+      break;
+
     case TK_DIGESTOF:
       ret = gen_digestof(c, ast);
       break;

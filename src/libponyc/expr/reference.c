@@ -382,6 +382,7 @@ bool expr_typeref(pass_opt_t* opt, ast_t** astp)
     case TK_DOT:
     case TK_TILDE:
     case TK_CHAIN:
+    case TK_SIZEOF:
       break;
 
     case TK_CALL:
@@ -809,6 +810,39 @@ bool expr_offsetof(pass_opt_t* opt, ast_t* ast)
     default:
       ast_error(opt->check.errors, ast,
         "can only take the offset of a field");
+      return false;
+  }
+
+  ast_t* expr_type = ast_type(expr);
+
+  if (is_typecheck_error(expr_type))
+    return false;
+
+  ast_t* type = type_builtin(opt, expr_type, "USize");
+
+  ast_settype(ast, type);
+  return true;
+}
+
+bool expr_sizeof(pass_opt_t* opt, ast_t* ast)
+{
+  ast_t* expr = ast_child(ast);
+
+  switch (ast_id(expr))
+  {
+    case TK_FVARREF:
+    case TK_FLETREF:
+    case TK_EMBEDREF:
+    case TK_TYPEREF:
+    case TK_VARREF:
+    case TK_LETREF:
+    case TK_TUPLEELEMREF:
+    case TK_PARAMREF:
+      break;
+
+    default:
+      ast_error(opt->check.errors, ast,
+        "can't use sizeof on this expression");
       return false;
   }
 

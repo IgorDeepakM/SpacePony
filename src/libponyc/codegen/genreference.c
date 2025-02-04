@@ -425,6 +425,40 @@ LLVMValueRef gen_offsetof(compile_t* c, ast_t* ast)
   return NULL;
 }
 
+LLVMValueRef gen_sizeof(compile_t* c, ast_t* ast)
+{
+  ast_t* type = NULL;
+  ast_t* child = ast_child(ast);
+
+  switch (ast_id(child))
+  {
+    default:
+    {
+      type = ast_type(child);
+    }
+  }
+
+  ast_t* r_type = deferred_reify(c->frame->reify, type, c->opt);
+  reach_type_t* t = reach_type(c->reach, r_type);
+
+  compile_type_t* c_t = (compile_type_t*)t->c_type;
+
+  size_t size_of_type = 0;
+
+  if(is_integer(r_type) || is_float(r_type))
+  {
+    size_of_type = LLVMABISizeOfType(c->target_data, c_t->primitive);
+  }
+  else
+  {
+    size_of_type = c_t->abi_size;
+  }
+
+  ast_free_unattached(r_type);
+
+  return LLVMConstInt(c->intptr, size_of_type, false);
+}
+
 static LLVMValueRef gen_digestof_box(compile_t* c, reach_type_t* type,
   LLVMValueRef value, int boxed_subtype)
 {

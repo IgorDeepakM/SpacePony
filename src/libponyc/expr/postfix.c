@@ -236,7 +236,7 @@ static bool type_access(pass_opt_t* opt, ast_t** astp)
         parent = ast_parent(parent);
       }
 
-      if(ast_id(parent) == TK_OFFSETOF)
+      if(ast_id(parent) == TK_OFFSETOF || ast_id(parent) == TK_SIZEOF)
       {
         ast_t* typeref = ast_child(ast);
         pony_assert(ast_id(typeref) == TK_TYPEREF);
@@ -245,6 +245,9 @@ static bool type_access(pass_opt_t* opt, ast_t** astp)
 
         deferred_reification_t* find_o = lookup(opt, ast, find->thistype, ast_name(type_id));
 
+        // Fake this by just setting the type as changing the ast id
+        // from TK_TYPEREF to TK_FVARREF and this is later handled by gen_offsetof
+        // and it is only using the type field in the ast node.
         ast_setid(ast, TK_FVARREF);
         ast_settype(ast, ast_type(find->ast));
       }
