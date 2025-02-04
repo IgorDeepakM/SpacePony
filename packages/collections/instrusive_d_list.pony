@@ -66,14 +66,14 @@ class IntrusiveDList[A, OffsetPrimitive: NodeOffset #read]
     var signed_offset = OffsetPrimitive.get_offset().isize_unsafe()
     signed_offset = -signed_offset
     let fake_offset = signed_offset.usize_unsafe()
-    var parent_ptr = u8_ptr.pointer_at_offset(fake_offset)
+    var parent_ptr = u8_ptr.pointer_at_index(fake_offset)
     var parent_c = parent_ptr.convert[this->A]()
     parent_c.to_reftype_no_check()
 
   fun _get_member_from_parent(parent: A!): IntrusiveDListNode =>
     let parent_ptr = Pointer[A].from_any[A!](parent)
     let u8_ptr = parent_ptr.convert[U8]()
-    let member_ptr = u8_ptr.pointer_at_offset(OffsetPrimitive.get_offset())
+    let member_ptr = u8_ptr.pointer_at_index(OffsetPrimitive.get_offset())
     let member_c = member_ptr.convert[IntrusiveDListNode]()
     member_c.to_reftype_no_check()
 
