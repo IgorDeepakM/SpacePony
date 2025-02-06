@@ -712,44 +712,9 @@ LLVMValueRef gen_string(compile_t* c, ast_t* ast)
 
 LLVMValueRef gen_valueformalparamref(compile_t* c, ast_t* ast)
 {
-  const char* name = ast_name(ast_child(ast));
+  ast_t* reified = deferred_reify(c->frame->reify, ast, c->opt);
+  LLVMValueRef ret = gen_expr(c, reified);
+  ast_free_unattached(reified);
 
-  // First loop through the typeargs for the type to find the reference
-  ast_t* typeargs = c->frame->reify->type_typeargs;
-  ast_t* typeparams = c->frame->reify->type_typeparams;
-
-  ast_t* typearg_elem = ast_child(typeargs);
-  ast_t* typeparam_elem = ast_child(typeparams);
-
-  while (typeparam_elem != NULL && typearg_elem != NULL)
-  {
-    if(strcmp(name, ast_name(ast_child(typeparam_elem))) == 0)
-    {
-      return gen_expr(c, typearg_elem);
-    }
-
-    typearg_elem = ast_sibling(typearg_elem);
-    typeparam_elem = ast_sibling(typeparam_elem);
-  }
-
-  // First loop through the typeargs for the method to find the reference
-  typeargs = c->frame->reify->method_typeargs;
-  typeparams = c->frame->reify->method_typeparams;
-
-  typearg_elem = ast_child(typeargs);
-  typeparam_elem = ast_child(typeparams);
-
-  while (typeparam_elem != NULL && typearg_elem != NULL)
-  {
-    if (strcmp(name, ast_name(ast_child(typeparam_elem))) == 0)
-    {
-      return gen_expr(c, typearg_elem);
-    }
-
-    typearg_elem = ast_sibling(typearg_elem);
-    typeparam_elem = ast_sibling(typeparam_elem);
-  }
-
-  pony_assert(0);
-  return NULL;
+  return ret;
 }
