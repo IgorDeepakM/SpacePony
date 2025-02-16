@@ -241,13 +241,10 @@ static bool type_access(pass_opt_t* opt, ast_t** astp)
         ast_t* typeref = ast_child(ast);
         pony_assert(ast_id(typeref) == TK_TYPEREF);
 
-        ast_t* type_id = ast_sibling(typeref);
-
-        deferred_reification_t* find_o = lookup(opt, ast, find->thistype, ast_name(type_id));
-
-        // Fake this by just setting the type as changing the ast id
-        // from TK_TYPEREF to TK_FVARREF and this is later handled by gen_offsetof
-        // and it is only using the type field in the ast node.
+        // Dot expressions that begins with a TK_TYPEREF (like S.a) does
+        // not have any special token like with member access
+        // (TK_FVARREF, TK_EMBEDREF, TK_FLETREF). TK_FVARREF is instead reused
+        // for these expressions.
         ast_setid(ast, TK_FVARREF);
         ast_settype(ast, ast_type(find->ast));
       }
