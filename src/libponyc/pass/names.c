@@ -213,7 +213,7 @@ static bool names_valueparam(pass_opt_t* opt, ast_t** astp, ast_t* def)
   (void)opt;
   ast_t* ast = *astp;
   AST_GET_CHILDREN(ast, package, id);
-  assert(ast_id(package) == TK_NONE);
+  pony_assert(ast_id(package) == TK_NONE);
 
   REPLACE(astp,
     NODE(TK_VALUEFORMALPARAMREF, TREE(id)));

@@ -194,8 +194,7 @@ static bool is_sub_cap_and_eph(ast_t* sub, ast_t* super, check_cap_t check_cap,
   return false;
 }
 
-static bool is_literal_equal(ast_t* a, ast_t* b, errorframe_t* errorf,
-  pass_opt_t* opt)
+static bool is_literal_equal(ast_t* a, ast_t* b)
 {
   switch(ast_id(a))
   {
@@ -270,7 +269,7 @@ static bool is_eq_typeargs(ast_t* a, ast_t* b, errorframe_t* errorf,
   {
     if (is_value_formal_arg_literal(a_arg))
     {
-      if (!is_literal_equal(a_arg, b_arg, errorf, opt))
+      if (!is_literal_equal(a_arg, b_arg))
       {
         ret = false;
       }

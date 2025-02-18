@@ -996,7 +996,7 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
       else
         r = codegen_call(c, func_type, func, args + arg_offset, i, !bare);
 
-      int llvm_argument_shift = 1;
+      size_t llvm_argument_shift = 1;
       if(m->return_by_value && !return_value_lowering)
       {
         llvm_argument_shift++;
@@ -1008,7 +1008,7 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
         if (m->params[i].pass_by_value)
         {
           apply_call_site_value_param_attribute(c, m->params[i].type, r,
-            i + llvm_argument_shift);
+            (LLVMAttributeIndex)(i + llvm_argument_shift));
         }
       }
 
@@ -1274,8 +1274,6 @@ static LLVMValueRef declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* 
 
   if(orig_param_count != 0)
   {
-    deferred_reification_t* reify = c->frame->reify;
-
     while ((arg != NULL) && (ast_id(arg) != TK_ELLIPSIS))
     {
       if(ast_has_annotation(ast_childidx(arg, 1), "passbyvalue"))
@@ -1418,8 +1416,6 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
     // Prototypes are mandatory, the declaration is already stored.
     ast_t* decl = (ast_t*)ast_data(ast);
     pony_assert(decl != NULL);
-    reach_type_t** reified_reach_params = NULL;
-    size_t reified_reach_params_size = 0;
 
     bool is_intrinsic = (!strncmp(f_name, "llvm.", 5) || !strncmp(f_name, "internal.", 9));
     AST_GET_CHILDREN(decl, decl_id, decl_ret, decl_params, decl_named_params, decl_err);

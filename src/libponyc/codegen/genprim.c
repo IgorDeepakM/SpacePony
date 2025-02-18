@@ -92,7 +92,7 @@ static void pointer_create(compile_t* c, reach_type_t* t)
   codegen_finishfun(c);
 }
 
-static void pointer_from_usize(compile_t* c, reach_type_t* t, compile_type_t* t_elem)
+static void pointer_from_usize(compile_t* c, reach_type_t* t)
 {
   FIND_METHOD("from_usize", TK_NONE);
 
@@ -202,6 +202,7 @@ static void pointer_unsafe(compile_t* c, reach_type_t* t)
 
 static void pointer_convert(compile_t* c, reach_type_t* t, reach_method_t* m, void* gen_data)
 {
+  (void)gen_data;
   m->intrinsic = true;
   compile_type_t* c_t = (compile_type_t*)t->c_type;
   compile_method_t* c_m = (compile_method_t*)m->c_method;
@@ -518,7 +519,7 @@ void genprim_pointer_methods(compile_t* c, reach_type_t* t)
   c_box_args[1] = c_t_elem;
 
   pointer_create(c, t);
-  pointer_from_usize(c, t, c_t_elem);
+  pointer_from_usize(c, t);
   GENERIC_FUNCTION("from_any", pointer_from_any, c_box_args);
   pointer_alloc(c, t, c_t_elem);
 
@@ -619,6 +620,7 @@ void genprim_nullable_pointer_methods(compile_t* c, reach_type_t* t)
 
 static void c_fixed_sized_array_cpointer(compile_t* c, reach_type_t* t, reach_method_t* m, void* gen_data)
 {
+  (void)gen_data;
   m->intrinsic = true;
   compile_type_t* c_t = (compile_type_t*)t->c_type;
   compile_method_t* c_m = (compile_method_t*)m->c_method;
@@ -635,19 +637,12 @@ static void c_fixed_sized_array_cpointer(compile_t* c, reach_type_t* t, reach_me
 
 void genprim_c_fixed_sized_array_methods(compile_t* c, reach_type_t* t)
 {
-  ast_t* typeargs = ast_childidx(t->ast, 2);
-  ast_t* typearg = ast_child(typeargs);
-  compile_type_t* t_elem =
-    (compile_type_t*)reach_type(c->reach, typearg)->c_type;
-
   GENERIC_FUNCTION("cpointer", c_fixed_sized_array_cpointer, NULL);
 }
 
 static void trace_c_fixed_sized_array_elements(compile_t* c, reach_type_t* t,
-  LLVMValueRef ctx, LLVMValueRef object, LLVMValueRef array_ptr)
+  LLVMValueRef ctx, LLVMValueRef array_ptr)
 {
-  compile_type_t* c_t = (compile_type_t*)t->c_type;
-
   // Get the type argument for the fixed sized array. This will be used to generate the
   // per-element trace call.
   ast_t* typeargs = ast_childidx(t->ast, 2);
@@ -712,7 +707,7 @@ void genprim_c_fixed_sized_array_trace(compile_t* c, reach_type_t* t)
   LLVMValueRef object = LLVMGetParam(c_t->trace_fn, 1);
   LLVMValueRef array_ptr = LLVMBuildStructGEP2(c->builder, c_t->structure, object, 0, "");
 
-  trace_c_fixed_sized_array_elements(c, t, ctx, object, array_ptr);
+  trace_c_fixed_sized_array_elements(c, t, ctx, array_ptr);
   genfun_build_ret_void(c);
   codegen_finishfun(c);
 }
@@ -756,7 +751,7 @@ void genprim_c_fixed_sized_array_serialise(compile_t* c, reach_type_t* t)
   compile_type_t* c_t_elem = (compile_type_t*)t_elem->c_type;
 
   lexint_t* lex_size = ast_int(num_elems);
-  assert(lexint_cmp64(lex_size, UINT32_MAX) <= 0);
+  pony_assert(lexint_cmp64(lex_size, UINT32_MAX) <= 0);
   size_t abisize = (size_t)LLVMABISizeOfType(c->target_data, c_t_elem->use_type);
   LLVMValueRef size = LLVMConstInt(c->intptr, lex_size->low * abisize, false);
 
@@ -841,7 +836,7 @@ void genprim_c_fixed_sized_array_deserialise(compile_t* c, reach_type_t* t)
   if(t_elem->underlying != TK_PRIMITIVE)
   {
     lexint_t* lex_size = ast_int(num_elems);
-    assert(lexint_cmp64(lex_size, UINT32_MAX) <= 0);
+    pony_assert(lexint_cmp64(lex_size, UINT32_MAX) <= 0);
     LLVMValueRef size = LLVMConstInt(c->intptr, lex_size->low, false);
 
     LLVMBasicBlockRef entry_block = LLVMGetInsertBlock(c->builder);
@@ -884,6 +879,7 @@ void genprim_c_fixed_sized_array_deserialise(compile_t* c, reach_type_t* t)
 static void donotoptimise_apply(compile_t* c, reach_type_t* t,
   reach_method_t* m, void *gen_data)
 {
+  (void)gen_data;
   m->intrinsic = true;
   compile_type_t* c_t = (compile_type_t*)t->c_type;
   compile_method_t* c_m = (compile_method_t*)m->c_method;

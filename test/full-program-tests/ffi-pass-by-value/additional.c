@@ -4,6 +4,7 @@
 #  define EXPORT_SYMBOL
 #endif
 
+#include <stddef.h>
 #include <stdint.h>
 
 #define SMALL_SIZE 2
@@ -21,8 +22,6 @@ typedef struct
 
 EXPORT_SYMBOL void FFI_clobber_small(S1Small s1, S1Small s2)
 {
-  S1Small ret;
-
   for(size_t i = 0; i < SMALL_SIZE; i++)
   {
     s1.ar[i] = 0x1235;
@@ -32,8 +31,6 @@ EXPORT_SYMBOL void FFI_clobber_small(S1Small s1, S1Small s2)
 
 EXPORT_SYMBOL void FFI_clobber_large(S1Large s1, S1Large s2)
 {
-  S1Small ret;
-
   for(size_t i = 0; i < LARGE_SIZE; i++)
   {
     s1.ar[i] = 0x1235;

@@ -11,6 +11,7 @@
 #include "../expr/literal.h"
 #include "../pass/expr.h"
 #include "typeparam.h"
+#include <string.h>
 
 
 static void reify_typeparamref(ast_t** astp, ast_t* typeparam, ast_t* typearg)
@@ -91,7 +92,7 @@ static void reify_typeparamref(ast_t** astp, ast_t* typeparam, ast_t* typearg)
 static void reify_valueformalparamref(ast_t** astp, ast_t* typeparam, ast_t* typearg)
 {
   ast_t* ast = *astp;
-  assert(ast_id(ast) == TK_VALUEFORMALPARAMREF);
+  pony_assert(ast_id(ast) == TK_VALUEFORMALPARAMREF);
   ast_t* ref_name = ast_child(ast);
   ast_t* param_name = ast_child(typeparam);
 

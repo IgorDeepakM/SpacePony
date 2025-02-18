@@ -340,9 +340,9 @@ bool expr_typeref(pass_opt_t* opt, ast_t** astp)
     if (ast_id(typeargs) != TK_NONE)
     {
       ast_t* underlying_type = (ast_t*)ast_data(ast);
-      if(underlying_type != NULL &&
-        (ast_id(underlying_type) == TK_CLASS || ast_id(underlying_type) == TK_STRUCT) ||
-         ast_id(underlying_type) == TK_TRAIT || ast_id(underlying_type) == TK_INTERFACE)
+      if((underlying_type != NULL) &&
+        (ast_id(underlying_type) == TK_CLASS || ast_id(underlying_type) == TK_STRUCT ||
+         ast_id(underlying_type) == TK_TRAIT || ast_id(underlying_type) == TK_INTERFACE))
       {
         ast_t* typeparams = ast_childidx(underlying_type, 1);
 
@@ -507,7 +507,7 @@ bool expr_local(pass_opt_t* opt, ast_t* ast)
   pony_assert(ast_type(ast) != NULL);
 
   AST_GET_CHILDREN(ast, id, type);
-  assert(type != NULL);
+  pony_assert(type != NULL);
 
   if (ast_id(type) == TK_NONE)
   {
@@ -623,6 +623,7 @@ bool expr_paramref(pass_opt_t* opt, ast_t* ast)
 
 bool expr_valueformalparamref(pass_opt_t* opt, ast_t** astp)
 {
+  (void)opt;
   ast_t* ast = *astp;
 
   pony_assert(ast_id(ast) == TK_VALUEFORMALPARAMREF);

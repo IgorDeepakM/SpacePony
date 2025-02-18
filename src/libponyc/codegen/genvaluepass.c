@@ -8,9 +8,9 @@
 
 typedef struct
 {
-  int current_word;
-  int current_byte_in_word;
-  int bytes_per_word;
+  size_t current_word;
+  size_t current_byte_in_word;
+  size_t bytes_per_word;
   LLVMTypeRef types[MAX_REG_TYPES];
 }RegisterPos_t;
 
@@ -175,7 +175,7 @@ static void lower_fixed_sized_array(compile_t* c, LLVMTypeRef array, RegisterPos
   size_t num_whole_words = total_bytes / pos->bytes_per_word;
   size_t nibble = total_bytes % pos->bytes_per_word;
 
-  for(int i = 0; i < num_whole_words; i++)
+  for(size_t i = 0; i < num_whole_words; i++)
   {
     insert_size(c, pos, pos->bytes_per_word);
   }
@@ -191,9 +191,9 @@ static void lower_structure(compile_t* c, LLVMTypeRef structure, RegisterPos_t *
 {
   size_t num_elements = (size_t)LLVMCountStructElementTypes(structure);
 
-  for(int i = 0; i < num_elements; i++)
+  for(size_t i = 0; i < num_elements; i++)
   {
-    LLVMTypeRef curr_type = LLVMStructGetTypeAtIndex(structure, i);
+    LLVMTypeRef curr_type = LLVMStructGetTypeAtIndex(structure, (unsigned int)i);
 
     switch(LLVMGetTypeKind(curr_type))
     {
@@ -263,7 +263,7 @@ LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach_type_t* pt
         array_size++;
       }
       LLVMTypeRef array_type = get_type_from_size(c, align);
-      ret = LLVMArrayType(array_type, array_size);
+      ret = LLVMArrayType(array_type, (unsigned int)array_size);
     }
   }
   else
@@ -483,7 +483,6 @@ void apply_function_value_param_attribute(compile_t* c, reach_type_t* pt, LLVMVa
   if(!is_param_value_lowering_needed(c, pt))
   {
     unsigned int kind = LLVMGetEnumAttributeKindForName("byval", sizeof("byval") - 1);
-    compile_type_t* ty = ((compile_type_t*)pt->c_type);
     LLVMAttributeRef byvalue_attr = LLVMCreateTypeAttribute(
       c->context,
       kind,
