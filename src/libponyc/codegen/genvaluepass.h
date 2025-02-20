@@ -6,7 +6,7 @@
 
 PONY_EXTERN_C_BEGIN
 
-bool is_pass_by_value_lowering_supported(compile_t* c);
+bool is_pass_by_value_lowering_supported(pass_opt_t* opt);
 
 bool is_param_value_lowering_needed(compile_t* c, reach_type_t* pt);
 

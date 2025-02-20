@@ -7,6 +7,7 @@
 #include "../pkg/platformfuns.h"
 #include "../type/assemble.h"
 #include "../../libponyrt/mem/pool.h"
+#include "../codegen/genvaluepass.h"
 #include "ponyassert.h"
 #include <string.h>
 #include <ctype.h>
@@ -610,6 +611,22 @@ static ast_result_t syntax_ffi(pass_opt_t* opt, ast_t* ast,
     r = AST_ERROR;
   }
 
+  bool pass_by_value_supported = is_pass_by_value_lowering_supported(opt);
+
+  if(ast_id(typeargs) != TK_NONE)
+  {
+    ast_t* return_type = ast_child(typeargs);
+    if(ast_has_annotation(return_type, "passbyvalue"))
+    {
+      if(!pass_by_value_supported)
+      {
+        ast_error(opt->check.errors, return_type,
+          "Return by value is not supported for this target");
+        r = AST_ERROR;
+      }
+    }
+  }
+
   for(ast_t* p = ast_child(ffi_args); p != NULL; p = ast_sibling(p))
   {
     if(ast_id(p) == TK_PARAM)
@@ -622,6 +639,18 @@ static ast_result_t syntax_ffi(pass_opt_t* opt, ast_t* ast,
         ast_error(opt->check.errors, def_val,
           "FFIs parameters cannot have default values");
         r = AST_ERROR;
+      }
+
+      ast_t* param_type = ast_childidx(p, 1);
+
+      if(ast_has_annotation(param_type, "passbyvalue"))
+      {
+        if(!pass_by_value_supported)
+        {
+          ast_error(opt->check.errors, param_type,
+            "Value parameter passing is not supported for this target");
+          r = AST_ERROR;
+        }
       }
     }
   }
@@ -1066,6 +1095,33 @@ static ast_result_t syntax_lambda_capture(pass_opt_t* opt, ast_t* ast)
 }
 
 
+static ast_result_t syntax_lambdatype(pass_opt_t* opt, ast_t* ast)
+{
+  AST_GET_CHILDREN(ast, fun_cap, id, typeparams, params, return_type);
+
+  bool pass_by_value_supported = is_pass_by_value_lowering_supported(opt);
+
+  if(ast_has_annotation(return_type, "passbyvalue"))
+  {
+    ast_error(opt->check.errors, return_type,
+      "Return by value can only be used in bare lambdas");
+    return AST_ERROR;
+  }
+
+  for(ast_t* p = ast_child(params); p != NULL; p = ast_sibling(p))
+  {
+    if(ast_has_annotation(p, "passbyvalue"))
+    {
+      ast_error(opt->check.errors, p,
+        "Value parameter passing can only be used in bare lambdas");
+      return AST_ERROR;
+    }
+  }
+
+  return AST_OK;
+}
+
+
 static ast_result_t syntax_barelambdatype(pass_opt_t* opt, ast_t* ast)
 {
   AST_GET_CHILDREN(ast, fun_cap, id, typeparams, params, return_type, partial,
@@ -1076,6 +1132,31 @@ static ast_result_t syntax_barelambdatype(pass_opt_t* opt, ast_t* ast)
     ast_error(opt->check.errors, fun_cap, "a bare lambda cannot specify a "
       "receiver capability");
     return AST_ERROR;
+  }
+
+  bool pass_by_value_supported = is_pass_by_value_lowering_supported(opt);
+
+  if(ast_has_annotation(return_type, "passbyvalue"))
+  {
+    if(!pass_by_value_supported)
+    {
+      ast_error(opt->check.errors, return_type,
+        "Return by value is not supported for this target");
+      return AST_ERROR;
+    }
+  }
+
+  for(ast_t* p = ast_child(params); p != NULL; p = ast_sibling(p))
+  {
+    if(ast_has_annotation(p, "passbyvalue"))
+    {
+      if(!pass_by_value_supported)
+      {
+        ast_error(opt->check.errors, p,
+          "Value parameter passing is not supported for this target");
+        return AST_ERROR;
+      }
+    }
   }
 
   if(ast_id(typeparams) != TK_NONE)
@@ -1204,7 +1285,9 @@ static ast_result_t syntax_lambda(pass_opt_t* opt, ast_t* ast)
     default: {}
   }
 
-  if(ast_id(ast) == TK_BARELAMBDA)
+  bool is_bare_lambda = ast_id(ast) == TK_BARELAMBDA;
+
+  if(is_bare_lambda)
   {
     if(ast_id(receiver_cap) != TK_NONE)
     {
@@ -1237,6 +1320,48 @@ static ast_result_t syntax_lambda(pass_opt_t* opt, ast_t* ast)
         ast_error(opt->check.errors, reference_cap, "a bare lambda can only "
           "have a 'val' capability");
         r = false;
+    }
+  }
+
+  bool pass_by_value_supported = is_pass_by_value_lowering_supported(opt);
+
+  if(ast_has_annotation(ret_type, "passbyvalue"))
+  {
+    if(!is_bare_lambda)
+    {
+      ast_error(opt->check.errors, ret_type,
+        "Return by value can only be used in bare lambdas");
+      return AST_ERROR;
+    }
+    else if(!pass_by_value_supported)
+    {
+      ast_error(opt->check.errors, ret_type,
+        "Return by value is not supported for this target");
+      return AST_ERROR;
+    }
+  }
+
+  for(ast_t* p = ast_child(params); p != NULL; p = ast_sibling(p))
+  {
+    if(ast_id(p) == TK_PARAM)
+    {
+      ast_t* param_type = ast_childidx(p, 1);
+
+      if(ast_has_annotation(param_type, "passbyvalue"))
+      {
+        if(!is_bare_lambda)
+        {
+          ast_error(opt->check.errors, ret_type,
+            "Value parameter passing can only be used in bare lambdas");
+          return AST_ERROR;
+        }
+        else if(!pass_by_value_supported)
+        {
+          ast_error(opt->check.errors, param_type,
+            "Value parameter passing is not supported for this target");
+          return AST_ERROR;
+        }
+      }
     }
   }
 
@@ -1513,6 +1638,8 @@ ast_result_t pass_syntax(ast_t** astp, pass_opt_t* options)
     case TK_USE:        r = syntax_use(options, ast); break;
     case TK_LAMBDACAPTURE:
                         r = syntax_lambda_capture(options, ast); break;
+    case TK_LAMBDATYPE:
+                        r = syntax_lambdatype(options, ast); break;
     case TK_BARELAMBDATYPE:
                         r = syntax_barelambdatype(options, ast); break;
     case TK_COMPILE_INTRINSIC:

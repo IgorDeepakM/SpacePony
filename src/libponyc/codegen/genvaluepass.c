@@ -21,11 +21,11 @@ static bool is_power_of_2(size_t x)
     return x > 0 && !(x & (x - 1));
 }
 
-bool is_pass_by_value_lowering_supported(compile_t* c)
+bool is_pass_by_value_lowering_supported(pass_opt_t* opt)
 {
   bool ret = false;
 
-  char* triple = c->opt->triple;
+  char* triple = opt->triple;
 
   if(target_is_x86(triple))
   {
