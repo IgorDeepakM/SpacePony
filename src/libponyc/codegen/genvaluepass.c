@@ -11,6 +11,7 @@ typedef struct
   size_t current_word;
   size_t current_byte_in_word;
   size_t bytes_per_word;
+  LLVMTypeKind last_type_kind;
   LLVMTypeRef types[MAX_REG_TYPES];
 }RegisterPos_t;
 
@@ -26,11 +27,16 @@ bool is_pass_by_value_lowering_supported(compile_t* c)
 
   char* triple = c->opt->triple;
 
-  if(target_is_x86(triple) && target_is_windows(triple) && target_is_llp64(triple))
+  if(target_is_x86(triple))
   {
-    if(target_is_llp64(triple) || target_is_ilp32(triple))
+    if(target_is_windows(triple) &&
+       (target_is_llp64(triple) || target_is_ilp32(triple)))
     {
       ret = true;
+    }
+    else if(target_is_linux(triple) && target_is_lp64(triple))
+    {
+      return true;
     }
   }
   else if(target_is_arm(triple))
@@ -51,16 +57,29 @@ bool is_param_value_lowering_needed(compile_t* c, reach_type_t* pt)
 
   compile_type_t* p_t = (compile_type_t*)pt->c_type;
 
-  if(target_is_x86(triple) && target_is_windows(triple))
+  if(target_is_x86(triple))
   {
-    if(target_is_llp64(triple))
+    if(target_is_windows(triple))
     {
-      if(p_t->abi_size <= 8 && is_power_of_2(p_t->abi_size))
+      if(target_is_llp64(triple))
       {
-        ret = true;
+        if(p_t->abi_size <= 8 && is_power_of_2(p_t->abi_size))
+        {
+          ret = true;
+        }
+      }
+      // 32-bit Windows always use byval when value passing, so always false
+    }
+    else if(target_is_linux(triple))
+    {
+      if(target_is_lp64(triple))
+      {
+        if(p_t->abi_size <= 16)
+        {
+          ret = true;
+        }
       }
     }
-    // 32-bit Windows always use byval when value passing, so always false
   }
   else if(target_is_arm(triple))
   {
@@ -83,20 +102,33 @@ bool is_return_value_lowering_needed(compile_t* c, reach_type_t* pt)
 
   compile_type_t* p_t = (compile_type_t*)pt->c_type;
 
-  if(target_is_x86(triple) && target_is_windows(triple))
+  if(target_is_x86(triple))
   {
-    if(target_is_llp64(triple))
+    if(target_is_windows(triple))
     {
-      if(p_t->abi_size <= 8 && is_power_of_2(p_t->abi_size))
+      if(target_is_llp64(triple))
       {
-        ret = true;
+        if(p_t->abi_size <= 8 && is_power_of_2(p_t->abi_size))
+        {
+          ret = true;
+        }
+      }
+      else if(target_is_ilp32(triple))
+      {
+        if(p_t->abi_size <= 4)
+        {
+          ret = true;
+        }
       }
     }
-    else if(target_is_ilp32(triple))
+    else if(target_is_linux(triple))
     {
-      if(p_t->abi_size <= 4)
+      if(target_is_lp64(triple))
       {
-        ret = true;
+        if(p_t->abi_size <= 16)
+        {
+          ret = true;
+        }
       }
     }
   }
@@ -148,19 +180,46 @@ static size_t next_power_of_2(size_t v)
 }
 
 
-static void insert_size(compile_t* c, RegisterPos_t *pos, size_t size)
+static void insert_type(compile_t* c, RegisterPos_t *pos, LLVMTypeRef type)
 {
-  pos->current_byte_in_word += size;
+  LLVMTypeKind kind = LLVMGetTypeKind(type);
+  size_t size = (size_t)LLVMABISizeOfType(c->target_data, type);
 
-  if(pos->current_byte_in_word == pos->bytes_per_word)
+  size_t next_byte_in_word = pos->current_byte_in_word + size;
+
+  if(pos->current_word == 0 || next_byte_in_word > 8 ||
+     kind == LLVMDoubleTypeKind)
   {
-    pos->types[pos->current_word] = get_type_from_size(c, pos->bytes_per_word);
+    if(kind == LLVMIntegerTypeKind)
+    {
+      pos->types[pos->current_word] =
+        get_type_from_size(c, next_power_of_2(size));
+    }
+    else if(kind == LLVMDoubleTypeKind)
+    {
+      pos->types[pos->current_word] = c->f64;
+    }
+    else if(kind == LLVMFloatTypeKind)
+    {
+      pos->types[pos->current_word] = c->f32;
+    }
     pos->current_word++;
-    pos->current_byte_in_word = 0;
+    pos->current_byte_in_word = size;
+    pos->last_type_kind = kind;
   }
-  else if(pos->current_byte_in_word > pos->bytes_per_word)
+  else
   {
-    pony_assert(false);
+    if(pos->last_type_kind == LLVMFloatTypeKind && kind == LLVMFloatTypeKind)
+    {
+      pos->types[pos->current_word - 1] = LLVMVectorType(c->f32, 2);
+    }
+    else
+    {
+      pos->types[pos->current_word - 1] =
+        get_type_from_size(c, next_power_of_2(next_byte_in_word));
+    }
+    pos->current_byte_in_word = next_byte_in_word;
+    pos->last_type_kind = kind;
   }
 }
 
@@ -168,21 +227,11 @@ static void insert_size(compile_t* c, RegisterPos_t *pos, size_t size)
 static void lower_fixed_sized_array(compile_t* c, LLVMTypeRef array, RegisterPos_t *pos)
 {
   LLVMTypeRef element_type = LLVMGetElementType(array);
-  size_t element_size = (size_t)LLVMABISizeOfType(c->target_data, element_type);
   size_t num_elements = (size_t)LLVMGetArrayLength(array);
 
-  size_t total_bytes = num_elements * element_size;
-  size_t num_whole_words = total_bytes / pos->bytes_per_word;
-  size_t nibble = total_bytes % pos->bytes_per_word;
-
-  for(size_t i = 0; i < num_whole_words; i++)
+  for(size_t i = 0; i < num_elements; i++)
   {
-    insert_size(c, pos, pos->bytes_per_word);
-  }
-
-  if(nibble != 0)
-  {
-    insert_size(c, pos, nibble);
+    insert_type(c, pos, element_type);
   }
 }
 
@@ -205,35 +254,17 @@ static void lower_structure(compile_t* c, LLVMTypeRef structure, RegisterPos_t *
         break;
       default:
       {
-        size_t size = (size_t)LLVMABISizeOfType(c->target_data, curr_type);
-        insert_size(c, pos, size);
+        insert_type(c, pos, curr_type);
         break;
       }
     }
   }
 }
 
-static LLVMTypeRef lower_and_generate_type(compile_t* c, RegisterPos_t *pos)
+static LLVMTypeRef generate_flattened_type(compile_t* c, RegisterPos_t *pos)
 {
-  char* triple = c->opt->triple;
-
-  if(target_is_x86(triple) && target_is_windows(triple) && 
-     (target_is_llp64(triple) || target_is_ilp32(triple)))
-  {
-    if(pos->current_byte_in_word != 0)
-    {
-      return get_type_from_size(c, pos->current_byte_in_word);
-    }
-    else
-    {
-      return pos->types[0];
-    }
-  }
-  else
-  {
-    pony_assert(false);
-    return NULL;
-  }
+  return LLVMStructTypeInContext(c->context, pos->types,
+    (unsigned int)pos->current_word, false);
 }
 
 LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach_type_t* pt)
@@ -243,9 +274,34 @@ LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach_type_t* pt
 
   compile_type_t* p_t = (compile_type_t*)pt->c_type;
 
-  if(target_is_x86(triple) && target_is_windows(triple) && target_is_llp64(triple))
+  if(target_is_x86(triple))
   {
-    ret = get_type_from_size(c, p_t->abi_size);
+    if(target_is_windows(triple))
+    {
+      if(target_is_llp64(triple))
+      {
+        ret = get_type_from_size(c, p_t->abi_size);
+      }
+    }
+    else if(target_is_linux(triple))
+    {
+      if(target_is_lp64(triple))
+      {
+        size_t ptr_size = (size_t)LLVMABISizeOfType(c->target_data, c->intptr);
+
+        RegisterPos_t reg_pos;
+        reg_pos.current_word = 0;
+        reg_pos.current_byte_in_word = 0;
+        reg_pos.bytes_per_word = ptr_size;
+        reg_pos.last_type_kind = LLVMVoidTypeKind;
+
+        LLVMTypeRef structure = p_t->structure;
+
+        lower_structure(c, structure, &reg_pos);
+
+        ret = generate_flattened_type(c, &reg_pos);
+      }
+    }
   }
   else if(target_is_arm(triple))
   {
@@ -266,23 +322,6 @@ LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach_type_t* pt
       ret = LLVMArrayType(array_type, (unsigned int)array_size);
     }
   }
-  else
-  {
-    size_t ptr_size = (size_t)LLVMABISizeOfType(c->target_data, c->intptr);
-
-    RegisterPos_t reg_pos;
-    reg_pos.current_word = 0;
-    reg_pos.current_byte_in_word = 0;
-    reg_pos.bytes_per_word = ptr_size;
-
-    LLVMTypeRef structure = p_t->structure;
-
-    lower_structure(c, structure, &reg_pos);
-
-    ret = lower_and_generate_type(c, &reg_pos);
-    
-     //LLVMStructType(reg_pos.types, reg_pos.current_word, false);
-  }
 
   return ret;
 }
@@ -294,10 +333,34 @@ LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reach_type_t* p
 
   compile_type_t* p_t = (compile_type_t*)pt->c_type;
 
-  if(target_is_x86(triple) && target_is_windows(triple) &&
-     (target_is_llp64(triple) || target_is_ilp32(triple)))
+  if(target_is_x86(triple))
   {
-    ret = get_type_from_size(c, p_t->abi_size);
+    if(target_is_windows(triple))
+    {
+      if(target_is_llp64(triple) || target_is_ilp32(triple))
+      {
+        ret = get_type_from_size(c, p_t->abi_size);
+      }
+    }
+    else if(target_is_linux(triple))
+    {
+      if(target_is_lp64(triple))
+      {
+        size_t ptr_size = (size_t)LLVMABISizeOfType(c->target_data, c->intptr);
+
+        RegisterPos_t reg_pos;
+        reg_pos.current_word = 0;
+        reg_pos.current_byte_in_word = 0;
+        reg_pos.bytes_per_word = ptr_size;
+        reg_pos.last_type_kind = LLVMVoidTypeKind;
+
+        LLVMTypeRef structure = p_t->structure;
+
+        lower_structure(c, structure, &reg_pos);
+
+        ret = generate_flattened_type(c, &reg_pos);
+      }
+    }
   }
   else if(target_is_arm(triple))
   {
@@ -305,23 +368,6 @@ LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reach_type_t* p
     {
       ret = get_type_from_size(c, next_power_of_2(p_t->abi_size));
     }
-  }
-  else
-  {
-    size_t ptr_size = (size_t)LLVMABISizeOfType(c->target_data, c->intptr);
-
-    RegisterPos_t reg_pos;
-    reg_pos.current_word = 0;
-    reg_pos.current_byte_in_word = 0;
-    reg_pos.bytes_per_word = ptr_size;
-
-    LLVMTypeRef structure = p_t->structure;
-
-    lower_structure(c, structure, &reg_pos);
-
-    ret = lower_and_generate_type(c, &reg_pos);
-    
-     //LLVMStructType(reg_pos.types, reg_pos.current_word, false);
   }
 
   return ret;
@@ -340,7 +386,8 @@ LLVMValueRef load_lowered_param_value(compile_t* c, LLVMValueRef ptr,
     // so it can be loaded directely without a cast
     ret = LLVMBuildLoad2(c->builder, param_type, ptr, "");
   }
-  else if(target_is_arm(c->opt->triple))
+  else if(target_is_arm(c->opt->triple) ||
+          (target_is_x86(triple) && target_is_linux(triple) && target_is_lp64(triple)))
   {
     compile_type_t* p_c_t = (compile_type_t*)real_type->c_type;
     if(p_c_t->abi_size == (size_t)LLVMABISizeOfType(c->target_data, param_type))
@@ -379,7 +426,8 @@ LLVMValueRef load_lowered_return_value(compile_t* c, LLVMValueRef ptr,
     // so it can be loaded directely without a cast
     ret = LLVMBuildLoad2(c->builder, return_type, ptr, "");
   }
-  else if(target_is_arm(c->opt->triple))
+  else if(target_is_arm(c->opt->triple) ||
+          (target_is_x86(triple) && target_is_linux(triple) && target_is_lp64(triple)))
   {
     compile_type_t* p_c_t = (compile_type_t*)real_type->c_type;
     if(p_c_t->abi_size == (size_t)LLVMABISizeOfType(c->target_data, return_type))
@@ -415,7 +463,8 @@ void copy_lowered_param_value(compile_t* c, LLVMValueRef dest_ptr,
   {
     LLVMBuildStore(c->builder, param_value, dest_ptr);
   }
-  else if(target_is_arm(c->opt->triple))
+  else if(target_is_arm(c->opt->triple) ||
+          (target_is_x86(triple) && target_is_linux(triple) && target_is_lp64(triple)))
   {
     compile_type_t* p_c_t = (compile_type_t*)real_target_type->c_type;
     LLVMTypeRef param_type = LLVMTypeOf(param_value);
@@ -448,7 +497,8 @@ void copy_lowered_return_value(compile_t* c, LLVMValueRef dest_ptr,
   {
     LLVMBuildStore(c->builder, return_value, dest_ptr);
   }
-  else if(target_is_arm(c->opt->triple))
+  else if(target_is_arm(c->opt->triple) ||
+          (target_is_x86(triple) && target_is_linux(triple) && target_is_lp64(triple)))
   {
     compile_type_t* p_c_t = (compile_type_t*)real_target_type->c_type;
     LLVMTypeRef return_type = LLVMTypeOf(return_value);
