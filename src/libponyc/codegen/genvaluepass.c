@@ -41,10 +41,7 @@ bool is_pass_by_value_lowering_supported(pass_opt_t* opt)
   }
   else if(target_is_arm(triple))
   {
-    if(target_is_ilp32(triple))
-    {
-      ret = true;
-    }
+    ret = true;
   }
 
   return ret;
@@ -86,6 +83,13 @@ bool is_param_value_lowering_needed(compile_t* c, reach_type_t* pt)
     if(target_is_ilp32(triple))
     {
       if(p_t->abi_size <= 64)
+      {
+        ret = true;
+      }
+    }
+    else if(target_is_lp64(triple))
+    {
+      if(p_t->abi_size <= 16)
       {
         ret = true;
       }
@@ -137,6 +141,13 @@ bool is_return_value_lowering_needed(compile_t* c, reach_type_t* pt)
     if(target_is_ilp32(triple))
     {
       if(p_t->abi_size <= 4)
+      {
+        ret = true;
+      }
+    }
+    else if(target_is_lp64(triple))
+    {
+      if(p_t->abi_size <= 16)
       {
         ret = true;
       }
@@ -321,6 +332,29 @@ LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach_type_t* pt
       LLVMTypeRef array_type = get_type_from_size(c, align);
       ret = LLVMArrayType(array_type, (unsigned int)array_size);
     }
+    else if(target_is_lp64(triple))
+    {
+      if(p_t->abi_size <= 8)
+      {
+        ret = get_type_from_size(c, next_power_of_2(p_t->abi_size));
+      }
+      else
+      {
+        size_t align = (size_t)LLVMABIAlignmentOfType(c->target_data, p_t->structure);
+        if(align < 8)
+        {
+          align = 8;
+        }
+        size_t type_size = p_t->abi_size;
+        size_t array_size = type_size / align;
+        if((type_size % align) != 0)
+        {
+          array_size++;
+        }
+        LLVMTypeRef array_type = get_type_from_size(c, align);
+        ret = LLVMArrayType(array_type, (unsigned int)array_size);
+      }
+    }
   }
 
   return ret;
@@ -367,6 +401,29 @@ LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reach_type_t* p
     if(target_is_ilp32(triple))
     {
       ret = get_type_from_size(c, next_power_of_2(p_t->abi_size));
+    }
+    else if(target_is_lp64(triple))
+    {
+      if(p_t->abi_size <= 8)
+      {
+        ret = get_type_from_size(c, next_power_of_2(p_t->abi_size));
+      }
+      else
+      {
+        size_t align = (size_t)LLVMABIAlignmentOfType(c->target_data, p_t->structure);
+        if(align < 8)
+        {
+          align = 8;
+        }
+        size_t type_size = p_t->abi_size;
+        size_t array_size = type_size / align;
+        if((type_size % align) != 0)
+        {
+          array_size++;
+        }
+        LLVMTypeRef array_type = get_type_from_size(c, align);
+        ret = LLVMArrayType(array_type, (unsigned int)array_size);
+      }
     }
   }
 
