@@ -1099,8 +1099,6 @@ static ast_result_t syntax_lambdatype(pass_opt_t* opt, ast_t* ast)
 {
   AST_GET_CHILDREN(ast, fun_cap, id, typeparams, params, return_type);
 
-  bool pass_by_value_supported = is_pass_by_value_lowering_supported(opt);
-
   if(ast_has_annotation(return_type, "passbyvalue"))
   {
     ast_error(opt->check.errors, return_type,
