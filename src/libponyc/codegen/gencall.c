@@ -1275,25 +1275,21 @@ static LLVMValueRef declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* 
   LLVMValueRef func = LLVMAddFunction(c->module, f_name, f_type);
   ffi_decl->func = func;
 
-  ast_t* arg = ast_child(args);
-  param_count = 0;
-
-  if(return_by_value && !return_value_lowering)
-  {
-    param_count++;
-  }
-
   if(orig_param_count != 0)
   {
-    while ((arg != NULL) && (ast_id(arg) != TK_ELLIPSIS))
+    size_t param_start = 0;
+    if(return_by_value && !return_value_lowering)
     {
-      if(ffi_decl->params[param_count].pass_by_value)
+      param_start++;
+    }
+
+    for(size_t i = param_start; i < ffi_decl->num_params; i++)
+    {
+      if(ffi_decl->params[i].pass_by_value)
       {
-        reach_type_t* pt = ffi_decl->params[param_count].reach_type;
-        apply_function_value_param_attribute(c, pt, func, param_count + 1);
+        reach_type_t* pt = ffi_decl->params[i].reach_type;
+        apply_function_value_param_attribute(c, pt, func, (LLVMAttributeIndex)(i + 1));
       }
-      arg = ast_sibling(arg);
-      param_count++;
     }
   }
 
@@ -1566,20 +1562,20 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
   // Go through each parameter and add byval attribute if passed by value
   if(ffi_decl != NULL)
   {
-    int param_count = 0;
+    size_t param_start = 0;
     if(return_by_value && !return_value_lowering)
     {
-      param_count++;
+      param_start++;
     }
 
-    while(param_count < llvm_arg_count)
+    // For now pass by value is not supported for variable length arguments
+    for(size_t i = param_start; i < ffi_decl->num_params; i++)
     {
-      if(ffi_decl->params[param_count].pass_by_value)
+      if(ffi_decl->params[i].pass_by_value)
       {
-        apply_call_site_value_param_attribute(c, ffi_decl->params[param_count].reach_type, result,
-          (LLVMAttributeIndex)(param_count + 1));
+        apply_call_site_value_param_attribute(c, ffi_decl->params[i].reach_type, result,
+          (LLVMAttributeIndex)(i + 1));
       }
-      param_count++;
     }
 
     if(return_by_value)
