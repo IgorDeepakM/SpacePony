@@ -8,24 +8,22 @@ PONY_EXTERN_C_BEGIN
 
 bool is_pass_by_value_lowering_supported(pass_opt_t* opt);
 
-bool is_param_value_lowering_needed(compile_t* c, reach_type_t* pt);
-
 bool is_return_value_lowering_needed(compile_t* c, reach_type_t* pt);
 
 LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach_type_t* pt);
 
 LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reach_type_t* pt);
 
-LLVMValueRef load_lowered_param_value(compile_t* c, LLVMValueRef ptr,
+LLVMValueRef load_lowered_param_value_from_ptr(compile_t* c, LLVMValueRef ptr,
   LLVMTypeRef param_type, reach_type_t* real_type);
 
-LLVMValueRef load_lowered_return_value(compile_t* c, LLVMValueRef ptr,
+LLVMValueRef load_lowered_return_value_from_ptr(compile_t* c, LLVMValueRef ptr,
   LLVMTypeRef return_type, reach_type_t* real_type);
 
-void copy_lowered_param_value(compile_t* c, LLVMValueRef dest_ptr,
+void copy_lowered_param_value_to_ptr(compile_t* c, LLVMValueRef dest_ptr,
   LLVMValueRef param_value, reach_type_t* real_target_type);
 
-void copy_lowered_return_value(compile_t* c, LLVMValueRef dest_ptr,
+void copy_lowered_return_value_to_ptr(compile_t* c, LLVMValueRef dest_ptr,
   LLVMValueRef return_value, reach_type_t* real_target_type);
 
 void apply_function_value_param_attribute(compile_t* c, reach_type_t* pt, LLVMValueRef func,

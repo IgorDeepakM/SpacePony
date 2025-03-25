@@ -37,15 +37,7 @@ static void name_param(compile_t* c, reach_type_t* t, reach_method_t* m,
      (t->underlying == TK_STRUCT || t->underlying == TK_CLASS))
   {
     LLVMValueRef heap_allocated = gencall_allocstruct(c, t);
-    if(is_param_value_lowering_needed(c, t))
-    {
-      copy_lowered_param_value(c, heap_allocated, value, t);
-    }
-    else
-    {
-      LLVMValueRef l_size = LLVMConstInt(c->intptr, c_t->abi_size, false);
-      gencall_memcpy(c, heap_allocated, value, l_size);
-    }
+    copy_lowered_param_value_to_ptr(c, heap_allocated, value, t);
     value = heap_allocated;
   }
   LLVMSetValueName(value, name);
@@ -117,7 +109,6 @@ static void make_signature(compile_t* c, reach_type_t* t,
   bool bare_function = m->cap == TK_AT;
 
   bool return_value_lowering = false;
-
   if(m->return_by_value)
   {
     return_value_lowering = is_return_value_lowering_needed(c, m->result);
@@ -172,7 +163,7 @@ static void make_signature(compile_t* c, reach_type_t* t,
     reach_type_t* rt = m->params[i].type;
     compile_type_t* p_c_t = (compile_type_t*)m->params[i].type->c_type;
 
-    if(m->params[i].pass_by_value && is_param_value_lowering_needed(c, rt))
+    if(m->params[i].pass_by_value)
     {
       tparams[i + offset] = lower_param_value_from_structure_type(c, rt);
     }
@@ -574,7 +565,11 @@ static bool genfun_fun(compile_t* c, reach_type_t* t, reach_method_t* m)
   {
     ast_t* r_result = deferred_reify(m->fun, result, c->opt);
 
-    bool return_value_lowered = is_return_value_lowering_needed(c, m->result);
+    bool return_value_lowered = false;
+    if(m->return_by_value)
+    {
+      return_value_lowered = is_return_value_lowering_needed(c, m->result);
+    }
 
     if(finaliser || ((ast_id(cap) == TK_AT) && is_none(r_result)) ||
        (m->return_by_value && !return_value_lowered))
@@ -599,7 +594,7 @@ static bool genfun_fun(compile_t* c, reach_type_t* t, reach_method_t* m)
       LLVMValueRef ret = NULL;
       if(m->return_by_value && return_value_lowered)
       {
-        ret = load_lowered_return_value(c, value, r_type, m->result);
+        ret = load_lowered_return_value_from_ptr(c, value, r_type, m->result);
       }
       else
       {

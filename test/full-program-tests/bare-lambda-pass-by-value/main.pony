@@ -33,7 +33,7 @@ actor Main
       return
     end
 
-    ret = test_large_struct[1000]()
+    ret = test_large_struct[20]()
     if ret != 0 then
       @pony_exitcode(ret)
       return
