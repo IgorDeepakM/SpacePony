@@ -1,6 +1,7 @@
 use "lib:ffi-pass-by-value-additional"
 
 use @pony_exitcode[None](code: I32)
+use @exit[None](status: I32)
 
 use @FFI_clobber_small[None](x: \passbyvalue\ S1Small, y: \passbyvalue\ S1Small)
 use @FFI_clobber_large[None](x: \passbyvalue\ S1Large, y: \passbyvalue\ S1Large)
@@ -11,6 +12,69 @@ use @get_FFI_clobber_small[@{(\passbyvalue\ S1Small, \passbyvalue\ S1Small)}]()
 use @get_FFI_clobber_large[@{(\passbyvalue\ S1Large, \passbyvalue\ S1Large)}]()
 use @get_FFI_add_small[@{(\passbyvalue\ S1Small, \passbyvalue\ S1Small): \passbyvalue\ S1Small}]()
 use @get_FFI_add_large[@{(\passbyvalue\ S1Large, \passbyvalue\ S1Large): \passbyvalue\ S1Large}]()
+
+use @FFI_Test_1_int8_t[\passbyvalue\ S1Member[I8]](s1: \passbyvalue\ S1Member[I8], s2: \passbyvalue\ S1Member[I8])
+use @FFI_Test_1_int16_t[\passbyvalue\ S1Member[I16]](s1: \passbyvalue\ S1Member[I16], s2: \passbyvalue\ S1Member[I16])
+use @FFI_Test_1_int32_t[\passbyvalue\ S1Member[I32]](s1: \passbyvalue\ S1Member[I32], s2: \passbyvalue\ S1Member[I32])
+use @FFI_Test_1_int64_t[\passbyvalue\ S1Member[I64]](s1: \passbyvalue\ S1Member[I64], s2: \passbyvalue\ S1Member[I64])
+use @FFI_Test_1_float[\passbyvalue\ S1Member[F32]](s1: \passbyvalue\ S1Member[F32], s2: \passbyvalue\ S1Member[F32])
+use @FFI_Test_1_double[\passbyvalue\ S1Member[F64]](s1: \passbyvalue\ S1Member[F64], s2: \passbyvalue\ S1Member[F64])
+
+use @FFI_Test_2_int8_t_int8_t[\passbyvalue\ S2Member[I8, I8]](s1: \passbyvalue\ S2Member[I8, I8], s2: \passbyvalue\ S2Member[I8, I8])
+use @FFI_Test_2_int8_t_int32_t[\passbyvalue\ S2Member[I8, I32]](s1: \passbyvalue\ S2Member[I8, I32], s2: \passbyvalue\ S2Member[I8, I32])
+use @FFI_Test_2_int32_t_float[\passbyvalue\ S2Member[I32, F32]](s1: \passbyvalue\ S2Member[I32, F32], s2: \passbyvalue\ S2Member[I32, F32])
+use @FFI_Test_2_int64_t_double[\passbyvalue\ S2Member[I64, F64]](s1: \passbyvalue\ S2Member[I64, F64], s2: \passbyvalue\ S2Member[I64, F64])
+use @FFI_Test_2_float_float[\passbyvalue\ S2Member[F32, F32]](s1: \passbyvalue\ S2Member[F32, F32], s2: \passbyvalue\ S2Member[F32, F32])
+use @FFI_Test_2_double_double[\passbyvalue\ S2Member[F64, F64]](s1: \passbyvalue\ S2Member[F64, F64], s2: \passbyvalue\ S2Member[F64, F64])
+
+use @FFI_Test_3_int32_t_int32_t_double[\passbyvalue\ S3Member[I32, I32, F64]](s1: \passbyvalue\ S3Member[I32, I32, F64], s2: \passbyvalue\ S3Member[I32, I32, F64])
+use @FFI_Test_3_float_float_int64_t[\passbyvalue\ S3Member[F32, F32, I64]](s1: \passbyvalue\ S3Member[F32, F32, I64], s2: \passbyvalue\ S3Member[F32, F32, I64])
+use @FFI_Test_3_int32_t_float_int64_t[\passbyvalue\ S3Member[I32, F32, I64]](s1: \passbyvalue\ S3Member[I32, F32, I64], s2: \passbyvalue\ S3Member[I32, F32, I64])
+use @FFI_Test_3_double_int32_t_int32_t[\passbyvalue\ S3Member[F64, I32, I32]](s1: \passbyvalue\ S3Member[F64, I32, I32], s2: \passbyvalue\ S3Member[F64, I32, I32])
+use @FFI_Test_3_float_float_float[\passbyvalue\ S3Member[F32, F32, F32]](s1: \passbyvalue\ S3Member[F32, F32, F32], s2: \passbyvalue\ S3Member[F32, F32, F32])
+use @FFI_Test_3_double_double_double[\passbyvalue\ S3Member[F64, F64, F64]](s1: \passbyvalue\ S3Member[F64, F64, F64], s2: \passbyvalue\ S3Member[F64, F64, F64])
+
+use @FFI_Test_4_int32_t_int32_t_int32_t_int32_t[\passbyvalue\ S4Member[I32, I32, I32, I32]](s1: \passbyvalue\ S4Member[I32, I32, I32, I32], s2: \passbyvalue\ S4Member[I32, I32, I32, I32])
+use @FFI_Test_4_int64_t_int64_t_int64_t_int64_t[\passbyvalue\ S4Member[I64, I64, I64, I64]](s1: \passbyvalue\ S4Member[I64, I64, I64, I64], s2: \passbyvalue\ S4Member[I64, I64, I64, I64])
+use @FFI_Test_4_float_float_float_float[\passbyvalue\ S4Member[F32, F32, F32, F32]](s1: \passbyvalue\ S4Member[F32, F32, F32, F32], s2: \passbyvalue\ S4Member[F32, F32, F32, F32])
+use @FFI_Test_4_double_double_double_double[\passbyvalue\ S4Member[F64, F64, F64, F64]](s1: \passbyvalue\ S4Member[F64, F64, F64, F64], s2: \passbyvalue\ S4Member[F64, F64, F64, F64])
+
+
+struct S1Member[T1]
+  var a: T1
+
+  new create(a': T1^) =>
+    a = a'
+
+struct S2Member[T1, T2]
+  var a: T1
+  var b: T2
+
+  new create(a': T1^, b': T2^) =>
+    a = a'
+    b = b'
+
+struct S3Member[T1, T2, T3]
+  var a: T1
+  var b: T2
+  var c: T3
+
+  new create(a': T1^, b': T2^, c': T3^) =>
+    a = a'
+    b = b'
+    c = c'
+
+struct S4Member[T1, T2, T3, T4]
+  var a: T1
+  var b: T2
+  var c: T3
+  var d: T4
+
+  new create(a': T1^, b': T2^, c': T3^, d': T4^) =>
+    a = a'
+    b = b'
+    c = c'
+    d = d'
 
 struct S1Small
   embed ar: CFixedSizedArray[I32, 2]
@@ -49,6 +113,99 @@ actor Main
       @pony_exitcode(ret)
       return
     end
+
+    test_1_member_struct[I8](S1Member[I8](1), S1Member[I8](2),
+      @{(s1: \passbyvalue\ S1Member[I8], s2: \passbyvalue\ S1Member[I8]): \passbyvalue\ S1Member[I8] =>
+        @FFI_Test_1_int8_t(s1, s2)
+      })
+    test_1_member_struct[I16](S1Member[I16](1), S1Member[I16](2),
+      @{(s1: \passbyvalue\ S1Member[I16], s2: \passbyvalue\ S1Member[I16]): \passbyvalue\ S1Member[I16] =>
+        @FFI_Test_1_int16_t(s1, s2)
+      })
+    test_1_member_struct[I32](S1Member[I32](1), S1Member[I32](2),
+      @{(s1: \passbyvalue\ S1Member[I32], s2: \passbyvalue\ S1Member[I32]): \passbyvalue\ S1Member[I32] =>
+        @FFI_Test_1_int32_t(s1, s2)
+      })
+    test_1_member_struct[I64](S1Member[I64](1), S1Member[I64](2),
+      @{(s1: \passbyvalue\ S1Member[I64], s2: \passbyvalue\ S1Member[I64]): \passbyvalue\ S1Member[I64] =>
+        @FFI_Test_1_int64_t(s1, s2)
+      })
+    test_1_member_struct[F32](S1Member[F32](1), S1Member[F32](2),
+      @{(s1: \passbyvalue\ S1Member[F32], s2: \passbyvalue\ S1Member[F32]): \passbyvalue\ S1Member[F32] =>
+        @FFI_Test_1_float(s1, s2)
+      })
+    test_1_member_struct[F64](S1Member[F64](1), S1Member[F64](2),
+      @{(s1: \passbyvalue\ S1Member[F64], s2: \passbyvalue\ S1Member[F64]): \passbyvalue\ S1Member[F64] =>
+        @FFI_Test_1_double(s1, s2)
+      })
+
+
+    test_2_member_struct[I8, I8](S2Member[I8, I8](1, 1), S2Member[I8, I8](2, 2),
+      @{(s1: \passbyvalue\ S2Member[I8, I8], s2: \passbyvalue\ S2Member[I8, I8]): \passbyvalue\ S2Member[I8, I8] =>
+        @FFI_Test_2_int8_t_int8_t(s1, s2)
+      })
+    test_2_member_struct[I8, I32](S2Member[I8, I32](1, 1), S2Member[I8, I32](2, 2),
+      @{(s1: \passbyvalue\ S2Member[I8, I32], s2: \passbyvalue\ S2Member[I8, I32]): \passbyvalue\ S2Member[I8, I32] =>
+        @FFI_Test_2_int8_t_int32_t(s1, s2)
+      })
+    test_2_member_struct[I32, F32](S2Member[I32, F32](1, 1), S2Member[I32, F32](2, 2),
+      @{(s1: \passbyvalue\ S2Member[I32, F32], s2: \passbyvalue\ S2Member[I32, F32]): \passbyvalue\ S2Member[I32, F32] =>
+        @FFI_Test_2_int32_t_float(s1, s2)
+      })
+    test_2_member_struct[I64, F64](S2Member[I64, F64](1, 1), S2Member[I64, F64](2, 2),
+      @{(s1: \passbyvalue\ S2Member[I64, F64], s2: \passbyvalue\ S2Member[I64, F64]): \passbyvalue\ S2Member[I64, F64] =>
+        @FFI_Test_2_int64_t_double(s1, s2)
+      })
+    test_2_member_struct[F32, F32](S2Member[F32, F32](1, 1), S2Member[F32, F32](2, 2),
+      @{(s1: \passbyvalue\ S2Member[F32, F32], s2: \passbyvalue\ S2Member[F32, F32]): \passbyvalue\ S2Member[F32, F32] =>
+        @FFI_Test_2_float_float(s1, s2)
+      })
+    test_2_member_struct[F64, F64](S2Member[F64, F64](1, 1), S2Member[F64, F64](2, 2),
+      @{(s1: \passbyvalue\ S2Member[F64, F64], s2: \passbyvalue\ S2Member[F64, F64]): \passbyvalue\ S2Member[F64, F64] =>
+        @FFI_Test_2_double_double(s1, s2)
+      })
+
+     test_3_member_struct[I32, I32, F64](S3Member[I32, I32, F64](1, 1, 1), S3Member[I32, I32, F64](2, 2, 2),
+      @{(s1: \passbyvalue\ S3Member[I32, I32, F64], s2: \passbyvalue\ S3Member[I32, I32, F64]): \passbyvalue\ S3Member[I32, I32, F64] =>
+        @FFI_Test_3_int32_t_int32_t_double(s1, s2)
+      })
+     test_3_member_struct[F32, F32, I64](S3Member[F32, F32, I64](1, 1, 1), S3Member[F32, F32, I64](2, 2, 2),
+      @{(s1: \passbyvalue\ S3Member[F32, F32, I64], s2: \passbyvalue\ S3Member[F32, F32, I64]): \passbyvalue\ S3Member[F32, F32, I64] =>
+        @FFI_Test_3_float_float_int64_t(s1, s2)
+      })
+    test_3_member_struct[I32, F32, I64](S3Member[I32, F32, I64](1, 1, 1), S3Member[I32, F32, I64](2, 2, 2),
+      @{(s1: \passbyvalue\ S3Member[I32, F32, I64], s2: \passbyvalue\ S3Member[I32, F32, I64]): \passbyvalue\ S3Member[I32, F32, I64] =>
+        @FFI_Test_3_int32_t_float_int64_t(s1, s2)
+      })
+    test_3_member_struct[F64, I32, I32](S3Member[F64, I32, I32](1, 1, 1), S3Member[F64, I32, I32](2, 2, 2),
+      @{(s1: \passbyvalue\ S3Member[F64, I32, I32], s2: \passbyvalue\ S3Member[F64, I32, I32]): \passbyvalue\ S3Member[F64, I32, I32] =>
+        @FFI_Test_3_double_int32_t_int32_t(s1, s2)
+      })
+    test_3_member_struct[F32, F32, F32](S3Member[F32, F32, F32](1, 1, 1), S3Member[F32, F32, F32](2, 2, 2),
+      @{(s1: \passbyvalue\ S3Member[F32, F32, F32], s2: \passbyvalue\ S3Member[F32, F32, F32]): \passbyvalue\ S3Member[F32, F32, F32] =>
+        @FFI_Test_3_float_float_float(s1, s2)
+      })
+    test_3_member_struct[F64, F64, F64](S3Member[F64, F64, F64](1, 1, 1), S3Member[F64, F64, F64](2, 2, 2),
+      @{(s1: \passbyvalue\ S3Member[F64, F64, F64], s2: \passbyvalue\ S3Member[F64, F64, F64]): \passbyvalue\ S3Member[F64, F64, F64] =>
+        @FFI_Test_3_double_double_double(s1, s2)
+      })
+
+    test_4_member_struct[I32, I32, I32, I32](S4Member[I32, I32, I32, I32](1, 1, 1, 1), S4Member[I32, I32, I32, I32](2, 2, 2, 2),
+      @{(s1: \passbyvalue\ S4Member[I32, I32, I32, I32], s2: \passbyvalue\ S4Member[I32, I32, I32, I32]): \passbyvalue\ S4Member[I32, I32, I32, I32] =>
+        @FFI_Test_4_int32_t_int32_t_int32_t_int32_t(s1, s2)
+      })
+    test_4_member_struct[I64, I64, I64, I64](S4Member[I64, I64, I64, I64](1, 1, 1, 1), S4Member[I64, I64, I64, I64](2, 2, 2, 2),
+      @{(s1: \passbyvalue\ S4Member[I64, I64, I64, I64], s2: \passbyvalue\ S4Member[I64, I64, I64, I64]): \passbyvalue\ S4Member[I64, I64, I64, I64] =>
+        @FFI_Test_4_int64_t_int64_t_int64_t_int64_t(s1, s2)
+      })
+    test_4_member_struct[F32, F32, F32, F32](S4Member[F32, F32, F32, F32](1, 1, 1, 1), S4Member[F32, F32, F32, F32](2, 2, 2, 2),
+      @{(s1: \passbyvalue\ S4Member[F32, F32, F32, F32], s2: \passbyvalue\ S4Member[F32, F32, F32, F32]): \passbyvalue\ S4Member[F32, F32, F32, F32] =>
+        @FFI_Test_4_float_float_float_float(s1, s2)
+      })
+    test_4_member_struct[F64, F64, F64, F64](S4Member[F64, F64, F64, F64](1, 1, 1, 1), S4Member[F64, F64, F64, F64](2, 2, 2, 2),
+      @{(s1: \passbyvalue\ S4Member[F64, F64, F64, F64], s2: \passbyvalue\ S4Member[F64, F64, F64, F64]): \passbyvalue\ S4Member[F64, F64, F64, F64] =>
+        @FFI_Test_4_double_double_double_double(s1, s2)
+      })
 
   fun test_small_struct[ret_add: I32](): I32 =>
     //============== Test small struct
@@ -221,3 +378,107 @@ actor Main
     end
 
     true
+
+  fun test_1_member_struct[T1: Real[T1] val](s1: S1Member[T1], s2: S1Member[T1],
+    ffi_function:
+    @{(\passbyvalue\ S1Member[T1], \passbyvalue\ S1Member[T1]): \passbyvalue\ S1Member[T1]}) =>
+
+    let old_s1_a = s1.a
+
+    let old_s2_a = s2.a
+
+    let s_ret = ffi_function(s1, s2)
+
+    if s1.a != old_s1_a then
+      @exit(1)
+    end
+
+    if s2.a != old_s2_a then
+      @exit(2)
+    end
+
+    if s_ret.a != (old_s1_a + old_s2_a) then
+      @exit(3)
+    end
+
+  fun test_2_member_struct[T1: Real[T1] val, T2: Real[T2] val](s1: S2Member[T1, T2], s2: S2Member[T1, T2],
+    ffi_function:
+    @{(\passbyvalue\ S2Member[T1, T2], \passbyvalue\ S2Member[T1, T2]): \passbyvalue\ S2Member[T1, T2]}) =>
+
+    let old_s1_a = s1.a
+    let old_s1_b = s1.b
+
+    let old_s2_a = s2.a
+    let old_s2_b = s2.b
+
+    let s_ret = ffi_function(s1, s2)
+
+    if (s1.a != old_s1_a) or (s1.b != old_s1_b) then
+      @exit(1)
+    end
+
+    if (s2.a != old_s2_a) or (s2.b != old_s2_b) then
+      @exit(2)
+    end
+
+    if (s_ret.a != (old_s1_a + old_s2_a)) or (s_ret.b != (old_s1_b + old_s2_b)) then
+      @exit(3)
+    end
+
+fun test_3_member_struct[T1: Real[T1] val, T2: Real[T2] val, T3: Real[T3] val]
+    (s1: S3Member[T1, T2, T3], s2: S3Member[T1, T2, T3], ffi_function:
+    @{(\passbyvalue\ S3Member[T1, T2, T3], \passbyvalue\ S3Member[T1, T2, T3]): \passbyvalue\ S3Member[T1, T2, T3]}) =>
+
+    let old_s1_a = s1.a
+    let old_s1_b = s1.b
+    let old_s1_c = s1.c
+
+    let old_s2_a = s2.a
+    let old_s2_b = s2.b
+    let old_s2_c = s2.c
+
+    let s_ret = ffi_function(s1, s2)
+
+    if (s1.a != old_s1_a) or (s1.b != old_s1_b) or (s1.c != old_s1_c) then
+      @exit(1)
+    end
+
+    if (s2.a != old_s2_a) or (s2.b != old_s2_b) or (s2.c != old_s2_c) then
+      @exit(2)
+    end
+
+    if (s_ret.a != (old_s1_a + old_s2_a)) or (s_ret.b != (old_s1_b + old_s2_b)) or
+       (s_ret.c != (old_s1_c + old_s2_c)) then
+      @exit(3)
+    end
+
+fun test_4_member_struct[T1: Real[T1] val, T2: Real[T2] val, T3: Real[T3] val, T4: Real[T4] val]
+    (s1: S4Member[T1, T2, T3, T4], s2: S4Member[T1, T2, T3, T4], ffi_function:
+    @{(\passbyvalue\ S4Member[T1, T2, T3, T4], \passbyvalue\ S4Member[T1, T2, T3, T4]): \passbyvalue\ S4Member[T1, T2, T3, T4]}) =>
+
+    let old_s1_a = s1.a
+    let old_s1_b = s1.b
+    let old_s1_c = s1.c
+    let old_s1_d = s1.d
+
+    let old_s2_a = s2.a
+    let old_s2_b = s2.b
+    let old_s2_c = s2.c
+    let old_s2_d = s2.d
+
+    let s_ret = ffi_function(s1, s2)
+
+    if (s1.a != old_s1_a) or (s1.b != old_s1_b) or
+       (s1.c != old_s1_c) or (s1.d != old_s1_d) then
+      @exit(1)
+    end
+
+    if (s2.a != old_s2_a) or (s2.b != old_s2_b) or
+       (s2.c != old_s2_c) or (s2.d != old_s2_d) then
+      @exit(2)
+    end
+
+    if (s_ret.a != (old_s1_a + old_s2_a)) or (s_ret.b != (old_s1_b + old_s2_b)) or
+       (s_ret.c != (old_s1_c + old_s2_c)) or (s_ret.d != (old_s1_d + old_s2_d)) then
+      @exit(3)
+    end
