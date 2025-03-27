@@ -671,11 +671,22 @@ void copy_lowered_param_value_to_ptr(compile_t* c, LLVMValueRef dest_ptr,
   else if(target_is_arm(triple) ||
           (target_is_x86(triple) && target_is_linux(triple) && target_is_lp64(triple)))
   {
-    if(target_is_arm(triple) && target_is_lp64(triple) && p_c_t->abi_size > 16)
+    if(target_is_arm(triple) && target_is_lp64(triple))
     {
-      LLVMValueRef l_size = LLVMConstInt(c->intptr, p_c_t->abi_size, false);
-      gencall_memcpy(c, dest_ptr, param_value, l_size);
-      return;
+      RegisterPos_t reg_pos;
+      reg_pos.current_word = 0;
+      reg_pos.current_byte_in_word = 0;
+      reg_pos.bytes_per_word = 0; // Not used
+      reg_pos.last_type_kind = LLVMVoidTypeKind;
+
+      bool is_hfa = get_hfa_from_structure_aarch64(p_c_t->structure, &reg_pos);
+
+      if(p_c_t->abi_size > 16 && !is_hfa)
+      {
+        LLVMValueRef l_size = LLVMConstInt(c->intptr, p_c_t->abi_size, false);
+        gencall_memcpy(c, dest_ptr, param_value, l_size);
+        return;
+      }
     }
 
     LLVMTypeRef param_type = LLVMTypeOf(param_value);
@@ -702,6 +713,7 @@ void copy_lowered_return_value_to_ptr(compile_t* c, LLVMValueRef dest_ptr,
   LLVMValueRef return_value, reach_type_t* real_target_type)
 {
   char* triple = c->opt->triple;
+  compile_type_t* p_c_t = (compile_type_t*)real_target_type->c_type;
 
   if(target_is_x86(triple) && target_is_windows(triple) &&
      (target_is_llp64(triple) || target_is_ilp32(triple)))
@@ -711,7 +723,6 @@ void copy_lowered_return_value_to_ptr(compile_t* c, LLVMValueRef dest_ptr,
   else if(target_is_arm(triple) ||
           (target_is_x86(triple) && target_is_linux(triple) && target_is_lp64(triple)))
   {
-    compile_type_t* p_c_t = (compile_type_t*)real_target_type->c_type;
     LLVMTypeRef return_type = LLVMTypeOf(return_value);
     if(p_c_t->abi_size == (size_t)LLVMABISizeOfType(c->target_data, return_type))
     {
