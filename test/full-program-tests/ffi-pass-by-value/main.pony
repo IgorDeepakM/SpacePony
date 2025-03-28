@@ -276,7 +276,7 @@ actor Main
         @FFI_Test_2_12_int64_t_int64_t(s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12)
       })
 
-   /*test_2_member_struct_12_params[F32, F32](S2Member[F32, F32](1, 1), S2Member[F32, F32](2, 2),
+   test_2_member_struct_12_params[F32, F32](S2Member[F32, F32](1, 1), S2Member[F32, F32](2, 2),
       S2Member[F32, F32](3, 3), S2Member[F32, F32](4, 4),
       S2Member[F32, F32](5, 5), S2Member[F32, F32](6, 6),
       S2Member[F32, F32](7, 7), S2Member[F32, F32](8, 8),
@@ -306,7 +306,7 @@ actor Main
         s11: \passbyvalue\ S2Member[F64, F64], s12: \passbyvalue\ S2Member[F64, F64]
       ): \passbyvalue\ S2Member[F64, F64] =>
         @FFI_Test_2_12_double_double(s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12)
-      })*/
+      })
 
   fun test_small_struct[ret_add: I32](): I32 =>
     //============== Test small struct
