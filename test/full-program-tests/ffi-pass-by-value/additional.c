@@ -174,6 +174,43 @@ EXPORT_SYMBOL S1Large (*get_FFI_add_large())(S1Large, S1Large)
     return s1_ret;\
 }\
 
+#define TEST_2_MEMBER_STRUCT_12_PARAMS(T1, T2)\
+  typedef struct\
+  {\
+    T1 a;\
+    T2 b;\
+  }S_2_12_##T1##_##T2;\
+\
+  S_2_12_##T1##_##T2 FFI_Test_2_12_##T1##_##T2(\
+    S_2_12_##T1##_##T2 s1, S_2_12_##T1##_##T2 s2,\
+    S_2_12_##T1##_##T2 s3, S_2_12_##T1##_##T2 s4,\
+    S_2_12_##T1##_##T2 s5, S_2_12_##T1##_##T2 s6,\
+    S_2_12_##T1##_##T2 s7, S_2_12_##T1##_##T2 s8,\
+    S_2_12_##T1##_##T2 s9, S_2_12_##T1##_##T2 s10,\
+    S_2_12_##T1##_##T2 s11, S_2_12_##T1##_##T2 s12)\
+  {\
+    S_2_12_##T1##_##T2 s1_ret;\
+    s1_ret.a = s1.a + s2.a + s3.a + s4.a + s5.a + s6.a +\
+               s7.a + s8.a + s9.a + s10.a + s11.a + s12.a;\
+    s1_ret.b = s1.b + s2.b + s3.b + s4.b + s5.b + s6.b +\
+               s7.b + s8.b + s9.b + s10.b + s11.b + s12.b;\
+\
+    s1.a = 0; s1.b = 0;\
+    s2.a = 0; s2.b = 0;\
+    s3.a = 0; s3.b = 0;\
+    s4.a = 0; s4.b = 0;\
+    s5.a = 0; s5.b = 0;\
+    s6.a = 0; s6.b = 0;\
+    s7.a = 0; s7.b = 0;\
+    s8.a = 0; s8.b = 0;\
+    s9.a = 0; s9.b = 0;\
+    s10.a = 0; s10.b = 0;\
+    s11.a = 0; s11.b = 0;\
+    s12.a = 0; s12.b = 0;\
+\
+    return s1_ret;\
+}\
+
 TEST_1_MEMBER_STRUCT(int8_t)
 TEST_1_MEMBER_STRUCT(int16_t)
 TEST_1_MEMBER_STRUCT(int32_t)
@@ -185,6 +222,8 @@ TEST_2_MEMBER_STRUCT(int8_t, int8_t)
 TEST_2_MEMBER_STRUCT(int8_t, int32_t)
 TEST_2_MEMBER_STRUCT(int32_t, float)
 TEST_2_MEMBER_STRUCT(int64_t, double)
+TEST_2_MEMBER_STRUCT(int32_t, int32_t)
+TEST_2_MEMBER_STRUCT(int64_t, int64_t)
 TEST_2_MEMBER_STRUCT(float, float)
 TEST_2_MEMBER_STRUCT(double, double)
 
@@ -199,3 +238,8 @@ TEST_4_MEMBER_STRUCT(int32_t, int32_t, int32_t, int32_t)
 TEST_4_MEMBER_STRUCT(int64_t, int64_t, int64_t, int64_t)
 TEST_4_MEMBER_STRUCT(float, float, float, float)
 TEST_4_MEMBER_STRUCT(double, double, double, double)
+
+TEST_2_MEMBER_STRUCT_12_PARAMS(int32_t, int32_t)
+TEST_2_MEMBER_STRUCT_12_PARAMS(int64_t, int64_t)
+TEST_2_MEMBER_STRUCT_12_PARAMS(float, float)
+TEST_2_MEMBER_STRUCT_12_PARAMS(double, double)
