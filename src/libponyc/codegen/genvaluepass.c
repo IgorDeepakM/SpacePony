@@ -307,7 +307,7 @@ static void insert_type_x86_64_systemv(compile_t* c, RegisterPos_t *pos, LLVMTyp
   {
     if(pos->last_type_kind == LLVMFloatTypeKind && kind == LLVMFloatTypeKind)
     {
-      pos->types[pos->current_word - 1] = LLVMVectorType(c->f32, 2);
+      pos->types[pos->current_word - 1] = c->f64;
     }
     else
     {
