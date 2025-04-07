@@ -1387,9 +1387,6 @@ LLVMValueRef generate_and_get_ffi_decl(compile_t* c, ast_t* use, ast_t* decl,
   ffi_decl_t* ffi_decl = NULL;
   bool is_func = false;
   LLVMValueRef func = LLVMGetNamedGlobal(c->module, f_name);
-  bool return_by_value = false;
-  bool return_value_lowering = false;
-  LLVMValueRef assign_side = GEN_NOTNEEDED;
 
   if(func == NULL)
   {
