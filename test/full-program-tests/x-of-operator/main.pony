@@ -1,3 +1,7 @@
+use "lib:x-of-operator-additional"
+
+use @FFI_Func1[I32](x: I32, y: I32)
+
 use @pony_exitcode[None](code: I32)
 
 struct S1
@@ -6,6 +10,9 @@ struct S1
 
 actor Main
   new create(env: Env) =>
+
+    // Test sizeof operator
+
     var xl: I64 = 0
     let yl: F32 = 0.0
     var s1: S1 = S1
@@ -49,5 +56,14 @@ actor Main
 
     if sizeof F64 != 8 then
       @pony_exitcode(7)
+      return
+    end
+
+    // Test addressof operator
+
+    let ffi_func1_bare_lambda: @{(I32, I32): I32} = addressof @FFI_Func1
+    let ret = ffi_func1_bare_lambda(3, 7)
+    if ret != 10 then
+      @pony_exitcode(8)
       return
     end

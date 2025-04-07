@@ -74,6 +74,10 @@ struct ffi_decl_t
   ast_t* call;
   size_t num_params;
   ffi_param_t* params;
+  reach_type_t* ret_reach_type;
+  bool return_by_value;
+  bool return_value_lowered;
+  bool is_partial;
 };
 
 static size_t ffi_decl_hash(ffi_decl_t* d)
@@ -1185,8 +1189,8 @@ static LLVMTypeRef ffi_return_type(compile_t* c, reach_type_t* t,
   }
 }
 
-static LLVMValueRef declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* f_name,
-  reach_type_t* t, ast_t* args, ast_t* ret_ast, bool intrinsic)
+static void declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* f_name,
+  ast_t* args, ast_t* ret_ast, bool intrinsic)
 {
   bool is_varargs = false;
   ast_t* last_arg = ast_childlast(args);
@@ -1198,14 +1202,23 @@ static LLVMValueRef declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* 
     param_count--;
   }
 
-  bool return_value_lowering = false;
-  bool return_by_value = ast_has_annotation(ast_child(ret_ast), "passbyvalue");
-  if(return_by_value)
+  deferred_reification_t* reify = c->frame->reify;
+
+  // Get the return type.
+  ast_t* ret_type = deferred_reify(reify, ret_ast, c->opt);
+  reach_type_t* reified_ret = reach_type(c->reach, ast_child(ret_type));
+  pony_assert(reified_ret != NULL);
+  ast_free_unattached(ret_type);
+
+  ffi_decl->ret_reach_type = reified_ret;
+
+  ffi_decl->return_by_value = ast_has_annotation(ast_child(ret_ast), "passbyvalue");
+  if(ffi_decl->return_by_value)
   {
-    return_value_lowering = is_return_value_lowering_needed(c, t);
+    ffi_decl->return_value_lowered = is_return_value_lowering_needed(c, reified_ret);
   }
 
-  if(return_by_value && !return_value_lowering)
+  if(ffi_decl->return_by_value && !ffi_decl->return_value_lowered)
   {
     param_count++;
   }
@@ -1231,10 +1244,10 @@ static LLVMValueRef declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* 
 
     param_count = 0;
 
-    if(return_by_value && !return_value_lowering)
+    if(ffi_decl->return_by_value && !ffi_decl->return_value_lowered)
     {
-      compile_type_t* ret_c_t = (compile_type_t*)t->c_type;
-      ffi_decl->params[param_count].reach_type = t;
+      compile_type_t* ret_c_t = (compile_type_t*)reified_ret->c_type;
+      ffi_decl->params[param_count].reach_type = reified_ret;
       f_params[param_count] = ret_c_t->use_type;
       param_count++;
     }
@@ -1270,7 +1283,8 @@ static LLVMValueRef declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* 
     }
   }
 
-  LLVMTypeRef r_type = ffi_return_type(c, t, intrinsic, return_by_value, return_value_lowering);
+  LLVMTypeRef r_type = ffi_return_type(c, reified_ret, intrinsic,
+    ffi_decl->return_by_value, ffi_decl->return_value_lowered);
   LLVMTypeRef f_type = LLVMFunctionType(r_type, f_params, param_count, is_varargs);
   LLVMValueRef func = LLVMAddFunction(c->module, f_name, f_type);
   ffi_decl->func = func;
@@ -1278,7 +1292,7 @@ static LLVMValueRef declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* 
   if(orig_param_count != 0)
   {
     size_t param_start = 0;
-    if(return_by_value && !return_value_lowering)
+    if(ffi_decl->return_by_value && !ffi_decl->return_value_lowered)
     {
       param_start++;
     }
@@ -1293,15 +1307,13 @@ static LLVMValueRef declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* 
     }
   }
 
-  if(return_by_value)
+  if(ffi_decl->return_by_value)
   {
-    apply_function_value_return_attribute(c, t, func);
+    apply_function_value_return_attribute(c, reified_ret, func);
   }
 
   if(f_params != NULL)
     ponyint_pool_free_size(buf_size, f_params);
-
-  return func;
 }
 
 static void report_ffi_type_err(compile_t* c, ffi_decl_t* decl, ast_t* ast,
@@ -1362,25 +1374,17 @@ static LLVMValueRef cast_ffi_arg(compile_t* c, ffi_decl_t* decl, ast_t* ast,
   return NULL;
 }
 
-LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
+LLVMValueRef generate_and_get_ffi_decl(compile_t* c, ast_t* use, ast_t* decl,
+  ffi_decl_t** ffi_decl_ret)
 {
-  AST_GET_CHILDREN(ast, id, typeargs, args, named_args, can_err);
-  bool err = (ast_id(can_err) == TK_QUESTION);
+  AST_GET_CHILDREN(decl, decl_id, decl_ret, decl_params, decl_named_params, decl_err);
 
   // Get the function name, +1 to skip leading @
-  const char* f_name = ast_name(id) + 1;
-
-  deferred_reification_t* reify = c->frame->reify;
-
-  // Get the return type.
-  ast_t* type = deferred_reify(reify, ast_type(ast), c->opt);
-  reach_type_t* t = reach_type(c->reach, type);
-  pony_assert(t != NULL);
-  ast_free_unattached(type);
+  const char* f_name = ast_name(decl_id) + 1;
 
   // Get the function. First check if the name is in use by a global and error
   // if it's the case.
-  ffi_decl_t* ffi_decl;
+  ffi_decl_t* ffi_decl = NULL;
   bool is_func = false;
   LLVMValueRef func = LLVMGetNamedGlobal(c->module, f_name);
   bool return_by_value = false;
@@ -1395,28 +1399,26 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
 
   if(func == NULL)
   {
-    // Prototypes are mandatory, the declaration is already stored.
-    ast_t* decl = (ast_t*)ast_data(ast);
     pony_assert(decl != NULL);
 
     bool is_intrinsic = (!strncmp(f_name, "llvm.", 5) || !strncmp(f_name, "internal.", 9));
-    AST_GET_CHILDREN(decl, decl_id, decl_ret, decl_params, decl_named_params, decl_err);
-    err = (ast_id(decl_err) == TK_QUESTION);
 
     ffi_decl = POOL_ALLOC(ffi_decl_t);
     ffi_decl->func = NULL;
     ffi_decl->decl = decl;
-    ffi_decl->call = ast;
+    ffi_decl->call = use;
     ffi_decl->num_params = 0;
     ffi_decl->params = NULL;
+    ffi_decl->ret_reach_type = NULL;
+    ffi_decl->return_by_value = false;
+    ffi_decl->return_value_lowered = false;
+    ffi_decl->is_partial = false;
 
-    func = declare_ffi(c, ffi_decl, f_name, t, decl_params, decl_ret, is_intrinsic);
+    ffi_decl->is_partial = (ast_id(decl_err) == TK_QUESTION);
 
-    return_by_value = ast_has_annotation(ast_child(decl_ret), "passbyvalue");
-    if(return_by_value)
-    {
-      return_value_lowering = is_return_value_lowering_needed(c, t);
-    }
+    declare_ffi(c, ffi_decl, f_name, decl_params, decl_ret, is_intrinsic);
+
+    func = ffi_decl->func;
 
     size_t index = HASHMAP_UNKNOWN;
 
@@ -1429,7 +1431,9 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
 #endif
 
     ffi_decls_putindex(&c->ffi_decls, ffi_decl, index);
-  } else {
+  }
+  else
+  {
     ffi_decl_t k;
     k.func = func;
     size_t index = HASHMAP_UNKNOWN;
@@ -1438,24 +1442,58 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
 
     if((ffi_decl == NULL) && (!is_func || LLVMHasMetadataStr(func, "pony.abi")))
     {
-      ast_error(c->opt->check.errors, ast, "cannot use '%s' as an FFI name: "
+      ast_error(c->opt->check.errors, use, "cannot use '%s' as an FFI name: "
         "name is already in use by the internal ABI", f_name);
       return NULL;
     }
 
-    // ffi_decl is null means possible internal pony call
-    if(ffi_decl != NULL)
-    {
-      ast_t* decl_ret = ast_childidx(ffi_decl->decl, 1);
-      return_by_value = ast_has_annotation(ast_child(decl_ret), "passbyvalue");
-      if(return_by_value)
-      {
-        return_value_lowering = is_return_value_lowering_needed(c, t);
-      }
-    }
-
     pony_assert(is_func);
   }
+
+  // Reason it is decessary to fill a separate variable for the LLVM function is the
+  // some functions don't have an any declarations in Pony code but are hard coded in
+  // the compiler. It this case just return the LLVM function in the variable pointer
+  // and the return value of ffi_decl_t type will be NULL.
+  if(ffi_decl_ret != NULL)
+  {
+    *ffi_decl_ret = ffi_decl;
+  }
+
+  return func;
+}
+
+LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
+{
+  AST_GET_CHILDREN(ast, id, typeargs, args, named_args, can_err);
+  bool err = (ast_id(can_err) == TK_QUESTION);
+
+  deferred_reification_t* reify = c->frame->reify;
+
+  bool return_by_value = false;
+  bool return_value_lowering = false;
+  LLVMValueRef assign_side = GEN_NOTNEEDED;
+  ffi_decl_t* ffi_decl = NULL;
+
+  ast_t* decl = (ast_t*)ast_data(ast);
+  LLVMValueRef func = generate_and_get_ffi_decl(c, ast, decl, &ffi_decl);
+  if(func == NULL)
+  {
+    return NULL;
+  }
+
+  if(ffi_decl != NULL)
+  {
+    return_by_value = ffi_decl->return_by_value;
+    return_value_lowering = ffi_decl->return_value_lowered;
+    func = ffi_decl->func;
+  }
+
+  // The return type must come from the call site because of
+  // return value polymorphism
+  ast_t* type = deferred_reify(reify, ast_type(ast), c->opt);
+  reach_type_t* t = reach_type(c->reach, type);
+  pony_assert(t != NULL);
+  ast_free_unattached(type);
 
   if (return_by_value)
   {

@@ -658,6 +658,10 @@ ast_result_t pass_expr(ast_t** astp, pass_opt_t* options)
       r = expr_ffi(options, ast);
       break;
 
+    case TK_FFIREF:
+      r = expr_ffiref(options, ast);
+      break;
+
     default: {}
   }
 

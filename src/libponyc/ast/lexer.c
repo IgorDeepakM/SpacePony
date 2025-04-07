@@ -242,6 +242,7 @@ static const lextoken_t abstract[] =
   { "dontcare", TK_DONTCARE },
   { "ffidecl", TK_FFIDECL },
   { "fficall", TK_FFICALL },
+  { "ffiref", TK_FFIREF },
 
   { "provides", TK_PROVIDES },
   { "uniontype", TK_UNIONTYPE },

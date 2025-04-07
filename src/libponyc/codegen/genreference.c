@@ -402,6 +402,9 @@ LLVMValueRef gen_addressof(compile_t* c, ast_t* ast)
     case TK_BEREF:
       return gen_funptr(c, expr);
 
+    case TK_FFIREF:
+      return generate_and_get_ffi_decl(c, expr, (ast_t*)ast_data(expr), NULL);
+
     default: {}
   }
 

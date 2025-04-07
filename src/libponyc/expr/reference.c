@@ -651,6 +651,7 @@ bool expr_addressof(pass_opt_t* opt, ast_t* ast)
     case TK_FUNREF:
     case TK_BEREF:
     case TK_EMBEDREF:
+    case TK_FFIREF:
       break;
 
     case TK_FLETREF:
@@ -748,6 +749,42 @@ bool expr_addressof(pass_opt_t* opt, ast_t* ast)
 
       ast_free_unattached(r_def);
       deferred_reify_free(def);
+
+      if(!ast_passes_subtree(&type, opt, PASS_EXPR))
+        return false;
+
+      break;
+    }
+
+    case TK_FFIREF:
+    {
+      ast_t *ffi_decl = (ast_t*)ast_data(expr);
+      AST_GET_CHILDREN(ffi_decl, decl_name, decl_ret_typeargs, params, named_params,
+        decl_partial);
+
+      ast_t* lambdatype_params = ast_from(params, TK_NONE);
+      if(ast_id(params) != TK_NONE)
+      {
+        ast_setid(lambdatype_params, TK_PARAMS);
+        ast_t* param = ast_child(params);
+        while(param != NULL)
+        {
+          ast_t* param_type = ast_childidx(param, 1);
+          ast_append(lambdatype_params, param_type);
+          param = ast_sibling(param);
+        }
+      }
+
+      BUILD_NO_DECL(type, expr_type,
+        NODE(TK_BARELAMBDATYPE,
+          NONE // receiver cap
+          NONE // id
+          NONE // type parameters
+          TREE(lambdatype_params)
+          TREE(ast_child(decl_ret_typeargs))
+          TREE(decl_partial)
+          NODE(TK_VAL) // object cap
+          NONE)); // object cap mod
 
       if(!ast_passes_subtree(&type, opt, PASS_EXPR))
         return false;

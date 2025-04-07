@@ -169,3 +169,31 @@ bool expr_ffi(pass_opt_t* opt, ast_t* ast)
 
   return declared_ffi(opt, ast, decl);
 }
+
+bool expr_ffiref(pass_opt_t* opt, ast_t* ast)
+{
+  AST_GET_CHILDREN(ast, name);
+  pony_assert(name != NULL);
+
+  ast_t* decl;
+  if(!ffi_get_decl(&opt->check, ast, &decl, opt))
+    return false;
+
+  if(decl == NULL)
+  {
+    ast_error(opt->check.errors, ast_child(ast),
+      "An FFI reference needs a declaration");
+    return false;
+  }
+
+  AST_GET_CHILDREN(decl, decl_name, decl_ret_typeargs, params, named_params,
+    decl_error);
+
+  ast_t* decl_ret_type = ast_child(decl_ret_typeargs);
+
+  // Store the declaration so that codegen can generate a non-variadic
+  // signature for the FFI call.
+  ast_setdata(ast, decl);
+  ast_settype(ast, decl_ret_type);
+  return true;
+}

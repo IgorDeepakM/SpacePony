@@ -148,9 +148,19 @@ RULE(compile_error,
   CHILD(rawseq),
   TK_COMPILE_ERROR);
 
+RULE(ffi_ref,
+  HAS_TYPE(type)
+  CHILD(id),
+  TK_FFIREF);
+
+RULE(xofoperator,
+  HAS_TYPE(type)
+  CHILD(expr),
+  TK_ADDRESS);
+
 GROUP(expr,
-  local, binop, isop, assignop, asop, tuple, consume, recover, prefix, dot,
-  tilde, chain, qualify, call, ffi_call, match_capture,
+  local, binop, isop, assignop, asop, tuple, consume, recover, xofoperator, prefix, dot,
+  tilde, chain, qualify, call, ffi_call, match_capture, ffi_ref,
   if_expr, ifdef, iftypeset, whileloop, repeat, for_loop, with,
   disposing_block, match, try_expr, lambda, barelambda, array_literal,
   object_literal, int_literal, float_literal, string, bool_literal, id, rawseq,
@@ -220,7 +230,7 @@ RULE(recover,
 RULE(prefix,
   HAS_TYPE(type)
   CHILD(expr),
-  TK_NOT, TK_UNARY_MINUS, TK_UNARY_MINUS_TILDE, TK_ADDRESS, TK_DIGESTOF,
+  TK_NOT, TK_UNARY_MINUS, TK_UNARY_MINUS_TILDE, TK_DIGESTOF,
   TK_OFFSETOF, TK_SIZEOF);
 
 RULE(dot,

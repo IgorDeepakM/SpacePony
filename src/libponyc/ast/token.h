@@ -190,6 +190,7 @@ typedef enum token_id
   TK_FLET,
   TK_FFIDECL,
   TK_FFICALL,
+  TK_FFIREF,
 
   TK_IFDEFAND,
   TK_IFDEFOR,

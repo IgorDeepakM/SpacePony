@@ -233,3 +233,17 @@ TEST_F(FFITest, DeclarationAlias)
 
   TEST_ERROR(src);
 }
+
+
+TEST_F(FFITest, AddressOf)
+{
+  const char* src =
+    "use @foo[None]()\n"
+
+    "class Foo\n"
+    "  fun f() =>\n"
+    "    let bare_lambda = addressof @foo\n"
+    "    bare_lambda()";
+
+  TEST_COMPILE(src);
+}

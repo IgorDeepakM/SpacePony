@@ -867,7 +867,7 @@ static ast_result_t sugar_unop(ast_t** astp, const char* fn_name)
 
 static ast_result_t sugar_ffi(pass_opt_t* opt, ast_t* ast)
 {
-  AST_GET_CHILDREN(ast, id, typeargs, args, named_args);
+  AST_GET_CHILDREN(ast, id);
 
   const char* name = ast_name(id);
   size_t len = ast_name_len(id);
@@ -1293,7 +1293,8 @@ ast_result_t pass_sugar(ast_t** astp, pass_opt_t* options)
     case TK_UNARY_MINUS_TILDE:   return sugar_unop(astp, "neg_unsafe");
     case TK_NOT:                 return sugar_unop(astp, "op_not");
     case TK_FFIDECL:
-    case TK_FFICALL:             return sugar_ffi(options, ast);
+    case TK_FFICALL:
+    case TK_FFIREF:              return sugar_ffi(options, ast);
     case TK_IFDEF:               return sugar_ifdef(options, ast);
     case TK_USE:                 return sugar_use(options, ast);
     case TK_SEMI:                return sugar_semi(options, astp);

@@ -36,6 +36,8 @@ DECL(forloop);
 DECL(caseatom);
 DECL(caseparampattern);
 DECL(annotations);
+DECL(dot);
+DECL(call);
 
 /* Precedence
  *
@@ -511,6 +513,29 @@ DEF(ffi);
   OPT TOKEN(NULL, TK_QUESTION);
   DONE();
 
+// AT (ID | STRING)
+DEF(ffiref);
+  PRINT_INLINE();
+  TOKEN(NULL, TK_AT);
+  MAP_ID(TK_AT, TK_FFIREF);
+  TOKEN("ffi name", TK_ID, TK_STRING);
+  DONE();
+
+DEF(xofatom);
+  RULE("value", ref, ffiref);
+  DONE();
+
+DEF(xofpostfix);
+  RULE("value", xofatom);
+  SEQ("postfix expression", dot, call);
+  DONE();
+
+DEF(xofoperator);
+  PRINT_INLINE();
+  TOKEN(NULL, TK_ADDRESS);
+  RULE("expression", xofpostfix);
+  DONE();
+
 // atom
 // ref | this | literal | tuple | array | object | lambda | barelambda | ffi | cond | whileloop | forloop
 // location
@@ -603,7 +628,7 @@ DEF(local);
 // pattern
 DEF(prefix);
   PRINT_INLINE();
-  TOKEN("prefix", TK_NOT, TK_ADDRESS, TK_MINUS, TK_MINUS_TILDE, TK_MINUS_NEW,
+  TOKEN("prefix", TK_NOT, TK_MINUS, TK_MINUS_TILDE, TK_MINUS_NEW,
     TK_MINUS_TILDE_NEW, TK_DIGESTOF, TK_OFFSETOF, TK_SIZEOF);
   MAP_ID(TK_MINUS, TK_UNARY_MINUS);
   MAP_ID(TK_MINUS_TILDE, TK_UNARY_MINUS_TILDE);
@@ -616,7 +641,7 @@ DEF(prefix);
 // casepattern
 DEF(caseprefix);
   PRINT_INLINE();
-  TOKEN("prefix", TK_NOT, TK_ADDRESS, TK_MINUS, TK_MINUS_TILDE, TK_MINUS_NEW,
+  TOKEN("prefix", TK_NOT, TK_MINUS, TK_MINUS_TILDE, TK_MINUS_NEW,
     TK_MINUS_TILDE_NEW, TK_DIGESTOF, TK_OFFSETOF, TK_SIZEOF);
   MAP_ID(TK_MINUS, TK_UNARY_MINUS);
   MAP_ID(TK_MINUS_TILDE, TK_UNARY_MINUS_TILDE);
@@ -628,7 +653,7 @@ DEF(caseprefix);
 // (NOT | AMP | MINUS_NEW | MINUS_TILDE_NEW | DIGESTOF) pattern
 DEF(nextprefix);
   PRINT_INLINE();
-  TOKEN("prefix", TK_NOT, TK_ADDRESS, TK_MINUS_NEW, TK_MINUS_TILDE_NEW,
+  TOKEN("prefix", TK_NOT, TK_MINUS_NEW, TK_MINUS_TILDE_NEW,
     TK_DIGESTOF, TK_OFFSETOF, TK_SIZEOF);
   MAP_ID(TK_MINUS_NEW, TK_UNARY_MINUS);
   MAP_ID(TK_MINUS_TILDE_NEW, TK_UNARY_MINUS_TILDE);
@@ -637,17 +662,17 @@ DEF(nextprefix);
 
 // (prefix | postfix)
 DEF(parampattern);
-  RULE("pattern", prefix, postfix);
+  RULE("pattern", xofoperator, prefix, postfix);
   DONE();
 
 // (caseprefix | casepostfix)
 DEF(caseparampattern);
-  RULE("pattern", caseprefix, casepostfix);
+  RULE("pattern", xofoperator, caseprefix, casepostfix);
   DONE();
 
 // (prefix | postfix)
 DEF(nextparampattern);
-  RULE("pattern", nextprefix, nextpostfix);
+  RULE("pattern", xofoperator, nextprefix, nextpostfix);
   DONE();
 
 // (local | prefix | postfix)
