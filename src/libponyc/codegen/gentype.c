@@ -694,6 +694,8 @@ static void make_intrinsic_methods(compile_t* c, reach_type_t* t)
       genprim_platform_methods(c, t);
     else if(name == c->str_CFixedSizedArray)
       genprim_c_fixed_sized_array_methods(c, t);
+    else if(name == c->str_Atomic)
+      genprim_atomic_methods(c, t);
   }
 }
 

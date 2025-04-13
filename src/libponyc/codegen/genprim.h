@@ -19,6 +19,8 @@ void genprim_c_fixed_sized_array_serialise(compile_t* c, reach_type_t* t);
 
 void genprim_c_fixed_sized_array_deserialise(compile_t* c, reach_type_t* t);
 
+void genprim_atomic_methods(compile_t* c, reach_type_t* t);
+
 void genprim_donotoptimise_methods(compile_t* c, reach_type_t* t);
 
 void genprim_array_trace(compile_t* c, reach_type_t* t);

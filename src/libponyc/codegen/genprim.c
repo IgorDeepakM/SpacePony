@@ -876,6 +876,141 @@ void genprim_c_fixed_sized_array_deserialise(compile_t* c, reach_type_t* t)
   codegen_finishfun(c);
 }
 
+static void c_atomic_load(compile_t* c, reach_type_t* t, reach_method_t* m, void* gen_data)
+{
+  m->intrinsic = true;
+  compile_type_t* c_t = (compile_type_t*)t->c_type;
+  reach_type_t* atomic_reach_type = (reach_type_t*)((void**)gen_data)[1];
+  compile_type_t* t_elem = (compile_type_t*)atomic_reach_type->c_type;
+  compile_method_t* c_m = (compile_method_t*)m->c_method;
+
+  LLVMTypeRef params[1];
+  params[0] = c_t->use_type;
+  start_function(c, t, m, t_elem->use_type, params, 1);
+
+  LLVMValueRef ptr = LLVMGetParam(c_m->func, 0);
+  LLVMValueRef atomic_value_ptr = LLVMBuildStructGEP2(c->builder, c_t->structure, ptr, 0, "");
+
+  LLVMValueRef ret = LLVMBuildLoad2(c->builder, t_elem->use_type, atomic_value_ptr, "");
+  LLVMSetOrdering(ret, LLVMAtomicOrderingSequentiallyConsistent);
+  LLVMSetVolatile(ret, true);
+
+  genfun_build_ret(c, ret);
+  codegen_finishfun(c);
+}
+
+static void c_atomic_store(compile_t* c, reach_type_t* t, reach_method_t* m, void* gen_data)
+{
+  m->intrinsic = true;
+  compile_type_t* c_t = (compile_type_t*)t->c_type;
+  reach_type_t* atomic_reach_type = (reach_type_t*)((void**)gen_data)[1];
+  compile_type_t* t_elem = (compile_type_t*)atomic_reach_type->c_type;
+  compile_method_t* c_m = (compile_method_t*)m->c_method;
+
+  LLVMTypeRef params[2];
+  params[0] = c_t->use_type;
+  params[1] = t_elem->use_type;
+  start_function(c, t, m, c->void_type, params, 2);
+
+  LLVMValueRef ptr = LLVMGetParam(c_m->func, 0);
+  LLVMValueRef atomic_value_ptr = LLVMBuildStructGEP2(c->builder, c_t->structure, ptr, 0, "");
+
+  LLVMValueRef store_value = LLVMGetParam(c_m->func, 1);
+  LLVMValueRef store_inst = LLVMBuildStore(c->builder, store_value, atomic_value_ptr);
+  LLVMSetOrdering(store_inst, LLVMAtomicOrderingSequentiallyConsistent);
+  LLVMSetVolatile(store_inst, true);
+
+  genfun_build_ret_void(c);
+  codegen_finishfun(c);
+}
+
+static void c_atomic_fetch_bin_op(compile_t* c, reach_type_t* t, reach_method_t* m, void* gen_data,
+  LLVMAtomicRMWBinOp op)
+{
+  m->intrinsic = true;
+  compile_type_t* c_t = (compile_type_t*)t->c_type;
+  reach_type_t* atomic_reach_type = (reach_type_t*)((void**)gen_data)[1];
+  compile_type_t* t_elem = (compile_type_t*)atomic_reach_type->c_type;
+  compile_method_t* c_m = (compile_method_t*)m->c_method;
+
+  LLVMTypeRef params[2];
+  params[0] = c_t->use_type;
+  params[1] = t_elem->use_type;
+  start_function(c, t, m, t_elem->use_type, params, 2);
+
+  LLVMValueRef ptr = LLVMGetParam(c_m->func, 0);
+  LLVMValueRef atomic_value_ptr = LLVMBuildStructGEP2(c->builder, c_t->structure, ptr, 0, "");
+
+  LLVMValueRef add_value = LLVMGetParam(c_m->func, 1);
+  LLVMValueRef ret = LLVMBuildAtomicRMW(c->builder, op, atomic_value_ptr, add_value,
+    LLVMAtomicOrderingSequentiallyConsistent, false);
+
+  genfun_build_ret(c, ret);
+  codegen_finishfun(c);
+}
+
+static void c_atomic_fetch_add(compile_t* c, reach_type_t* t, reach_method_t* m, void* gen_data)
+{
+  c_atomic_fetch_bin_op(c, t, m, gen_data, LLVMAtomicRMWBinOpAdd);
+}
+
+static void c_atomic_fetch_sub(compile_t* c, reach_type_t* t, reach_method_t* m, void* gen_data)
+{
+  c_atomic_fetch_bin_op(c, t, m, gen_data, LLVMAtomicRMWBinOpSub);
+}
+
+static void c_atomic_fetch_and(compile_t* c, reach_type_t* t, reach_method_t* m, void* gen_data)
+{
+  c_atomic_fetch_bin_op(c, t, m, gen_data, LLVMAtomicRMWBinOpAnd);
+}
+
+static void c_atomic_fetch_nand(compile_t* c, reach_type_t* t, reach_method_t* m, void* gen_data)
+{
+  c_atomic_fetch_bin_op(c, t, m, gen_data, LLVMAtomicRMWBinOpNand);
+}
+
+static void c_atomic_fetch_or(compile_t* c, reach_type_t* t, reach_method_t* m, void* gen_data)
+{
+  c_atomic_fetch_bin_op(c, t, m, gen_data, LLVMAtomicRMWBinOpOr);
+}
+
+static void c_atomic_fetch_xor(compile_t* c, reach_type_t* t, reach_method_t* m, void* gen_data)
+{
+  c_atomic_fetch_bin_op(c, t, m, gen_data, LLVMAtomicRMWBinOpXor);
+}
+
+static void c_atomic_fetch_min(compile_t* c, reach_type_t* t, reach_method_t* m, void* gen_data)
+{
+  c_atomic_fetch_bin_op(c, t, m, gen_data, LLVMAtomicRMWBinOpMin);
+}
+
+static void c_atomic_fetch_max(compile_t* c, reach_type_t* t, reach_method_t* m, void* gen_data)
+{
+  c_atomic_fetch_bin_op(c, t, m, gen_data, LLVMAtomicRMWBinOpMax);
+}
+
+void genprim_atomic_methods(compile_t* c, reach_type_t* t)
+{
+  ast_t* typeargs = ast_childidx(t->ast, 2);
+  ast_t* typearg = ast_child(typeargs);
+  reach_type_t* t_elem = reach_type(c->reach, typearg);
+
+  void* box_args[2];
+  box_args[0] = t;          // Atomic structure reach type
+  box_args[1] = t_elem;     // Atomic value reach type
+
+  GENERIC_FUNCTION("load", c_atomic_load, box_args);
+  GENERIC_FUNCTION("store", c_atomic_store, box_args);
+  GENERIC_FUNCTION("fetch_add", c_atomic_fetch_add, box_args);
+  GENERIC_FUNCTION("fetch_sub", c_atomic_fetch_sub, box_args);
+  GENERIC_FUNCTION("fetch_and", c_atomic_fetch_and, box_args);
+  GENERIC_FUNCTION("fetch_nand", c_atomic_fetch_nand, box_args);
+  GENERIC_FUNCTION("fetch_or", c_atomic_fetch_or, box_args);
+  GENERIC_FUNCTION("fetch_xor", c_atomic_fetch_xor, box_args);
+  GENERIC_FUNCTION("fetch_xor", c_atomic_fetch_min, box_args);
+  GENERIC_FUNCTION("fetch_xor", c_atomic_fetch_max, box_args);
+}
+
 static void donotoptimise_apply(compile_t* c, reach_type_t* t,
   reach_method_t* m, void *gen_data)
 {
