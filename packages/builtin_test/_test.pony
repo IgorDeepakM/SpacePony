@@ -106,6 +106,7 @@ actor \nodoc\ Main is TestList
     test(_TestFixedSizedArray)
     test(_TestNestedFixedSizedArray)
     test(_TestFixedSizedArrayTrace)
+    test(_TestAtomic)
 
   fun @runtime_override_defaults(rto: RuntimeOptions) =>
      rto.ponynoblock = true
@@ -2982,3 +2983,120 @@ class \nodoc\ iso _TestNestedFixedSizedArray is UnitTest
         h.assert_eq[String](array((i * x.size()) + j)?, y)
       end
     end
+
+class \nodoc\ iso _TestAtomic is UnitTest
+  fun name(): String => "builtin/Atomic"
+
+  fun apply(h: TestHelper) =>
+    var a: Atomic[U32] = Atomic[U32](10)
+
+    h.assert_eq[U32](a.load(), 10)
+
+    a.store(20)
+    h.assert_eq[U32](a.load(), 20)
+
+    var r = a.exchange(10)
+    h.assert_eq[U32](r, 20)
+    h.assert_eq[U32](a.load(), 10)
+
+    r = a.fetch_add(10)
+    h.assert_eq[U32](r, 10)
+    h.assert_eq[U32](a.load(), 20)
+
+    r = a.fetch_sub(10)
+    h.assert_eq[U32](r, 20)
+    h.assert_eq[U32](a.load(), 10)
+
+    a.store(0xffff)
+    r = a.fetch_and(0x00ff)
+    h.assert_eq[U32](r, 0xffff)
+    h.assert_eq[U32](a.load(), 0x00ff)
+
+    a.store(0xffff)
+    r = a.fetch_nand(0x00ff)
+    h.assert_eq[U32](r, 0xffff)
+    h.assert_eq[U32](a.load(), 0xffffff00)
+
+    a.store(0xff)
+    r = a.fetch_or(0xff00)
+    h.assert_eq[U32](r, 0xff)
+    h.assert_eq[U32](a.load(), 0xffff)
+
+    a.store(0xf0f0f0f0)
+    r = a.fetch_xor(0x0f0f0f0f)
+    h.assert_eq[U32](r, 0xf0f0f0f0)
+    h.assert_eq[U32](a.load(), 0xffffffff)
+
+    a.store(4)
+    r = a.fetch_add[MemoryOrderAcquireRelease](4)
+    h.assert_eq[U32](r, 4)
+    h.assert_eq[U32](a.load(), 8)
+
+    r = a.fetch_sub[MemoryOrderAcquireRelease](4)
+    h.assert_eq[U32](r, 8)
+    h.assert_eq[U32](a.load(), 4)
+
+    a.store(0xffff)
+    r = a.fetch_and[MemoryOrderAcquireRelease](0x00ff)
+    h.assert_eq[U32](r, 0xffff)
+    h.assert_eq[U32](a.load(), 0x00ff)
+
+    a.store(0xff)
+    r = a.fetch_or[MemoryOrderAcquireRelease](0xff00)
+    h.assert_eq[U32](r, 0xff)
+    h.assert_eq[U32](a.load(), 0xffff)
+
+    a.store(0xf0f0f0f0)
+    r = a.fetch_xor[MemoryOrderAcquireRelease](0x0f0f0f0f)
+    h.assert_eq[U32](r, 0xf0f0f0f0)
+    h.assert_eq[U32](a.load(), 0xffffffff)
+
+    a.store(3)
+    r = a + 1
+    h.assert_eq[U32](r, 4)
+    h.assert_eq[U32](a.load(), 4)
+
+    r = a - 1
+    h.assert_eq[U32](r, 3)
+    h.assert_eq[U32](a.load(), 3)
+
+    a.store(0xffff)
+    r = a and 0x00ff
+    h.assert_eq[U32](r, 0x00ff)
+    h.assert_eq[U32](a.load(), 0x00ff)
+
+    a.store(0xff)
+    r = a or 0xff00
+    h.assert_eq[U32](r, 0xffff)
+    h.assert_eq[U32](a.load(), 0xffff)
+
+    a.store(0xf0f0f0f0)
+    r = a xor 0x0f0f0f0f
+    h.assert_eq[U32](r, 0xffffffff)
+    h.assert_eq[U32](a.load(), 0xffffffff)
+
+    a.store(10)
+    var expected: U32 = 10
+    var res = a.compare_exchange_weak(addressof expected, 3)
+    h.assert_eq[Bool](res, true)
+    h.assert_eq[U32](expected, 10)
+    h.assert_eq[U32](a.load(), 3)
+
+    expected = 11
+    res = a.compare_exchange_weak(addressof expected, 10)
+    h.assert_eq[Bool](res, false)
+    h.assert_eq[U32](expected, 3)
+    h.assert_eq[U32](a.load(), 3)
+
+    a.store(10)
+    expected = 10
+    res = a.compare_exchange_strong(addressof expected, 3)
+    h.assert_eq[Bool](res, true)
+    h.assert_eq[U32](expected, 10)
+    h.assert_eq[U32](a.load(), 3)
+
+    expected = 11
+    res = a.compare_exchange_strong(addressof expected, 10)
+    h.assert_eq[Bool](res, false)
+    h.assert_eq[U32](expected, 3)
+    h.assert_eq[U32](a.load(), 3)
