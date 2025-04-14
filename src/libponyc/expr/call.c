@@ -434,6 +434,7 @@ static bool check_receiver_cap(pass_opt_t* opt, ast_t* ast, bool* recovered)
     case TK_TRN:
     case TK_VAL:
     case TK_TAG:
+    case TK_NHB:
       break;
 
     case TK_REF:

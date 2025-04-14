@@ -1028,6 +1028,7 @@ void genfun_param_attrs(compile_t* c, reach_type_t* t, reach_method_t* m,
 
           case TK_TRN:
           case TK_REF:
+          case TK_NHB:
             break;
 
           case TK_VAL:

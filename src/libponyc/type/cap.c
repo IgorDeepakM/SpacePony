@@ -80,7 +80,13 @@ bool is_cap_sub_cap(token_id sub, token_id subalias, token_id super,
     switch(sub)
     {
       case TK_ISO:
-        return true;
+        switch(super)
+        {
+          case TK_NHB:
+            return false;
+          default:
+            return true;
+        }
       case TK_TRN:
         switch(super)
         {
@@ -94,6 +100,7 @@ bool is_cap_sub_cap(token_id sub, token_id subalias, token_id super,
             return true;
 
           case TK_ISO:
+          case TK_NHB:
           case TK_CAP_SEND:  // {iso, val, tag}
           case TK_CAP_ANY:   // {iso, trn, ref, val, box, tag}
             return false;
@@ -129,6 +136,22 @@ bool is_cap_sub_cap(token_id sub, token_id subalias, token_id super,
       {
         case TK_REF:
         case TK_BOX:
+          return true;
+
+        default: {}
+      }
+      break;
+
+    case TK_NHB:
+      switch(super)
+      {
+        case TK_NHB:
+        case TK_BOX:
+        case TK_VAL:
+        case TK_REF:
+        case TK_CAP_READ:  // {ref, val, box}
+        case TK_CAP_SHARE: // {val, tag}
+        case TK_CAP_ALIAS: // {ref, val, box, tag}
           return true;
 
         default: {}
@@ -191,6 +214,7 @@ bool is_cap_sub_cap_constraint(token_id sub, token_id subalias, token_id super,
         case TK_REF:
         case TK_VAL:
         case TK_BOX:
+        case TK_NHB:
           return true;
 
         default: {}
@@ -202,6 +226,7 @@ bool is_cap_sub_cap_constraint(token_id sub, token_id subalias, token_id super,
       {
         case TK_VAL:
         case TK_TAG:
+        case TK_NHB:
           return true;
 
         default: {}
@@ -214,6 +239,7 @@ bool is_cap_sub_cap_constraint(token_id sub, token_id subalias, token_id super,
         case TK_ISO:
         case TK_VAL:
         case TK_TAG:
+        case TK_NHB:
         case TK_CAP_SHARE: // {val, tag}
           return true;
 
@@ -228,6 +254,7 @@ bool is_cap_sub_cap_constraint(token_id sub, token_id subalias, token_id super,
         case TK_VAL:
         case TK_BOX:
         case TK_TAG:
+        case TK_NHB:
         case TK_CAP_READ:  // {ref, val, box}
         case TK_CAP_SHARE: // {val, tag}
           return true;
@@ -264,7 +291,13 @@ bool is_cap_sub_cap_bound(token_id sub, token_id subalias, token_id super,
     switch(sub)
     {
       case TK_ISO:
-        return true;
+        switch(super)
+        {
+          case TK_NHB:
+            return false;
+          default:
+            return true;
+        }
       case TK_TRN:
         switch(super)
         {
@@ -278,6 +311,7 @@ bool is_cap_sub_cap_bound(token_id sub, token_id subalias, token_id super,
             return true;
 
           case TK_ISO:
+          case TK_NHB:
           case TK_CAP_SEND:  // {iso, val, tag}
           case TK_CAP_ANY:   // {iso, trn, ref, val, box, tag}
             return false;
@@ -320,6 +354,21 @@ bool is_cap_sub_cap_bound(token_id sub, token_id subalias, token_id super,
       switch(super)
       {
         case TK_BOX:
+          return true;
+
+        default: {}
+      }
+      break;
+
+    case TK_NHB:
+      switch(super)
+      {
+        case TK_BOX:
+        case TK_REF:
+        case TK_VAL:
+        case TK_CAP_READ:  // {ref, val, box}
+        case TK_CAP_SHARE: // {val, tag}
+        case TK_CAP_ALIAS: // {ref, val, box, tag}
           return true;
 
         default: {}
@@ -483,6 +532,17 @@ bool is_cap_compat_cap(token_id left_cap, token_id left_eph,
       }
       break;
 
+    case TK_NHB:
+      switch(right_cap)
+      {
+        case TK_NHB:
+        case TK_CAP_SHARE:
+          return true;
+
+        default: {}
+      }
+      break;
+
     case TK_CAP_READ:
       switch(right_cap)
       {
@@ -514,6 +574,7 @@ bool is_cap_compat_cap(token_id left_cap, token_id left_eph,
       {
         case TK_VAL:
         case TK_BOX:
+        case TK_NHB:
         case TK_CAP_SHARE:
           return true;
 
@@ -705,6 +766,7 @@ bool cap_view_upper(token_id left_cap, token_id left_eph,
     }
 
     case TK_REF:
+    case TK_NHB:
       break;
 
     case TK_VAL:
@@ -851,6 +913,7 @@ bool cap_view_lower(token_id left_cap, token_id left_eph,
     }
 
     case TK_REF:
+    case TK_NHB:
       break;
 
     case TK_VAL:
@@ -973,6 +1036,7 @@ bool cap_safetomove(token_id into, token_id cap, direction direction)
       break;
 
     case TK_REF:
+    case TK_NHB:
       return true;
 
     default: {}
@@ -989,6 +1053,7 @@ bool cap_sendable(token_id cap)
     case TK_ISO:
     case TK_VAL:
     case TK_TAG:
+    case TK_NHB:
     case TK_CAP_SEND:
     case TK_CAP_SHARE:
       return true;
@@ -1016,6 +1081,7 @@ bool cap_mutable(token_id cap)
     case TK_ISO:
     case TK_TRN:
     case TK_REF:
+    case TK_NHB:
       return true;
 
     default:
@@ -1161,6 +1227,7 @@ bool unisolated_mod(token_id* cap, token_id* eph)
   {
     case TK_ISO:
     case TK_TRN:
+    case TK_NHB:
       *cap = TK_REF;
       return true;
 

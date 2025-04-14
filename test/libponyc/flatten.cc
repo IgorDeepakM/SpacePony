@@ -71,7 +71,7 @@ TEST_F(FlattenTest, SendableParamConstructor)
     "  fun doit() =>\n"
     "    let y: Y ref = Y\n"
     "    X.gimme({(x: None) => y.size() })";
-  TEST_ERRORS_1(src, "this parameter must be sendable (iso, val or tag)");
+  TEST_ERRORS_1(src, "this parameter must be sendable (iso, val, tag or nhb)");
   ASSERT_EQ(1, errors_get_count(opt.check.errors));
   errormsg_t* errormsg = errors_get_first(opt.check.errors);
 

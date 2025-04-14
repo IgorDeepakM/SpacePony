@@ -133,6 +133,7 @@ typedef enum token_id
   TK_VAL,
   TK_BOX,
   TK_TAG,
+  TK_NHB,
 
   TK_CAP_READ,
   TK_CAP_SEND,

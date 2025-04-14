@@ -151,7 +151,7 @@ DEF(typeargs);
 
 // CAP
 DEF(cap);
-  TOKEN("capability", TK_ISO, TK_TRN, TK_REF, TK_VAL, TK_BOX, TK_TAG);
+  TOKEN("capability", TK_ISO, TK_TRN, TK_REF, TK_VAL, TK_BOX, TK_TAG, TK_NHB);
   DONE();
 
 // GENCAP

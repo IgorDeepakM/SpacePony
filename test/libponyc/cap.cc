@@ -6,7 +6,7 @@
 
 #ifndef FOREACH_CAP
 #define FOREACH_CAP(cap_param, constraint) \
-token_id cap_param ## __array[6]; \
+token_id cap_param ## __array[7]; \
 int cap_param ## __length = reify_cap_bounds(constraint, cap_param ## __array); \
 int cap_param ## __i = 0; \
 token_id cap_param; \
@@ -29,6 +29,7 @@ protected:
   static const token_id val = TK_VAL;
   static const token_id box = TK_BOX;
   static const token_id tag = TK_TAG;
+  static const token_id nhb = TK_NHB;
 
   static const token_id read = TK_CAP_READ;
   static const token_id send = TK_CAP_SEND;
@@ -39,9 +40,9 @@ protected:
   static const token_id none = TK_NONE;
   static const token_id hat = TK_EPHEMERAL;
 
-  int reify_cap_bounds(token_id cap, token_id dest_cap[6])
+  int reify_cap_bounds(token_id cap, token_id dest_cap[7])
   {
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 7; i++) {
       dest_cap[i] = TK_NONE;
     }
     switch (cap) {
@@ -51,6 +52,7 @@ protected:
       case TK_VAL:
       case TK_BOX:
       case TK_TAG:
+      case TK_NHB:
         dest_cap[0] = cap;
         return 1;
 
@@ -58,25 +60,34 @@ protected:
         dest_cap[0] = TK_ISO;
         dest_cap[1] = TK_VAL;
         dest_cap[2] = TK_TAG;
-        return 3;
+        dest_cap[3] = TK_NHB;
+        return 4;
 
       case TK_CAP_SHARE:
         dest_cap[0] = TK_VAL;
         dest_cap[1] = TK_TAG;
+        // This is a puzzle that needs attention. nhb is shared as well
+        // but it messes up the #share generic capability as val cannot be
+        // assigned to nhb and therefore val is not a subcap of #share
+        // adding nhb here forces val to drop its share capability
+        // which messes up the capability system.
+        //dest_cap[2] = TK_NHB;
         return 2;
 
       case TK_CAP_READ:
         dest_cap[0] = TK_REF;
         dest_cap[1] = TK_VAL;
         dest_cap[2] = TK_BOX;
-        return 3;
+        dest_cap[3] = TK_NHB;
+        return 4;
 
       case TK_CAP_ALIAS:
         dest_cap[0] = TK_REF;
         dest_cap[1] = TK_VAL;
         dest_cap[2] = TK_BOX;
         dest_cap[3] = TK_TAG;
-        return 4;
+        dest_cap[4] = TK_NHB;
+        return 5;
 
       case TK_CAP_ANY:
         dest_cap[0] = TK_ISO;
@@ -85,7 +96,8 @@ protected:
         dest_cap[3] = TK_VAL;
         dest_cap[4] = TK_BOX;
         dest_cap[5] = TK_TAG;
-        return 6;
+        dest_cap[6] = TK_NHB;
+        return 7;
 
       default:
         return 0;
@@ -133,6 +145,7 @@ const token_id CapTest::ref;
 const token_id CapTest::val;
 const token_id CapTest::box;
 const token_id CapTest::tag;
+const token_id CapTest::nhb;
 
 const token_id CapTest::read;
 const token_id CapTest::send;
@@ -146,7 +159,7 @@ TEST_F(CapTest, SubChecksConstraints)
 {
   // for capsets K1, K2
   // K1 <= K2 if every instantation of K1 <= every instantation of K2
-  token_id caps[] = { iso, trn, ref, val, box, tag, read, send, share, alias, any};
+  token_id caps[] = { iso, trn, ref, val, box, tag, nhb, read, send, share, alias, any};
   int num_caps = sizeof(caps) / sizeof(token_id);
   for (int i = 0; i < num_caps; i++) {
     for (int j = 0; j < num_caps; j++) {
@@ -171,6 +184,7 @@ TEST_F(CapTest, SubChecksConstraints)
     }
   }
 }
+
 TEST_F(CapTest, SubConcrete)
 {
   // Every possible instantiation of sub must be a subtype of every possible
@@ -185,6 +199,7 @@ TEST_F(CapTest, SubConcrete)
   EXPECT_TRUE(is_sub(iso, hat, val, none));
   EXPECT_TRUE(is_sub(iso, hat, box, none));
   EXPECT_TRUE(is_sub(iso, hat, tag, none));
+  EXPECT_FALSE(is_sub(iso, hat, nhb, none));
 
   // trn
   EXPECT_FALSE(is_sub(trn, hat, iso, hat));
@@ -195,6 +210,7 @@ TEST_F(CapTest, SubConcrete)
   EXPECT_TRUE(is_sub(trn, hat, val, none));
   EXPECT_TRUE(is_sub(trn, hat, box, none));
   EXPECT_TRUE(is_sub(trn, hat, tag, none));
+  EXPECT_FALSE(is_sub(trn, hat, nhb, none));
 
   // ref
   EXPECT_FALSE(is_sub(ref, none, iso, hat));
@@ -205,6 +221,7 @@ TEST_F(CapTest, SubConcrete)
   EXPECT_FALSE(is_sub(ref, none, val, none));
   EXPECT_TRUE(is_sub(ref, none, box, none));
   EXPECT_TRUE(is_sub(ref, none, tag, none));
+  EXPECT_FALSE(is_sub(ref, none, nhb, none));
 
   // val
   EXPECT_FALSE(is_sub(val, none, iso, hat));
@@ -215,6 +232,7 @@ TEST_F(CapTest, SubConcrete)
   EXPECT_TRUE(is_sub(val, none, val, none));
   EXPECT_TRUE(is_sub(val, none, box, none));
   EXPECT_TRUE(is_sub(val, none, tag, none));
+  EXPECT_FALSE(is_sub(val, none, nhb, none));
 
   // box
   EXPECT_FALSE(is_sub(box, none, iso, hat));
@@ -225,6 +243,7 @@ TEST_F(CapTest, SubConcrete)
   EXPECT_FALSE(is_sub(box, none, val, none));
   EXPECT_TRUE(is_sub(box, none, box, none));
   EXPECT_TRUE(is_sub(box, none, tag, none));
+  EXPECT_FALSE(is_sub(box, none, nhb, none));
 
   // tag
   EXPECT_FALSE(is_sub(tag, none, iso, hat));
@@ -235,6 +254,18 @@ TEST_F(CapTest, SubConcrete)
   EXPECT_FALSE(is_sub(tag, none, val, none));
   EXPECT_FALSE(is_sub(tag, none, box, none));
   EXPECT_TRUE(is_sub(tag, none, tag, none));
+  EXPECT_FALSE(is_sub(tag, none, nhb, none));
+
+  // nhb
+  EXPECT_FALSE(is_sub(nhb, none, iso, hat));
+  EXPECT_FALSE(is_sub(nhb, none, iso, none));
+  EXPECT_FALSE(is_sub(nhb, none, trn, hat));
+  EXPECT_FALSE(is_sub(nhb, none, trn, none));
+  EXPECT_TRUE(is_sub(nhb, none, ref, none));
+  EXPECT_TRUE(is_sub(nhb, none, val, none));
+  EXPECT_TRUE(is_sub(nhb, none, box, none));
+  EXPECT_TRUE(is_sub(nhb, none, tag, none));
+  EXPECT_TRUE(is_sub(nhb, none, nhb, none));
 }
 
 TEST_F(CapTest, SubConstraint)
@@ -249,6 +280,7 @@ TEST_F(CapTest, SubConstraint)
   EXPECT_FALSE(is_sub_constraint(iso, val));
   EXPECT_FALSE(is_sub_constraint(iso, box));
   EXPECT_FALSE(is_sub_constraint(iso, tag));
+  EXPECT_FALSE(is_sub_constraint(iso, nhb));
   EXPECT_FALSE(is_sub_constraint(iso, read));
   EXPECT_TRUE(is_sub_constraint(iso, send));
   EXPECT_FALSE(is_sub_constraint(iso, share));
@@ -262,6 +294,7 @@ TEST_F(CapTest, SubConstraint)
   EXPECT_FALSE(is_sub_constraint(trn, val));
   EXPECT_FALSE(is_sub_constraint(trn, box));
   EXPECT_FALSE(is_sub_constraint(trn, tag));
+  EXPECT_FALSE(is_sub_constraint(trn, nhb));
   EXPECT_FALSE(is_sub_constraint(trn, read));
   EXPECT_FALSE(is_sub_constraint(trn, send));
   EXPECT_FALSE(is_sub_constraint(trn, share));
@@ -275,6 +308,7 @@ TEST_F(CapTest, SubConstraint)
   EXPECT_FALSE(is_sub_constraint(ref, val));
   EXPECT_FALSE(is_sub_constraint(ref, box));
   EXPECT_FALSE(is_sub_constraint(ref, tag));
+  EXPECT_FALSE(is_sub_constraint(ref, nhb));
   EXPECT_TRUE(is_sub_constraint(ref, read));
   EXPECT_FALSE(is_sub_constraint(ref, send));
   EXPECT_FALSE(is_sub_constraint(ref, share));
@@ -288,6 +322,7 @@ TEST_F(CapTest, SubConstraint)
   EXPECT_TRUE(is_sub_constraint(val, val));
   EXPECT_FALSE(is_sub_constraint(val, box));
   EXPECT_FALSE(is_sub_constraint(val, tag));
+  EXPECT_FALSE(is_sub_constraint(val, nhb));
   EXPECT_TRUE(is_sub_constraint(val, read));
   EXPECT_TRUE(is_sub_constraint(val, send));
   EXPECT_TRUE(is_sub_constraint(val, share));
@@ -301,6 +336,7 @@ TEST_F(CapTest, SubConstraint)
   EXPECT_FALSE(is_sub_constraint(box, val));
   EXPECT_TRUE(is_sub_constraint(box, box));
   EXPECT_FALSE(is_sub_constraint(box, tag));
+  EXPECT_FALSE(is_sub_constraint(box, nhb));
   EXPECT_TRUE(is_sub_constraint(box, read));
   EXPECT_FALSE(is_sub_constraint(box, send));
   EXPECT_FALSE(is_sub_constraint(box, share));
@@ -314,11 +350,26 @@ TEST_F(CapTest, SubConstraint)
   EXPECT_FALSE(is_sub_constraint(tag, val));
   EXPECT_FALSE(is_sub_constraint(tag, box));
   EXPECT_TRUE(is_sub_constraint(tag, tag));
+  EXPECT_FALSE(is_sub_constraint(tag, nhb));
   EXPECT_FALSE(is_sub_constraint(tag, read));
   EXPECT_TRUE(is_sub_constraint(tag, send));
   EXPECT_TRUE(is_sub_constraint(tag, share));
   EXPECT_TRUE(is_sub_constraint(tag, alias));
   EXPECT_TRUE(is_sub_constraint(tag, any));
+
+  // nhb
+  EXPECT_FALSE(is_sub_constraint(nhb, iso));
+  EXPECT_FALSE(is_sub_constraint(nhb, trn));
+  EXPECT_FALSE(is_sub_constraint(nhb, ref));
+  EXPECT_FALSE(is_sub_constraint(nhb, val));
+  EXPECT_FALSE(is_sub_constraint(nhb, box));
+  EXPECT_FALSE(is_sub_constraint(nhb, tag));
+  EXPECT_TRUE(is_sub_constraint(nhb, nhb));
+  EXPECT_TRUE(is_sub_constraint(nhb, read));
+  EXPECT_TRUE(is_sub_constraint(nhb, send));
+  EXPECT_TRUE(is_sub_constraint(nhb, share));
+  EXPECT_TRUE(is_sub_constraint(nhb, alias));
+  EXPECT_TRUE(is_sub_constraint(nhb, any));
 
   // #read {ref, val, box}
   EXPECT_FALSE(is_sub_constraint(read, iso));
@@ -327,6 +378,7 @@ TEST_F(CapTest, SubConstraint)
   EXPECT_FALSE(is_sub_constraint(read, val));
   EXPECT_FALSE(is_sub_constraint(read, box));
   EXPECT_FALSE(is_sub_constraint(read, tag));
+  EXPECT_FALSE(is_sub_constraint(read, nhb));
   EXPECT_TRUE(is_sub_constraint(read, read));
   EXPECT_FALSE(is_sub_constraint(read, send));
   EXPECT_FALSE(is_sub_constraint(read, share));
@@ -340,6 +392,7 @@ TEST_F(CapTest, SubConstraint)
   EXPECT_FALSE(is_sub_constraint(send, val));
   EXPECT_FALSE(is_sub_constraint(send, box));
   EXPECT_FALSE(is_sub_constraint(send, tag));
+  EXPECT_FALSE(is_sub_constraint(send, nhb));
   EXPECT_FALSE(is_sub_constraint(send, read));
   EXPECT_TRUE(is_sub_constraint(send, send));
   EXPECT_FALSE(is_sub_constraint(send, share));
@@ -353,6 +406,7 @@ TEST_F(CapTest, SubConstraint)
   EXPECT_FALSE(is_sub_constraint(share, val));
   EXPECT_FALSE(is_sub_constraint(share, box));
   EXPECT_FALSE(is_sub_constraint(share, tag));
+  EXPECT_FALSE(is_sub_constraint(share, nhb));
   EXPECT_FALSE(is_sub_constraint(share, read));
   EXPECT_TRUE(is_sub_constraint(share, send));
   EXPECT_TRUE(is_sub_constraint(share, share));
@@ -366,6 +420,7 @@ TEST_F(CapTest, SubConstraint)
   EXPECT_FALSE(is_sub_constraint(alias, val));
   EXPECT_FALSE(is_sub_constraint(alias, box));
   EXPECT_FALSE(is_sub_constraint(alias, tag));
+  EXPECT_FALSE(is_sub_constraint(alias, nhb));
   EXPECT_FALSE(is_sub_constraint(alias, read));
   EXPECT_FALSE(is_sub_constraint(alias, send));
   EXPECT_FALSE(is_sub_constraint(alias, share));
@@ -379,6 +434,7 @@ TEST_F(CapTest, SubConstraint)
   EXPECT_FALSE(is_sub_constraint(any, val));
   EXPECT_FALSE(is_sub_constraint(any, box));
   EXPECT_FALSE(is_sub_constraint(any, tag));
+  EXPECT_FALSE(is_sub_constraint(any, nhb));
   EXPECT_FALSE(is_sub_constraint(any, read));
   EXPECT_FALSE(is_sub_constraint(any, send));
   EXPECT_FALSE(is_sub_constraint(any, share));
@@ -391,18 +447,30 @@ TEST_F(CapTest, SubBoundConcrete)
   // If either cap is a specific cap:
   // Every possible instantiation of sub must be a subtype of every possible
   // instantiation of super.
-  token_id caps[] = { iso, trn, ref, val, box, tag };
+  token_id caps[] = { iso, trn, ref, val, box, tag, nhb };
   int num_caps = sizeof(caps) / sizeof(token_id);
   for (int i = 0; i < num_caps; i++) {
     for (int j = 0; j < num_caps; j++) {
       ASSERT_EQ(is_sub_bound(caps[i], none, caps[j], none),
-                   is_sub(caps[i], none, caps[j], none));
+                   is_sub(caps[i], none, caps[j], none)) <<
+        "SubBoundConcrete failed 1, caps[i]=" <<
+        token_id_desc(caps[i]) << ", caps[j]=" <<
+        token_id_desc(caps[j]);
       ASSERT_EQ(is_sub_bound(caps[i], hat, caps[j], none),
-                   is_sub(caps[i], hat, caps[j], none));
+                   is_sub(caps[i], hat, caps[j], none)) <<
+        "SubBoundConcrete failed 2, caps[i]=" <<
+        token_id_desc(caps[i]) << ", caps[j]=" <<
+        token_id_desc(caps[j]);
       ASSERT_EQ(is_sub_bound(caps[i], none, caps[j], hat),
-                   is_sub(caps[i], none, caps[j], hat));
+                   is_sub(caps[i], none, caps[j], hat)) <<
+        "SubBoundConcrete failed 3, caps[i]=" <<
+        token_id_desc(caps[i]) << ", caps[j]=" <<
+        token_id_desc(caps[j]);
       ASSERT_EQ(is_sub_bound(caps[i], hat, caps[j], hat),
-                   is_sub(caps[i], hat, caps[j], hat));
+                   is_sub(caps[i], hat, caps[j], hat)) <<
+        "SubBoundConcrete failed 4, caps[i]=" <<
+        token_id_desc(caps[i]) << ", caps[j]=" <<
+        token_id_desc(caps[j]);
     }
   }
 }
@@ -493,6 +561,7 @@ TEST_F(CapTest, Compat)
   EXPECT_FALSE(is_compat(iso, val));
   EXPECT_FALSE(is_compat(iso, box));
   EXPECT_TRUE(is_compat(iso, tag));
+  EXPECT_FALSE(is_compat(iso, nhb));
   EXPECT_FALSE(is_compat(iso, read));
   EXPECT_FALSE(is_compat(iso, send));
   EXPECT_FALSE(is_compat(iso, share));
@@ -506,6 +575,7 @@ TEST_F(CapTest, Compat)
   EXPECT_FALSE(is_compat(trn, val));
   EXPECT_TRUE(is_compat(trn, box));
   EXPECT_TRUE(is_compat(trn, tag));
+  EXPECT_FALSE(is_compat(trn, nhb));
   EXPECT_FALSE(is_compat(trn, read));
   EXPECT_FALSE(is_compat(trn, send));
   EXPECT_FALSE(is_compat(trn, share));
@@ -519,6 +589,7 @@ TEST_F(CapTest, Compat)
   EXPECT_FALSE(is_compat(ref, val));
   EXPECT_TRUE(is_compat(ref, box));
   EXPECT_TRUE(is_compat(ref, tag));
+  EXPECT_FALSE(is_compat(ref, nhb));
   EXPECT_FALSE(is_compat(ref, read));
   EXPECT_FALSE(is_compat(ref, send));
   EXPECT_FALSE(is_compat(ref, share));
@@ -532,6 +603,7 @@ TEST_F(CapTest, Compat)
   EXPECT_TRUE(is_compat(val, val));
   EXPECT_TRUE(is_compat(val, box));
   EXPECT_TRUE(is_compat(val, tag));
+  EXPECT_FALSE(is_compat(val, nhb));
   EXPECT_FALSE(is_compat(val, read));
   EXPECT_FALSE(is_compat(val, send));
   EXPECT_TRUE(is_compat(val, share));
@@ -545,6 +617,7 @@ TEST_F(CapTest, Compat)
   EXPECT_TRUE(is_compat(box, val));
   EXPECT_TRUE(is_compat(box, box));
   EXPECT_TRUE(is_compat(box, tag));
+  EXPECT_FALSE(is_compat(box, nhb));
   EXPECT_TRUE(is_compat(box, read));
   EXPECT_FALSE(is_compat(box, send));
   EXPECT_TRUE(is_compat(box, share));
@@ -558,11 +631,26 @@ TEST_F(CapTest, Compat)
   EXPECT_TRUE(is_compat(tag, val));
   EXPECT_TRUE(is_compat(tag, box));
   EXPECT_TRUE(is_compat(tag, tag));
+  EXPECT_TRUE(is_compat(tag, nhb));
   EXPECT_TRUE(is_compat(tag, read));
   EXPECT_TRUE(is_compat(tag, send));
   EXPECT_TRUE(is_compat(tag, share));
   EXPECT_TRUE(is_compat(tag, alias));
   EXPECT_TRUE(is_compat(tag, any));
+
+  // nhb
+  EXPECT_FALSE(is_compat(nhb, iso));
+  EXPECT_FALSE(is_compat(nhb, trn));
+  EXPECT_FALSE(is_compat(nhb, ref));
+  EXPECT_FALSE(is_compat(nhb, val));
+  EXPECT_FALSE(is_compat(nhb, box));
+  EXPECT_TRUE(is_compat(nhb, tag));
+  EXPECT_TRUE(is_compat(nhb, nhb));
+  EXPECT_FALSE(is_compat(nhb, read));
+  EXPECT_FALSE(is_compat(nhb, send));
+  EXPECT_TRUE(is_compat(nhb, share));
+  EXPECT_FALSE(is_compat(nhb, alias));
+  EXPECT_FALSE(is_compat(nhb, any));
 
   // #read {ref, val, box}
   EXPECT_FALSE(is_compat(read, iso));
@@ -571,6 +659,7 @@ TEST_F(CapTest, Compat)
   EXPECT_FALSE(is_compat(read, val));
   EXPECT_TRUE(is_compat(read, box));
   EXPECT_TRUE(is_compat(read, tag));
+  EXPECT_FALSE(is_compat(read, nhb));
   EXPECT_TRUE(is_compat(read, read));
   EXPECT_FALSE(is_compat(read, send));
   EXPECT_FALSE(is_compat(read, share));
@@ -584,6 +673,7 @@ TEST_F(CapTest, Compat)
   EXPECT_FALSE(is_compat(send, val));
   EXPECT_FALSE(is_compat(send, box));
   EXPECT_TRUE(is_compat(send, tag));
+  EXPECT_FALSE(is_compat(send, nhb));
   EXPECT_FALSE(is_compat(send, read));
   EXPECT_FALSE(is_compat(send, send));
   EXPECT_FALSE(is_compat(send, share));
@@ -597,6 +687,7 @@ TEST_F(CapTest, Compat)
   EXPECT_TRUE(is_compat(share, val));
   EXPECT_TRUE(is_compat(share, box));
   EXPECT_TRUE(is_compat(share, tag));
+  EXPECT_TRUE(is_compat(share, nhb));
   EXPECT_FALSE(is_compat(share, read));
   EXPECT_FALSE(is_compat(share, send));
   EXPECT_TRUE(is_compat(share, share));
@@ -610,6 +701,7 @@ TEST_F(CapTest, Compat)
   EXPECT_FALSE(is_compat(alias, val));
   EXPECT_TRUE(is_compat(alias, box));
   EXPECT_TRUE(is_compat(alias, tag));
+  EXPECT_FALSE(is_compat(alias, nhb));
   EXPECT_FALSE(is_compat(alias, read));
   EXPECT_FALSE(is_compat(alias, send));
   EXPECT_FALSE(is_compat(alias, share));
@@ -623,6 +715,7 @@ TEST_F(CapTest, Compat)
   EXPECT_FALSE(is_compat(any, val));
   EXPECT_FALSE(is_compat(any, box));
   EXPECT_TRUE(is_compat(any, tag));
+  EXPECT_FALSE(is_compat(any, nhb));
   EXPECT_FALSE(is_compat(any, read));
   EXPECT_FALSE(is_compat(any, send));
   EXPECT_FALSE(is_compat(any, share));
@@ -638,6 +731,7 @@ TEST_F(CapTest, ViewpointLower)
   ASSERT_EQ(lower_viewpoint(iso, val), val);
   ASSERT_EQ(lower_viewpoint(iso, box), tag);
   ASSERT_EQ(lower_viewpoint(iso, tag), tag);
+  ASSERT_EQ(lower_viewpoint(iso, nhb), tag);
 
   // trn->
   ASSERT_EQ(lower_viewpoint(trn, iso), iso);
@@ -646,6 +740,7 @@ TEST_F(CapTest, ViewpointLower)
   ASSERT_EQ(lower_viewpoint(trn, val), val);
   ASSERT_EQ(lower_viewpoint(trn, box), box);
   ASSERT_EQ(lower_viewpoint(trn, tag), tag);
+  ASSERT_EQ(lower_viewpoint(trn, nhb), box);
 
   // ref->
   ASSERT_EQ(lower_viewpoint(ref, iso), iso);
@@ -654,6 +749,7 @@ TEST_F(CapTest, ViewpointLower)
   ASSERT_EQ(lower_viewpoint(ref, val), val);
   ASSERT_EQ(lower_viewpoint(ref, box), box);
   ASSERT_EQ(lower_viewpoint(ref, tag), tag);
+  ASSERT_EQ(lower_viewpoint(ref, nhb), nhb);
 
   // val->
   ASSERT_EQ(lower_viewpoint(val, iso), val);
@@ -662,6 +758,7 @@ TEST_F(CapTest, ViewpointLower)
   ASSERT_EQ(lower_viewpoint(val, val), val);
   ASSERT_EQ(lower_viewpoint(val, box), val);
   ASSERT_EQ(lower_viewpoint(val, tag), tag);
+  ASSERT_EQ(lower_viewpoint(val, nhb), val);
 
   // box->
   ASSERT_EQ(lower_viewpoint(box, iso), tag);
@@ -670,6 +767,16 @@ TEST_F(CapTest, ViewpointLower)
   ASSERT_EQ(lower_viewpoint(box, val), val);
   ASSERT_EQ(lower_viewpoint(box, box), box);
   ASSERT_EQ(lower_viewpoint(box, tag), tag);
+  ASSERT_EQ(lower_viewpoint(box, nhb), box);
+
+  // nhb->
+  ASSERT_EQ(lower_viewpoint(nhb, iso), iso);
+  ASSERT_EQ(lower_viewpoint(nhb, trn), trn);
+  ASSERT_EQ(lower_viewpoint(nhb, ref), ref);
+  ASSERT_EQ(lower_viewpoint(nhb, val), val);
+  ASSERT_EQ(lower_viewpoint(nhb, box), box);
+  ASSERT_EQ(lower_viewpoint(nhb, tag), tag);
+  ASSERT_EQ(lower_viewpoint(nhb, nhb), nhb);
 }
 TEST_F(CapTest, ViewpointUpper)
 {
@@ -680,6 +787,7 @@ TEST_F(CapTest, ViewpointUpper)
   ASSERT_EQ(upper_viewpoint(iso, val), val);
   ASSERT_EQ(upper_viewpoint(iso, box), tag);
   ASSERT_EQ(upper_viewpoint(iso, tag), tag);
+  ASSERT_EQ(upper_viewpoint(iso, nhb), tag);
 
   // trn->
   ASSERT_EQ(upper_viewpoint(trn, iso), iso);
@@ -688,6 +796,7 @@ TEST_F(CapTest, ViewpointUpper)
   ASSERT_EQ(upper_viewpoint(trn, val), val);
   ASSERT_EQ(upper_viewpoint(trn, box), box);
   ASSERT_EQ(upper_viewpoint(trn, tag), tag);
+  ASSERT_EQ(upper_viewpoint(trn, nhb), box);
 
   // ref->
   ASSERT_EQ(upper_viewpoint(ref, iso), iso);
@@ -696,6 +805,7 @@ TEST_F(CapTest, ViewpointUpper)
   ASSERT_EQ(upper_viewpoint(ref, val), val);
   ASSERT_EQ(upper_viewpoint(ref, box), box);
   ASSERT_EQ(upper_viewpoint(ref, tag), tag);
+  ASSERT_EQ(upper_viewpoint(ref, nhb), nhb);
 
   // val->
   ASSERT_EQ(upper_viewpoint(val, iso), val);
@@ -704,6 +814,7 @@ TEST_F(CapTest, ViewpointUpper)
   ASSERT_EQ(upper_viewpoint(val, val), val);
   ASSERT_EQ(upper_viewpoint(val, box), val);
   ASSERT_EQ(upper_viewpoint(val, tag), tag);
+  ASSERT_EQ(upper_viewpoint(val, nhb), val);
 
   // box->
   ASSERT_EQ(upper_viewpoint(box, iso), tag);
@@ -712,4 +823,14 @@ TEST_F(CapTest, ViewpointUpper)
   ASSERT_EQ(upper_viewpoint(box, val), val);
   ASSERT_EQ(upper_viewpoint(box, box), box);
   ASSERT_EQ(upper_viewpoint(box, tag), tag);
+  ASSERT_EQ(upper_viewpoint(box, nhb), box);
+
+  // nhb->
+  ASSERT_EQ(upper_viewpoint(nhb, iso), iso);
+  ASSERT_EQ(upper_viewpoint(nhb, trn), trn);
+  ASSERT_EQ(upper_viewpoint(nhb, ref), ref);
+  ASSERT_EQ(upper_viewpoint(nhb, val), val);
+  ASSERT_EQ(upper_viewpoint(nhb, box), box);
+  ASSERT_EQ(upper_viewpoint(nhb, tag), tag);
+  ASSERT_EQ(upper_viewpoint(nhb, nhb), nhb);
 }

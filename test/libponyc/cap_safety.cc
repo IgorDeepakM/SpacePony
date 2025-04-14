@@ -194,3 +194,83 @@ TEST_F(CapSafetyTest, NoWriteArrow)
 
   TEST_ERROR(src);
 }
+
+TEST_F(CapSafetyTest, NoValAssignToNhb)
+{
+  const char* src =
+    "class C1\n"
+    "  var y: U32 = 0\n"
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    let val_class: C1 val = C1\n"
+    "    let nhb_class: C1 nhb = val_class\n";
+
+  TEST_ERROR(src);
+}
+
+TEST_F(CapSafetyTest, NoIsoAssignToNhb)
+{
+  const char* src =
+    "class C1\n"
+    "  var y: U32 = 0\n"
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    let iso_class: C1 iso = C1\n"
+    "    let nhb_class: C1 nhb = iso_class\n";
+
+  TEST_ERROR(src);
+}
+
+TEST_F(CapSafetyTest, NoTrnAssignToNhb)
+{
+  const char* src =
+    "class C1\n"
+    "  var y: U32 = 0\n"
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    let trn_class: C1 trn = C1\n"
+    "    let nhb_class: C1 nhb = trn_class\n";
+
+  TEST_ERROR(src);
+}
+
+TEST_F(CapSafetyTest, NoRefAssignToNhb)
+{
+  const char* src =
+    "class C1\n"
+    "  var y: U32 = 0\n"
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    let ref_class: C1 ref = C1\n"
+    "    let nhb_class: C1 nhb = ref_class\n";
+
+  TEST_ERROR(src);
+}
+
+TEST_F(CapSafetyTest, NoBoxAssignToNhb)
+{
+  const char* src =
+    "class C1\n"
+    "  var y: U32 = 0\n"
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    let box_class: C1 box = C1\n"
+    "    let nhb_class: C1 nhb = box_class\n";
+
+  TEST_ERROR(src);
+}
+
+TEST_F(CapSafetyTest, AllowNhbToBeAssigned)
+{
+  const char* src =
+    "class C1\n"
+    "  var y: U32 = 0\n"
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    let nhb_class: C1 nhb = C1\n"
+    "    let ref_class: C1 ref = nhb_class\n"
+    "    let box_class: C1 box = nhb_class\n"
+    "    let val_class: C1 val = nhb_class\n";
+
+  TEST_COMPILE(src);
+}

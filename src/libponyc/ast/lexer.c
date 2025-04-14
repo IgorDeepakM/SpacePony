@@ -161,6 +161,7 @@ static const lextoken_t keywords[] =
   { "val", TK_VAL },
   { "box", TK_BOX },
   { "tag", TK_TAG },
+  { "nhb", TK_NHB },
 
   { "this", TK_THIS },
   { "return", TK_RETURN },
