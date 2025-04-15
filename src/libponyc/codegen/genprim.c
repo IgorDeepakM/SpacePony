@@ -929,13 +929,14 @@ static void atomic_load(compile_t* c, reach_type_t* t, reach_method_t* m, void* 
   reach_type_t* atomic_reach_type = (reach_type_t*)((void**)gen_data)[1];
   compile_type_t* t_elem = (compile_type_t*)atomic_reach_type->c_type;
   compile_method_t* c_m = (compile_method_t*)m->c_method;
+  compile_type_t* c_return = (compile_type_t*)m->result->c_type;
 
   LLVMAtomicOrdering memory_order =
     get_atomic_memory_order_from_type(ast_child(m->typeargs));
 
   LLVMTypeRef params[1];
   params[0] = c_t->use_type;
-  start_function(c, t, m, t_elem->use_type, params, 1);
+  start_function(c, t, m, c_return->use_type, params, 1);
 
   LLVMValueRef ptr = LLVMGetParam(c_m->func, 0);
   LLVMValueRef atomic_value_ptr = LLVMBuildStructGEP2(c->builder, c_t->structure, ptr, 0, "");
@@ -955,6 +956,7 @@ static void atomic_store(compile_t* c, reach_type_t* t, reach_method_t* m, void*
   reach_type_t* atomic_reach_type = (reach_type_t*)((void**)gen_data)[1];
   compile_type_t* t_elem = (compile_type_t*)atomic_reach_type->c_type;
   compile_method_t* c_m = (compile_method_t*)m->c_method;
+  compile_type_t* c_return = (compile_type_t*)m->result->c_type;
 
   LLVMAtomicOrdering memory_order =
     get_atomic_memory_order_from_type(ast_child(m->typeargs));
@@ -962,7 +964,7 @@ static void atomic_store(compile_t* c, reach_type_t* t, reach_method_t* m, void*
   LLVMTypeRef params[2];
   params[0] = c_t->use_type;
   params[1] = t_elem->use_type;
-  start_function(c, t, m, c->void_type, params, 2);
+  start_function(c, t, m, c_return->use_type, params, 2);
 
   LLVMValueRef ptr = LLVMGetParam(c_m->func, 0);
   LLVMValueRef atomic_value_ptr = LLVMBuildStructGEP2(c->builder, c_t->structure, ptr, 0, "");
@@ -972,7 +974,7 @@ static void atomic_store(compile_t* c, reach_type_t* t, reach_method_t* m, void*
   LLVMSetOrdering(store_inst, memory_order);
   LLVMSetVolatile(store_inst, true);
 
-  genfun_build_ret_void(c);
+  genfun_build_ret(c, ptr);
   codegen_finishfun(c);
 }
 
@@ -984,6 +986,7 @@ static void atomic_fetch_bin_op(compile_t* c, reach_type_t* t, reach_method_t* m
   reach_type_t* atomic_reach_type = (reach_type_t*)((void**)gen_data)[1];
   compile_type_t* t_elem = (compile_type_t*)atomic_reach_type->c_type;
   compile_method_t* c_m = (compile_method_t*)m->c_method;
+  compile_type_t* c_return = (compile_type_t*)m->result->c_type;
 
   LLVMAtomicOrdering memory_order =
     get_atomic_memory_order_from_type(ast_child(m->typeargs));
@@ -991,7 +994,7 @@ static void atomic_fetch_bin_op(compile_t* c, reach_type_t* t, reach_method_t* m
   LLVMTypeRef params[2];
   params[0] = c_t->use_type;
   params[1] = t_elem->use_type;
-  start_function(c, t, m, t_elem->use_type, params, 2);
+  start_function(c, t, m, c_return->use_type, params, 2);
 
   LLVMValueRef ptr = LLVMGetParam(c_m->func, 0);
   LLVMValueRef atomic_value_ptr = LLVMBuildStructGEP2(c->builder, c_t->structure, ptr, 0, "");
@@ -1073,6 +1076,7 @@ static void atomic_compare_exchange(compile_t* c, reach_type_t* t, reach_method_
   reach_type_t* atomic_reach_type = (reach_type_t*)((void**)gen_data)[1];
   compile_type_t* t_elem = (compile_type_t*)atomic_reach_type->c_type;
   compile_method_t* c_m = (compile_method_t*)m->c_method;
+  compile_type_t* c_return = (compile_type_t*)m->result->c_type;
 
   LLVMAtomicOrdering memory_order_success =
     get_atomic_memory_order_from_type(ast_child(m->typeargs));
@@ -1083,7 +1087,7 @@ static void atomic_compare_exchange(compile_t* c, reach_type_t* t, reach_method_
   params[0] = c_t->use_type;
   params[1] = c->ptr;
   params[2] = t_elem->use_type;
-  start_function(c, t, m, t_elem->use_type, params, 3);
+  start_function(c, t, m, c_return->use_type, params, 3);
 
   LLVMValueRef ptr = LLVMGetParam(c_m->func, 0);
   LLVMValueRef atomic_value_ptr = LLVMBuildStructGEP2(c->builder, c_t->structure, ptr, 0, "");
