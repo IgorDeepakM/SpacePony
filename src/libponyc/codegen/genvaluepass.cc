@@ -5,14 +5,20 @@
 #include "gencall.h"
 #include <array>
 
+#include "llvm_config_begin.h"
+
+#include <llvm/IR/IRBuilder.h>
+
+
+using namespace llvm;
 
 typedef struct
 {
   size_t current_word;
   size_t current_byte_in_word;
   size_t bytes_per_word;
-  LLVMTypeKind last_type_kind;
-  std::array<LLVMTypeRef, 4> types;
+  Type::TypeID last_type_kind;
+  std::array<Type*, 4> types;
 }RegisterPos_t;
 
 
@@ -47,9 +53,9 @@ extern "C" bool is_pass_by_value_lowering_supported(pass_opt_t* opt)
   return ret;
 }
 
-static bool insert_type_hfa_aarch64(RegisterPos_t *pos, LLVMTypeRef type)
+static bool insert_type_hfa_aarch64(RegisterPos_t *pos, Type* type)
 {
-  LLVMTypeKind kind = LLVMGetTypeKind(type);
+  Type::TypeID kind = type->getTypeID();
 
   if(pos->current_word == 0)
   {
@@ -74,10 +80,10 @@ static bool insert_type_hfa_aarch64(RegisterPos_t *pos, LLVMTypeRef type)
   return true;
 }
 
-static bool get_hfa_from_fixed_sized_array_aarch64(LLVMTypeRef array, RegisterPos_t *pos)
+static bool get_hfa_from_fixed_sized_array_aarch64(ArrayType* array, RegisterPos_t *pos)
 {
-  LLVMTypeRef element_type = LLVMGetElementType(array);
-  size_t num_elements = (size_t)LLVMGetArrayLength(array);
+  Type* element_type = array->getElementType();
+  size_t num_elements = (size_t)array->getNumElements();
 
   for(size_t i = 0; i < num_elements; i++)
   {
@@ -90,24 +96,24 @@ static bool get_hfa_from_fixed_sized_array_aarch64(LLVMTypeRef array, RegisterPo
   return true;
 }
 
-static bool get_hfa_from_structure_aarch64(LLVMTypeRef structure, RegisterPos_t *pos)
+static bool get_hfa_from_structure_aarch64(StructType* structure, RegisterPos_t *pos)
 {
-  size_t num_elements = (size_t)LLVMCountStructElementTypes(structure);
+  size_t num_elements = (size_t)structure->getNumElements();
 
   for(size_t i = 0; i < num_elements; i++)
   {
-    LLVMTypeRef curr_type = LLVMStructGetTypeAtIndex(structure, (unsigned int)i);
+    Type* curr_type = structure->getTypeAtIndex(i);
 
-    switch(LLVMGetTypeKind(curr_type))
+    switch(curr_type->getTypeID())
     {
-      case LLVMStructTypeKind:
-        if(!get_hfa_from_structure_aarch64(curr_type, pos))
+      case Type::TypeID::StructTyID:
+        if(!get_hfa_from_structure_aarch64(dyn_cast<StructType>(curr_type), pos))
         {
           return false;
         }
         break;
-      case LLVMArrayTypeKind:
-        if(!get_hfa_from_fixed_sized_array_aarch64(curr_type, pos))
+      case Type::TypeID::ArrayTyID:
+        if(!get_hfa_from_fixed_sized_array_aarch64(dyn_cast<ArrayType>(curr_type), pos))
         {
           return false;
         }
@@ -222,13 +228,13 @@ extern "C" bool is_return_value_lowering_needed(compile_t* c, reach_type_t* pt)
     }
     else if(target_is_lp64(triple))
     {
-      RegisterPos_t reg_pos;
+      RegisterPos_t reg_pos{ 0, 0, 0, Type::TypeID::VoidTyID};
       reg_pos.current_word = 0;
       reg_pos.current_byte_in_word = 0;
       reg_pos.bytes_per_word = 0; // Not used
-      reg_pos.last_type_kind = LLVMVoidTypeKind;
+      reg_pos.last_type_kind = Type::TypeID::VoidTyID;
 
-      if(get_hfa_from_structure_aarch64(p_t->structure, &reg_pos))
+      if(get_hfa_from_structure_aarch64(unwrap<StructType>(p_t->structure), &reg_pos))
       {
         ret = true;
       }
@@ -243,18 +249,18 @@ extern "C" bool is_return_value_lowering_needed(compile_t* c, reach_type_t* pt)
 }
 
 
-static LLVMTypeRef get_type_from_size(compile_t* c, size_t size)
+static Type* get_type_from_size(compile_t* c, size_t size)
 {
   switch(size)
   {
     case 8:
-      return c->i64;
+      return unwrap(c->i64);
     case 4:
-      return c->i32;
+      return unwrap(c->i32);
     case 2:
-      return c->i16;
+      return unwrap(c->i16);
     case 1:
-      return c->i8;
+      return unwrap(c->i8);
     default:
       pony_assert(false);
       return NULL;
@@ -276,28 +282,30 @@ static size_t next_power_of_2(size_t v)
 }
 
 
-static void insert_type_x86_64_systemv(compile_t* c, RegisterPos_t *pos, LLVMTypeRef type)
+static void insert_type_x86_64_systemv(compile_t* c, RegisterPos_t *pos, Type* type)
 {
-  LLVMTypeKind kind = LLVMGetTypeKind(type);
-  size_t size = (size_t)LLVMABISizeOfType(c->target_data, type);
+  auto target_data = unwrap(c->target_data);
+
+  Type::TypeID kind = type->getTypeID();
+  size_t size = (size_t)target_data->getTypeAllocSize(type);
 
   size_t next_byte_in_word = pos->current_byte_in_word + size;
 
   if(pos->current_word == 0 || next_byte_in_word > 8 ||
-     kind == LLVMDoubleTypeKind)
+     kind == Type::TypeID::DoubleTyID)
   {
-    if(kind == LLVMIntegerTypeKind)
+    if(kind == Type::TypeID::IntegerTyID)
     {
       pos->types.at(pos->current_word) =
         get_type_from_size(c, next_power_of_2(size));
     }
-    else if(kind == LLVMDoubleTypeKind)
+    else if(kind == Type::TypeID::DoubleTyID)
     {
-      pos->types.at(pos->current_word) = c->f64;
+      pos->types.at(pos->current_word) = unwrap(c->f64);
     }
-    else if(kind == LLVMFloatTypeKind)
+    else if(kind == Type::TypeID::FloatTyID)
     {
-      pos->types.at(pos->current_word) = c->f32;
+      pos->types.at(pos->current_word) = unwrap(c->f32);
     }
     pos->current_word++;
     pos->current_byte_in_word = size;
@@ -307,7 +315,7 @@ static void insert_type_x86_64_systemv(compile_t* c, RegisterPos_t *pos, LLVMTyp
   {
     if(pos->last_type_kind == LLVMFloatTypeKind && kind == LLVMFloatTypeKind)
     {
-      pos->types.at(pos->current_word - 1) = c->f64;
+      pos->types.at(pos->current_word - 1) = unwrap(c->f64);
     }
     else
     {
@@ -320,10 +328,10 @@ static void insert_type_x86_64_systemv(compile_t* c, RegisterPos_t *pos, LLVMTyp
 }
 
 
-static void lower_fixed_sized_array_x86_64_systemv(compile_t* c, LLVMTypeRef array, RegisterPos_t *pos)
+static void lower_fixed_sized_array_x86_64_systemv(compile_t* c, ArrayType* array, RegisterPos_t *pos)
 {
-  LLVMTypeRef element_type = LLVMGetElementType(array);
-  size_t num_elements = (size_t)LLVMGetArrayLength(array);
+  Type* element_type = array->getElementType();
+  size_t num_elements = (size_t)array->getNumElements();
 
   for(size_t i = 0; i < num_elements; i++)
   {
@@ -332,21 +340,21 @@ static void lower_fixed_sized_array_x86_64_systemv(compile_t* c, LLVMTypeRef arr
 }
 
 
-static void lower_structure_x86_64_systemv(compile_t* c, LLVMTypeRef structure, RegisterPos_t *pos)
+static void lower_structure_x86_64_systemv(compile_t* c, StructType* structure, RegisterPos_t *pos)
 {
-  size_t num_elements = (size_t)LLVMCountStructElementTypes(structure);
+  size_t num_elements = (size_t)structure->getNumElements();
 
   for(size_t i = 0; i < num_elements; i++)
   {
-    LLVMTypeRef curr_type = LLVMStructGetTypeAtIndex(structure, (unsigned int)i);
+    Type* curr_type = structure->getTypeAtIndex(i);
 
-    switch(LLVMGetTypeKind(curr_type))
+    switch(curr_type->getTypeID())
     {
-      case LLVMStructTypeKind:
-        lower_structure_x86_64_systemv(c, curr_type, pos);
+      case Type::TypeID::StructTyID:
+        lower_structure_x86_64_systemv(c, dyn_cast<StructType>(curr_type), pos);
         break;
-      case LLVMArrayTypeKind:
-        lower_fixed_sized_array_x86_64_systemv(c, curr_type, pos);
+      case Type::TypeID::ArrayTyID:
+        lower_fixed_sized_array_x86_64_systemv(c, dyn_cast<ArrayType>(curr_type), pos);
         break;
       default:
       {
@@ -357,18 +365,20 @@ static void lower_structure_x86_64_systemv(compile_t* c, LLVMTypeRef structure, 
   }
 }
 
-static LLVMTypeRef generate_flattened_type(compile_t* c, RegisterPos_t *pos)
+static Type* generate_flattened_type(compile_t* c, RegisterPos_t *pos)
 {
-  return LLVMStructTypeInContext(c->context, pos->types.data(),
-    (unsigned int)pos->current_word, false);
+  ArrayRef<Type*> Tys(pos->types.data(), pos->current_word);
+  return StructType::get(*unwrap(c->context), Tys);
 }
 
 extern "C" LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach_type_t* pt)
 {
-  LLVMTypeRef ret = NULL;
+  Type* ret = nullptr;
   char* triple = c->opt->triple;
 
   compile_type_t* p_t = (compile_type_t*)pt->c_type;
+
+  auto target_data = unwrap(c->target_data);
 
   // If no lowering is needed then just return with the same pointer to structure type
   if(!is_param_value_lowering_needed(c, p_t))
@@ -389,15 +399,15 @@ extern "C" LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach
     {
       if(target_is_lp64(triple))
       {
-        size_t ptr_size = (size_t)LLVMABISizeOfType(c->target_data, c->intptr);
+        size_t ptr_size = (size_t)target_data->getTypeAllocSize(unwrap(c->intptr));
 
-        RegisterPos_t reg_pos;
+        RegisterPos_t reg_pos{ 0, 0, 0, Type::TypeID::VoidTyID };
         reg_pos.current_word = 0;
         reg_pos.current_byte_in_word = 0;
         reg_pos.bytes_per_word = ptr_size;
-        reg_pos.last_type_kind = LLVMVoidTypeKind;
+        reg_pos.last_type_kind = Type::TypeID::VoidTyID;
 
-        lower_structure_x86_64_systemv(c, p_t->structure, &reg_pos);
+        lower_structure_x86_64_systemv(c, dyn_cast<StructType>(unwrap(p_t->structure)), &reg_pos);
 
         ret = generate_flattened_type(c, &reg_pos);
       }
@@ -407,7 +417,8 @@ extern "C" LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach
   {
     if(target_is_ilp32(triple))
     {
-      size_t align = (size_t)LLVMABIAlignmentOfType(c->target_data, p_t->structure);
+      size_t align = (size_t)target_data->getABITypeAlign(unwrap(p_t->structure)).value();
+
       if(align < 4)
       {
         align = 4;
@@ -418,28 +429,26 @@ extern "C" LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach
       {
         array_size++;
       }
-      LLVMTypeRef array_type = get_type_from_size(c, align);
-      ret = LLVMArrayType(array_type, (unsigned int)array_size);
+      Type* array_type = get_type_from_size(c, align);
+      ret = ArrayType::get(array_type, (uint64_t)array_size);
     }
     else if(target_is_lp64(triple))
     {
-      RegisterPos_t reg_pos;
+      RegisterPos_t reg_pos{ 0, 0, 0, Type::TypeID::VoidTyID };
       reg_pos.current_word = 0;
       reg_pos.current_byte_in_word = 0;
       reg_pos.bytes_per_word = 0; // Not used
-      reg_pos.last_type_kind = LLVMVoidTypeKind;
+      reg_pos.last_type_kind = Type::TypeID::VoidTyID;
 
-      LLVMTypeRef structure = p_t->structure;
-
-      if(get_hfa_from_structure_aarch64(structure, &reg_pos))
+      if(get_hfa_from_structure_aarch64(unwrap<StructType>(p_t->structure), &reg_pos))
       {
-        if(reg_pos.last_type_kind == LLVMFloatTypeKind)
+        if(reg_pos.last_type_kind == Type::TypeID::FloatTyID)
         {
-          ret = LLVMArrayType(c->f32, (unsigned int)reg_pos.current_word);
+          ret = ArrayType::get(unwrap(c->f32), (uint64_t)reg_pos.current_word);
         }
-        else if(reg_pos.last_type_kind == LLVMDoubleTypeKind)
+        else if(reg_pos.last_type_kind == Type::TypeID::DoubleTyID)
         {
-          ret = LLVMArrayType(c->f64, (unsigned int)reg_pos.current_word);
+          ret = ArrayType::get(unwrap(c->f64), (uint64_t)reg_pos.current_word);
         }
         else
         {
@@ -452,22 +461,24 @@ extern "C" LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach
       }
       else if(p_t->abi_size <= 16)
       {
-        ret = LLVMArrayType(c->i64, 2);
+        ret = ArrayType::get(unwrap(c->i64), 2);
       }
       else
       {
-        ret = p_t->use_type;
+        ret = unwrap(p_t->use_type);
       }
     }
   }
 
-  return ret;
+  return wrap(ret);
 }
 
 extern "C" LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reach_type_t* pt)
 {
-  LLVMTypeRef ret = NULL;
+  Type* ret = NULL;
   char* triple = c->opt->triple;
+
+  auto target_data = unwrap(c->target_data);
 
   compile_type_t* p_t = (compile_type_t*)pt->c_type;
 
@@ -484,15 +495,15 @@ extern "C" LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reac
     {
       if(target_is_lp64(triple))
       {
-        size_t ptr_size = (size_t)LLVMABISizeOfType(c->target_data, c->intptr);
+        size_t ptr_size = (size_t)target_data->getTypeAllocSize(unwrap(c->intptr));
 
-        RegisterPos_t reg_pos;
+        RegisterPos_t reg_pos{ 0, 0, 0, Type::TypeID::VoidTyID };
         reg_pos.current_word = 0;
         reg_pos.current_byte_in_word = 0;
         reg_pos.bytes_per_word = ptr_size;
-        reg_pos.last_type_kind = LLVMVoidTypeKind;
+        reg_pos.last_type_kind = Type::TypeID::VoidTyID;
 
-        lower_structure_x86_64_systemv(c, p_t->structure, &reg_pos);
+        lower_structure_x86_64_systemv(c, unwrap<StructType>(p_t->structure), &reg_pos);
 
         ret = generate_flattened_type(c, &reg_pos);
       }
@@ -506,15 +517,15 @@ extern "C" LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reac
     }
     else if(target_is_lp64(triple))
     {
-      RegisterPos_t reg_pos;
+      RegisterPos_t reg_pos{ 0, 0, 0, Type::TypeID::VoidTyID };
       reg_pos.current_word = 0;
       reg_pos.current_byte_in_word = 0;
       reg_pos.bytes_per_word = 0; // Not used
-      reg_pos.last_type_kind = LLVMVoidTypeKind;
+      reg_pos.last_type_kind = Type::TypeID::VoidTyID;
 
-      if(get_hfa_from_structure_aarch64(p_t->structure, &reg_pos))
+      if(get_hfa_from_structure_aarch64(unwrap<StructType>(p_t->structure), &reg_pos))
       {
-        ret = p_t->structure;
+        ret = unwrap(p_t->structure);
       }
       else if(p_t->abi_size <= 8)
       {
@@ -522,35 +533,38 @@ extern "C" LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reac
       }
       else if(p_t->abi_size <= 16)
       {
-        ret = LLVMArrayType(c->i64, 2);
+        ret = ArrayType::get(unwrap(c->i64), 2);
       }
       else
       {
-        ret = p_t->use_type;
+        ret = unwrap(p_t->use_type);
       }
     }
   }
 
-  return ret;
+  return wrap(ret);
 }
 
-static LLVMValueRef copy_from_ptr_to_value_zero_extend(compile_t* c, LLVMValueRef ptr,
-  LLVMTypeRef param_type, compile_type_t* p_c_t)
+static Value* copy_from_ptr_to_value_zero_extend(compile_t* c, Value* ptr,
+  Type* param_type, compile_type_t* p_c_t)
 {
-  LLVMValueRef ret = NULL;
+  Value* ret = nullptr;
 
-  if(p_c_t->abi_size == (size_t)LLVMABISizeOfType(c->target_data, param_type))
+  auto builder = unwrap(c->builder);
+  auto target_data = unwrap(c->target_data);
+
+  if(p_c_t->abi_size == (size_t)target_data->getTypeAllocSize(param_type))
   {
-    ret = LLVMBuildLoad2(c->builder, param_type, ptr, "");
+    ret = builder->CreateLoad(param_type, ptr, "");
   }
   else
   {
-    LLVMValueRef tmp_array = LLVMBuildAlloca(c->builder, param_type, "");
-    LLVMValueRef cpy_size = LLVMConstInt(c->intptr, p_c_t->abi_size, false);
-    LLVMValueRef zero = LLVMConstInt(c->i8, 0, false);
-    LLVMBuildMemSet(c->builder, tmp_array, zero, cpy_size, LLVMGetAlignment(tmp_array));
-    gencall_memcpy(c, tmp_array, ptr, cpy_size);
-    ret = LLVMBuildLoad2(c->builder, param_type, tmp_array, "");
+    AllocaInst* tmp_array = builder->CreateAlloca(param_type, nullptr, "");
+    ConstantInt* cpy_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), p_c_t->abi_size);
+    ConstantInt* zero = ConstantInt::get(unwrap<IntegerType>(c->i8), 0);
+    builder->CreateMemSet(tmp_array, zero, cpy_size, tmp_array->getAlign());
+    gencall_memcpy(c, wrap(tmp_array), wrap(ptr), wrap(cpy_size));
+    ret = builder->CreateLoad(param_type, tmp_array, "");
   }
 
   return ret;
@@ -559,8 +573,10 @@ static LLVMValueRef copy_from_ptr_to_value_zero_extend(compile_t* c, LLVMValueRe
 extern "C" LLVMValueRef load_lowered_param_value_from_ptr(compile_t* c, LLVMValueRef ptr,
   LLVMTypeRef param_type, reach_type_t* real_type)
 {
-  LLVMValueRef ret = NULL;
+  Value* ret = nullptr;
   char* triple = c->opt->triple;
+
+  auto builder = unwrap(c->builder);
 
   compile_type_t* p_c_t = (compile_type_t*)real_type->c_type;
 
@@ -575,41 +591,41 @@ extern "C" LLVMValueRef load_lowered_param_value_from_ptr(compile_t* c, LLVMValu
   {
     // x86 only lowers structs with size of power of 2
     // so it can be loaded directely without a cast
-    ret = LLVMBuildLoad2(c->builder, param_type, ptr, "");
+    ret = builder->CreateLoad(unwrap(param_type), unwrap(ptr), "");
   }
   else if(target_is_x86(triple) && target_is_linux(triple) && target_is_lp64(triple))
   {
-    ret = copy_from_ptr_to_value_zero_extend(c, ptr, param_type, p_c_t);
+    ret = copy_from_ptr_to_value_zero_extend(c, unwrap(ptr), unwrap(param_type), p_c_t);
   }
   else if(target_is_arm(triple))
   {
     if(target_is_lp64(triple) && p_c_t->abi_size > 16)
     {
-      RegisterPos_t reg_pos;
+      RegisterPos_t reg_pos{ 0, 0, 0, Type::TypeID::VoidTyID };
       reg_pos.current_word = 0;
       reg_pos.current_byte_in_word = 0;
       reg_pos.bytes_per_word = 0; // Not used
-      reg_pos.last_type_kind = LLVMVoidTypeKind;
+      reg_pos.last_type_kind = Type::TypeID::VoidTyID;
 
-      bool is_hfa = get_hfa_from_structure_aarch64(p_c_t->structure, &reg_pos);
+      bool is_hfa = get_hfa_from_structure_aarch64(unwrap<StructType>(p_c_t->structure), &reg_pos);
 
       if(!is_hfa)
       {
         // Aarch doesn't use byval and because of that you need to manually
         // create a copy of the structure on the stack and copy it.
-        LLVMValueRef caller_copy = LLVMBuildAlloca(c->builder, p_c_t->structure, "");
-        LLVMValueRef cpy_size = LLVMConstInt(c->intptr, p_c_t->abi_size, false);
-        gencall_memcpy(c, caller_copy, ptr, cpy_size);
+        AllocaInst* caller_copy = builder->CreateAlloca(unwrap(p_c_t->structure), nullptr, "");
+        ConstantInt* cpy_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), p_c_t->abi_size);
+        gencall_memcpy(c, wrap(caller_copy), ptr, wrap(cpy_size));
         ret = caller_copy;
       }
       else
       {
-        ret = copy_from_ptr_to_value_zero_extend(c, ptr, param_type, p_c_t);
+        ret = copy_from_ptr_to_value_zero_extend(c, unwrap(ptr), unwrap(param_type), p_c_t);
       }
     }
     else
     {
-      ret = copy_from_ptr_to_value_zero_extend(c, ptr, param_type, p_c_t);
+      ret = copy_from_ptr_to_value_zero_extend(c, unwrap(ptr), unwrap(param_type), p_c_t);
     }
   }
   else
@@ -617,15 +633,17 @@ extern "C" LLVMValueRef load_lowered_param_value_from_ptr(compile_t* c, LLVMValu
     pony_assert(false);
   }
 
-  return ret;
+  return wrap(ret);
 }
 
 
 extern "C" LLVMValueRef load_lowered_return_value_from_ptr(compile_t* c, LLVMValueRef ptr,
   LLVMTypeRef return_type, reach_type_t* real_type)
 {
-  LLVMValueRef ret = NULL;
+  Value* ret = nullptr;
   char* triple = c->opt->triple;
+
+  auto builder = unwrap(c->builder);
 
   compile_type_t* p_c_t = (compile_type_t*)real_type->c_type;
 
@@ -634,20 +652,21 @@ extern "C" LLVMValueRef load_lowered_return_value_from_ptr(compile_t* c, LLVMVal
   {
     // x86 only lowers structs with size of power of 2
     // so it can be loaded directely without a cast
-    ret = LLVMBuildLoad2(c->builder, return_type, ptr, "");
+    ret = builder->CreateLoad(unwrap(return_type), unwrap(ptr), "");
   }
   else if(target_is_arm(triple) ||
           (target_is_x86(triple) && target_is_linux(triple) && target_is_lp64(triple)))
   {
-    ret = copy_from_ptr_to_value_zero_extend(c, ptr, return_type, p_c_t);
+    ret = copy_from_ptr_to_value_zero_extend(c, unwrap(ptr), unwrap(return_type), p_c_t);
   }
   else
   {
     pony_assert(false);
   }
 
-  return ret;
+  return wrap(ret);
 }
+
 
 extern "C" void copy_lowered_param_value_to_ptr(compile_t* c, LLVMValueRef dest_ptr,
   LLVMValueRef param_value, reach_type_t* real_target_type)
@@ -655,51 +674,54 @@ extern "C" void copy_lowered_param_value_to_ptr(compile_t* c, LLVMValueRef dest_
   char* triple = c->opt->triple;
   compile_type_t* p_c_t = (compile_type_t*)real_target_type->c_type;
 
+  auto builder = unwrap(c->builder);
+  auto target_data = unwrap(c->target_data);
+
   // If no lowering is needed then just copy from the pointer provided
   if(!is_param_value_lowering_needed(c, p_c_t))
   {
-    LLVMValueRef l_size = LLVMConstInt(c->intptr, p_c_t->abi_size, false);
-    gencall_memcpy(c, dest_ptr, param_value, l_size);
+    ConstantInt* l_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), p_c_t->abi_size);
+    gencall_memcpy(c, dest_ptr, param_value, wrap(l_size));
     return;
   }
 
   if(target_is_x86(triple) && target_is_windows(triple) &&
      (target_is_llp64(triple) || target_is_ilp32(triple)))
   {
-    LLVMBuildStore(c->builder, param_value, dest_ptr);
+    builder->CreateStore(unwrap(param_value), unwrap(dest_ptr));
   }
   else if(target_is_arm(triple) ||
           (target_is_x86(triple) && target_is_linux(triple) && target_is_lp64(triple)))
   {
     if(target_is_arm(triple) && target_is_lp64(triple))
     {
-      RegisterPos_t reg_pos;
+      RegisterPos_t reg_pos{ 0, 0, 0, Type::TypeID::VoidTyID };
       reg_pos.current_word = 0;
       reg_pos.current_byte_in_word = 0;
       reg_pos.bytes_per_word = 0; // Not used
-      reg_pos.last_type_kind = LLVMVoidTypeKind;
+      reg_pos.last_type_kind = Type::TypeID::VoidTyID;
 
-      bool is_hfa = get_hfa_from_structure_aarch64(p_c_t->structure, &reg_pos);
+      bool is_hfa = get_hfa_from_structure_aarch64(unwrap<StructType>(p_c_t->structure), &reg_pos);
 
       if(p_c_t->abi_size > 16 && !is_hfa)
       {
-        LLVMValueRef l_size = LLVMConstInt(c->intptr, p_c_t->abi_size, false);
-        gencall_memcpy(c, dest_ptr, param_value, l_size);
+       ConstantInt* l_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), p_c_t->abi_size);
+        gencall_memcpy(c, dest_ptr, param_value, wrap(l_size));
         return;
       }
     }
 
-    LLVMTypeRef param_type = LLVMTypeOf(param_value);
-    if(p_c_t->abi_size == (size_t)LLVMABISizeOfType(c->target_data, param_type))
+    Type* param_type = unwrap(param_value)->getType();
+    if(p_c_t->abi_size == (size_t)target_data->getTypeAllocSize(param_type))
     {
-      LLVMBuildStore(c->builder, param_value, dest_ptr);
+      builder->CreateStore(unwrap(param_value), unwrap(dest_ptr));
     }
     else
     {
-      LLVMValueRef tmp_array = LLVMBuildAlloca(c->builder, param_type, "");
-      LLVMBuildStore(c->builder, param_value, tmp_array);
-      LLVMValueRef cpy_size = LLVMConstInt(c->intptr, p_c_t->abi_size, false);
-      gencall_memcpy(c, dest_ptr, tmp_array, cpy_size);
+      AllocaInst* tmp_array = builder->CreateAlloca(param_type, nullptr, "");
+      builder->CreateStore(unwrap(param_value), tmp_array);
+      ConstantInt* cpy_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), p_c_t->abi_size);
+      gencall_memcpy(c, dest_ptr, wrap(tmp_array), wrap(cpy_size));
     }
   }
   else
@@ -715,10 +737,12 @@ extern "C" void copy_lowered_return_value_to_ptr(compile_t* c, LLVMValueRef dest
   char* triple = c->opt->triple;
   compile_type_t* p_c_t = (compile_type_t*)real_target_type->c_type;
 
+  auto builder = unwrap(c->builder);
+
   if(target_is_x86(triple) && target_is_windows(triple) &&
      (target_is_llp64(triple) || target_is_ilp32(triple)))
   {
-    LLVMBuildStore(c->builder, return_value, dest_ptr);
+    builder->CreateStore(unwrap(return_value), unwrap(dest_ptr));
   }
   else if(target_is_arm(triple) ||
           (target_is_x86(triple) && target_is_linux(triple) && target_is_lp64(triple)))
@@ -726,14 +750,14 @@ extern "C" void copy_lowered_return_value_to_ptr(compile_t* c, LLVMValueRef dest
     LLVMTypeRef return_type = LLVMTypeOf(return_value);
     if(p_c_t->abi_size == (size_t)LLVMABISizeOfType(c->target_data, return_type))
     {
-      LLVMBuildStore(c->builder, return_value, dest_ptr);
+      builder->CreateStore(unwrap(return_value), unwrap(dest_ptr));
     }
     else
     {
-      LLVMValueRef tmp_array = LLVMBuildAlloca(c->builder, return_type, "");
-      LLVMBuildStore(c->builder, return_value, tmp_array);
-      LLVMValueRef cpy_size = LLVMConstInt(c->intptr, p_c_t->abi_size, false);
-      gencall_memcpy(c, dest_ptr, tmp_array, cpy_size);
+      AllocaInst* tmp_array = builder->CreateAlloca(unwrap(return_type), nullptr, "");
+      builder->CreateStore(unwrap(return_value), tmp_array);
+      ConstantInt* cpy_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), p_c_t->abi_size);
+      gencall_memcpy(c, dest_ptr, wrap(tmp_array), wrap(cpy_size));
     }
   }
   else
@@ -752,17 +776,14 @@ extern "C" void apply_function_value_param_attribute(compile_t* c, reach_type_t*
     return;
   }
 
-  compile_type_t* p_t = (compile_type_t*)pt->c_type;
+  compile_type_t* p_c_t = (compile_type_t*)pt->c_type;
 
-  if(!is_param_value_lowering_needed(c, p_t))
+  if(!is_param_value_lowering_needed(c, p_c_t))
   {
-    unsigned int kind = LLVMGetEnumAttributeKindForName("byval", sizeof("byval") - 1);
-    LLVMAttributeRef byvalue_attr = LLVMCreateTypeAttribute(
-      c->context,
-      kind,
-      ((compile_type_t*)pt->c_type)->structure);
+    Attribute::AttrKind kind = Attribute::getAttrKindFromName("byval");
+    Attribute byvalue_attr = Attribute::get(*unwrap(c->context), kind, unwrap(p_c_t->structure));
     // index 0 = return type, 1 ... paramters
-    LLVMAddAttributeAtIndex(func, param_nr, byvalue_attr);
+    unwrap<Function>(func)->addAttributeAtIndex(param_nr, byvalue_attr);
   }
 }
 
@@ -776,18 +797,14 @@ extern "C" void apply_call_site_value_param_attribute(compile_t* c, reach_type_t
     return;
   }
 
-  compile_type_t* p_t = (compile_type_t*)pt->c_type;
+  compile_type_t* p_c_t = (compile_type_t*)pt->c_type;
 
-  if(!is_param_value_lowering_needed(c, p_t))
+  if(!is_param_value_lowering_needed(c, p_c_t))
   {
-    unsigned int kind = LLVMGetEnumAttributeKindForName("byval", sizeof("byval") - 1);
-    compile_type_t* p_c_t = (compile_type_t*)pt->c_type;
-    LLVMAttributeRef byvalue_attr = LLVMCreateTypeAttribute(
-      c->context,
-      kind,
-      p_c_t->structure);
+    Attribute::AttrKind kind = Attribute::getAttrKindFromName("byval");
+    Attribute byvalue_attr = Attribute::get(*unwrap(c->context), kind, unwrap(p_c_t->structure));
     // index 0 = return type, 1 ... paramters
-    LLVMAddCallSiteAttribute(func, param_nr, byvalue_attr);
+    unwrap<CallBase>(func)->addAttributeAtIndex(param_nr, byvalue_attr);
   }
 }
 
@@ -797,14 +814,11 @@ extern "C" void apply_function_value_return_attribute(compile_t* c, reach_type_t
 {
   if(!is_return_value_lowering_needed(c, pt))
   {
-    unsigned int kind = LLVMGetEnumAttributeKindForName("sret", sizeof("sret") - 1);
+    Attribute::AttrKind kind = Attribute::getAttrKindFromName("sret");
     compile_type_t* ret_c_t = (compile_type_t*)pt->c_type;
-    LLVMAttributeRef sret_attr = LLVMCreateTypeAttribute(
-      c->context,
-      kind,
-      ret_c_t->structure);
+    Attribute sret_attr = Attribute::get(*unwrap(c->context), kind, unwrap(ret_c_t->structure));
     // index 1 = sret return type
-    LLVMAddAttributeAtIndex(func, 1, sret_attr);
+    unwrap<Function>(func)->addAttributeAtIndex(1, sret_attr);
   }
 }
 
@@ -814,13 +828,10 @@ extern "C" void apply_call_site_value_return_attribute(compile_t* c, reach_type_
 {
   if(!is_return_value_lowering_needed(c, pt))
   {
-    unsigned int kind = LLVMGetEnumAttributeKindForName("sret", sizeof("sret") - 1);
+    Attribute::AttrKind kind = Attribute::getAttrKindFromName("sret");
     compile_type_t* ret_c_t = (compile_type_t*)pt->c_type;
-    LLVMAttributeRef sret_attr = LLVMCreateTypeAttribute(
-      c->context,
-      kind,
-      ret_c_t->structure);
+    Attribute sret_attr = Attribute::get(*unwrap(c->context), kind, unwrap(ret_c_t->structure));
     // index 1 = sret return type
-    LLVMAddCallSiteAttribute(func, 1, sret_attr);
+    unwrap<CallBase>(func)->addAttributeAtIndex(1, sret_attr);
   }
 }

@@ -70,7 +70,7 @@ LLVMMetadataRef LLVMDIBuilderCreateMethod(LLVMDIBuilderRef d,
   return wrap(di_method);
 }
 
-LLVMMetadataRef LLVMDIBuilderCreateAutoVariable(LLVMDIBuilderRef d,
+static LLVMMetadataRef LLVMDIBuilderCreateAutoVariable(LLVMDIBuilderRef d,
   LLVMMetadataRef scope, const char* name, LLVMMetadataRef file,
   unsigned line, LLVMMetadataRef type)
 {
@@ -80,7 +80,7 @@ LLVMMetadataRef LLVMDIBuilderCreateAutoVariable(LLVMDIBuilderRef d,
     unwrap<DIFile>(file), line, unwrap<DIType>(type), true, DINode::FlagZero));
 }
 
-LLVMMetadataRef LLVMDIBuilderCreateParameterVariable(LLVMDIBuilderRef d,
+static LLVMMetadataRef LLVMDIBuilderCreateParameterVariable(LLVMDIBuilderRef d,
   LLVMMetadataRef scope, const char* name, unsigned arg,
   LLVMMetadataRef file, unsigned line, LLVMMetadataRef type)
 {
@@ -112,7 +112,7 @@ LLVMMetadataRef LLVMDIBuilderCreateReplaceableStruct(LLVMDIBuilderRef d,
     name, unwrap<DIScope>(scope), unwrap<DIFile>(file), line));
 }
 
-LLVMMetadataRef LLVMDIBuilderCreateMemberType(LLVMDIBuilderRef d,
+static LLVMMetadataRef LLVMDIBuilderCreateMemberType(LLVMDIBuilderRef d,
   LLVMMetadataRef scope, const char* name, LLVMMetadataRef file,
   unsigned line, uint64_t size_bits, uint64_t align_bits,
   uint64_t offset_bits, unsigned flags, LLVMMetadataRef type)
@@ -125,7 +125,7 @@ LLVMMetadataRef LLVMDIBuilderCreateMemberType(LLVMDIBuilderRef d,
     unwrap<DIType>(type)));
 }
 
-LLVMMetadataRef LLVMDIBuilderCreateArrayType(LLVMDIBuilderRef d,
+static LLVMMetadataRef LLVMDIBuilderCreateArrayType(LLVMDIBuilderRef d,
   uint64_t size_bits, uint64_t align_bits,
   LLVMMetadataRef elem_type, LLVMMetadataRef subscripts)
 {
@@ -159,7 +159,7 @@ LLVMValueRef LLVMDIBuilderInsertDeclare(LLVMDIBuilderRef d,
   }
 }
 
-void LLVMSetCurrentDebugLocation2(LLVMBuilderRef b,
+static void LLVMSetCurrentDebugLocation2(LLVMBuilderRef b,
   unsigned line, unsigned col, LLVMMetadataRef scope)
 {
   MDNode* sc = unwrap<MDNode>(scope);
