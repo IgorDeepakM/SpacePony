@@ -39,7 +39,7 @@ add_library(libponyc STATIC
     codegen/genserialise.c
     codegen/gentrace.c
     codegen/gentype.c
-    codegen/genvaluepass.c
+    codegen/genvaluepass.cc
     codegen/gendebug.cc
     codegen/genopt.cc
     codegen/host.cc

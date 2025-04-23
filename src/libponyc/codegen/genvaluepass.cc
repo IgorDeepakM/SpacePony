@@ -3,8 +3,8 @@
 #include "ponyassert.h"
 #include "genopt.h"
 #include "gencall.h"
+#include <array>
 
-#define MAX_REG_TYPES 4
 
 typedef struct
 {
@@ -12,7 +12,7 @@ typedef struct
   size_t current_byte_in_word;
   size_t bytes_per_word;
   LLVMTypeKind last_type_kind;
-  LLVMTypeRef types[MAX_REG_TYPES];
+  std::array<LLVMTypeRef, 4> types;
 }RegisterPos_t;
 
 
@@ -21,7 +21,7 @@ static bool is_power_of_2(size_t x)
   return x > 0 && !(x & (x - 1));
 }
 
-bool is_pass_by_value_lowering_supported(pass_opt_t* opt)
+extern "C" bool is_pass_by_value_lowering_supported(pass_opt_t* opt)
 {
   bool ret = false;
 
@@ -174,7 +174,7 @@ static bool is_param_value_lowering_needed(compile_t* c, compile_type_t* p_t)
   return ret;
 }
 
-bool is_return_value_lowering_needed(compile_t* c, reach_type_t* pt)
+extern "C" bool is_return_value_lowering_needed(compile_t* c, reach_type_t* pt)
 {
   bool ret = false;
   char* triple = c->opt->triple;
@@ -288,16 +288,16 @@ static void insert_type_x86_64_systemv(compile_t* c, RegisterPos_t *pos, LLVMTyp
   {
     if(kind == LLVMIntegerTypeKind)
     {
-      pos->types[pos->current_word] =
+      pos->types.at(pos->current_word) =
         get_type_from_size(c, next_power_of_2(size));
     }
     else if(kind == LLVMDoubleTypeKind)
     {
-      pos->types[pos->current_word] = c->f64;
+      pos->types.at(pos->current_word) = c->f64;
     }
     else if(kind == LLVMFloatTypeKind)
     {
-      pos->types[pos->current_word] = c->f32;
+      pos->types.at(pos->current_word) = c->f32;
     }
     pos->current_word++;
     pos->current_byte_in_word = size;
@@ -307,11 +307,11 @@ static void insert_type_x86_64_systemv(compile_t* c, RegisterPos_t *pos, LLVMTyp
   {
     if(pos->last_type_kind == LLVMFloatTypeKind && kind == LLVMFloatTypeKind)
     {
-      pos->types[pos->current_word - 1] = c->f64;
+      pos->types.at(pos->current_word - 1) = c->f64;
     }
     else
     {
-      pos->types[pos->current_word - 1] =
+      pos->types.at(pos->current_word - 1) =
         get_type_from_size(c, next_power_of_2(next_byte_in_word));
     }
     pos->current_byte_in_word = next_byte_in_word;
@@ -359,11 +359,11 @@ static void lower_structure_x86_64_systemv(compile_t* c, LLVMTypeRef structure, 
 
 static LLVMTypeRef generate_flattened_type(compile_t* c, RegisterPos_t *pos)
 {
-  return LLVMStructTypeInContext(c->context, pos->types,
+  return LLVMStructTypeInContext(c->context, pos->types.data(),
     (unsigned int)pos->current_word, false);
 }
 
-LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach_type_t* pt)
+extern "C" LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach_type_t* pt)
 {
   LLVMTypeRef ret = NULL;
   char* triple = c->opt->triple;
@@ -464,7 +464,7 @@ LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach_type_t* pt
   return ret;
 }
 
-LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reach_type_t* pt)
+extern "C" LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reach_type_t* pt)
 {
   LLVMTypeRef ret = NULL;
   char* triple = c->opt->triple;
@@ -556,7 +556,7 @@ static LLVMValueRef copy_from_ptr_to_value_zero_extend(compile_t* c, LLVMValueRe
   return ret;
 }
 
-LLVMValueRef load_lowered_param_value_from_ptr(compile_t* c, LLVMValueRef ptr,
+extern "C" LLVMValueRef load_lowered_param_value_from_ptr(compile_t* c, LLVMValueRef ptr,
   LLVMTypeRef param_type, reach_type_t* real_type)
 {
   LLVMValueRef ret = NULL;
@@ -621,7 +621,7 @@ LLVMValueRef load_lowered_param_value_from_ptr(compile_t* c, LLVMValueRef ptr,
 }
 
 
-LLVMValueRef load_lowered_return_value_from_ptr(compile_t* c, LLVMValueRef ptr,
+extern "C" LLVMValueRef load_lowered_return_value_from_ptr(compile_t* c, LLVMValueRef ptr,
   LLVMTypeRef return_type, reach_type_t* real_type)
 {
   LLVMValueRef ret = NULL;
@@ -649,7 +649,7 @@ LLVMValueRef load_lowered_return_value_from_ptr(compile_t* c, LLVMValueRef ptr,
   return ret;
 }
 
-void copy_lowered_param_value_to_ptr(compile_t* c, LLVMValueRef dest_ptr,
+extern "C" void copy_lowered_param_value_to_ptr(compile_t* c, LLVMValueRef dest_ptr,
   LLVMValueRef param_value, reach_type_t* real_target_type)
 {
   char* triple = c->opt->triple;
@@ -709,7 +709,7 @@ void copy_lowered_param_value_to_ptr(compile_t* c, LLVMValueRef dest_ptr,
 }
 
 
-void copy_lowered_return_value_to_ptr(compile_t* c, LLVMValueRef dest_ptr,
+extern "C" void copy_lowered_return_value_to_ptr(compile_t* c, LLVMValueRef dest_ptr,
   LLVMValueRef return_value, reach_type_t* real_target_type)
 {
   char* triple = c->opt->triple;
@@ -743,8 +743,8 @@ void copy_lowered_return_value_to_ptr(compile_t* c, LLVMValueRef dest_ptr,
 }
 
 
-void apply_function_value_param_attribute(compile_t* c, reach_type_t* pt, LLVMValueRef func,
-  LLVMAttributeIndex param_nr)
+extern "C" void apply_function_value_param_attribute(compile_t* c, reach_type_t* pt,
+  LLVMValueRef func, LLVMAttributeIndex param_nr)
 {
   // Aarch64 doesn't use byval
   if(target_is_arm(c->opt->triple) && target_is_lp64(c->opt->triple))
@@ -767,8 +767,8 @@ void apply_function_value_param_attribute(compile_t* c, reach_type_t* pt, LLVMVa
 }
 
 
-void apply_call_site_value_param_attribute(compile_t* c, reach_type_t* pt, LLVMValueRef func,
-  LLVMAttributeIndex param_nr)
+extern "C" void apply_call_site_value_param_attribute(compile_t* c, reach_type_t* pt,
+  LLVMValueRef func, LLVMAttributeIndex param_nr)
 {
   // Aarch64 doesn't use byval
   if(target_is_arm(c->opt->triple) && target_is_lp64(c->opt->triple))
@@ -792,7 +792,8 @@ void apply_call_site_value_param_attribute(compile_t* c, reach_type_t* pt, LLVMV
 }
 
 
-void apply_function_value_return_attribute(compile_t* c, reach_type_t* pt, LLVMValueRef func)
+extern "C" void apply_function_value_return_attribute(compile_t* c, reach_type_t* pt,
+  LLVMValueRef func)
 {
   if(!is_return_value_lowering_needed(c, pt))
   {
@@ -808,7 +809,7 @@ void apply_function_value_return_attribute(compile_t* c, reach_type_t* pt, LLVMV
 }
 
 
-void apply_call_site_value_return_attribute(compile_t* c, reach_type_t* pt,
+extern "C" void apply_call_site_value_return_attribute(compile_t* c, reach_type_t* pt,
   LLVMValueRef func)
 {
   if(!is_return_value_lowering_needed(c, pt))
