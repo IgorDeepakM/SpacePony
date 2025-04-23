@@ -59,7 +59,7 @@ static bool insert_type_hfa_aarch64(RegisterPos_t *pos, Type* type)
 
   if(pos->current_word == 0)
   {
-    if(kind != LLVMFloatTypeKind && kind != LLVMDoubleTypeKind)
+    if(kind != Type::TypeID::FloatTyID && kind != Type::TypeID::DoubleTyID)
     {
       return false;
     }
@@ -313,7 +313,7 @@ static void insert_type_x86_64_systemv(compile_t* c, RegisterPos_t *pos, Type* t
   }
   else
   {
-    if(pos->last_type_kind == LLVMFloatTypeKind && kind == LLVMFloatTypeKind)
+    if(pos->last_type_kind == Type::TypeID::FloatTyID && kind == Type::TypeID::FloatTyID)
     {
       pos->types.at(pos->current_word - 1) = unwrap(c->f64);
     }
