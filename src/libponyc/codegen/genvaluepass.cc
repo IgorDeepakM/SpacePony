@@ -738,6 +738,7 @@ extern "C" void copy_lowered_return_value_to_ptr(compile_t* c, LLVMValueRef dest
   compile_type_t* p_c_t = (compile_type_t*)real_target_type->c_type;
 
   auto builder = unwrap(c->builder);
+  auto target_data = unwrap(c->target_data);
 
   if(target_is_x86(triple) && target_is_windows(triple) &&
      (target_is_llp64(triple) || target_is_ilp32(triple)))
@@ -747,14 +748,14 @@ extern "C" void copy_lowered_return_value_to_ptr(compile_t* c, LLVMValueRef dest
   else if(target_is_arm(triple) ||
           (target_is_x86(triple) && target_is_linux(triple) && target_is_lp64(triple)))
   {
-    LLVMTypeRef return_type = LLVMTypeOf(return_value);
-    if(p_c_t->abi_size == (size_t)LLVMABISizeOfType(c->target_data, return_type))
+    Type* return_type = unwrap(return_value)->getType();
+    if(p_c_t->abi_size == (size_t)target_data->getTypeAllocSize(return_type))
     {
       builder->CreateStore(unwrap(return_value), unwrap(dest_ptr));
     }
     else
     {
-      AllocaInst* tmp_array = builder->CreateAlloca(unwrap(return_type), nullptr, "");
+      AllocaInst* tmp_array = builder->CreateAlloca(return_type, nullptr, "");
       builder->CreateStore(unwrap(return_value), tmp_array);
       ConstantInt* cpy_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), p_c_t->abi_size);
       gencall_memcpy(c, dest_ptr, wrap(tmp_array), wrap(cpy_size));
