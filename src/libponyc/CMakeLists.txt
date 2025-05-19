@@ -40,6 +40,7 @@ add_library(libponyc STATIC
     codegen/gentrace.c
     codegen/gentype.c
     codegen/genvaluepass.cc
+    codegen/geninlineasm.cc
     codegen/gendebug.cc
     codegen/genopt.cc
     codegen/host.cc
@@ -47,6 +48,7 @@ add_library(libponyc STATIC
     expr/call.c
     expr/control.c
     expr/ffi.c
+    expr/inlineasm.cc
     expr/lambda.c
     expr/literal.c
     expr/match.c

@@ -960,6 +960,26 @@ DEF(recover);
   TERMINATE("recover expression", TK_END);
   DONE();
 
+// ASM [annotations] string seq END
+DEF(inline_asm);
+  PRINT_INLINE();
+  TOKEN(NULL, TK_ASM);
+  ANNOTATE(annotations)
+  TOKEN("assembler string", TK_STRING);
+  SKIP(NULL, TK_COMMA);
+  TOKEN("constraints string", TK_STRING);
+  SKIP(NULL, TK_COMMA);
+  AST_NODE(TK_TYPEARGS);
+  SKIP(NULL, TK_LSQUARE, TK_LSQUARE_NEW);
+  RULE("type argument", typearg);
+  WHILE(TK_COMMA, RULE("type argument", typearg));
+  TERMINATE("type arguments", TK_RSQUARE);
+  SKIP(NULL, TK_LPAREN, TK_LPAREN_NEW);
+  OPT RULE("inline asm argument", positional);
+  TERMINATE("inline arguments", TK_RPAREN);
+  TERMINATE("inline asm expression", TK_END);
+  DONE();
+
 // $ALIASED
 DEF(test_aliased);
   PRINT_INLINE();
@@ -1015,7 +1035,7 @@ DEF(test_ifdef_flag);
 // recover | consume | pattern | const_expr | test_<various>
 DEF(term);
   RULE("value", cond, ifdef, iftypeset, match, whileloop, repeat, forloop, with,
-    try_block, recover, consume, pattern, const_expr, test_noseq,
+    try_block, recover, inline_asm, consume, pattern, const_expr, test_noseq,
     test_seq_scope, test_try_block, test_ifdef_flag, test_prefix);
   DONE();
 
@@ -1023,7 +1043,7 @@ DEF(term);
 // recover | consume | pattern | const_expr | test_<various>
 DEF(nextterm);
   RULE("value", cond, ifdef, iftypeset, match, whileloop, repeat, forloop, with,
-    try_block, recover, consume, nextpattern, const_expr, test_noseq,
+    try_block, recover, inline_asm, consume, nextpattern, const_expr, test_noseq,
     test_seq_scope, test_try_block, test_ifdef_flag, test_prefix);
   DONE();
 

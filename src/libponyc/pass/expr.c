@@ -9,6 +9,7 @@
 #include "../expr/array.h"
 #include "../expr/ffi.h"
 #include "../expr/lambda.h"
+#include "../expr/inlineasm.h"
 #include "../type/assemble.h"
 #include "../type/lookup.h"
 #include "../type/subtype.h"
@@ -660,6 +661,10 @@ ast_result_t pass_expr(ast_t** astp, pass_opt_t* options)
 
     case TK_FFIREF:
       r = expr_ffiref(options, ast);
+      break;
+
+    case TK_ASM:
+      r = expr_asm(options, ast);
       break;
 
     default: {}

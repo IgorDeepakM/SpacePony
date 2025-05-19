@@ -1152,6 +1152,31 @@ static void reachable_sizeof(reach_t* r, deferred_reification_t* reify,
   }
 }
 
+static void reachable_inline_asm(reach_t* r, deferred_reification_t* reify,
+  ast_t* ast, pass_opt_t* opt)
+{
+  ast_t* ast_return_type = ast_childidx(ast, 3);
+  ast_t* reified_ret = deferred_reify(reify, ast_return_type, opt);
+  add_type(r, reified_ret, opt);
+  ast_free_unattached(reified_ret);
+
+  ast_t* pos_args = ast_childidx(ast, 4);
+  if(ast_id(pos_args) != TK_NONE)
+  {
+    ast_t* pos_arg = ast_child(pos_args);
+    while(pos_arg != NULL)
+    {
+      ast_t* ast_param = ast_child(pos_arg);
+      ast_t* ast_param_type = ast_type(ast_param);
+      ast_t* reified_param = deferred_reify(reify, ast_param_type, opt);
+      add_type(r, reified_param, opt);
+      ast_free_unattached(reified_param);
+
+      pos_arg = ast_sibling(pos_arg);
+    }
+  }
+}
+
 static void reachable_call(reach_t* r, deferred_reification_t* reify,
   ast_t* ast, pass_opt_t* opt)
 {
@@ -1262,6 +1287,10 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
 
     case TK_SIZEOF:
       reachable_sizeof(r, reify, ast, opt);
+      break;
+
+    case TK_ASM:
+      reachable_inline_asm(r, reify, ast, opt);
       break;
 
     case TK_IF:

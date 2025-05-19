@@ -169,6 +169,7 @@ typedef enum token_id
   TK_WITH,
   TK_ERROR,
   TK_COMPILE_ERROR,
+  TK_ASM,
 
   TK_NOT,
   TK_AND,

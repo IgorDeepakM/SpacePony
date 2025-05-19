@@ -8,6 +8,7 @@
 #include "genname.h"
 #include "genoperator.h"
 #include "genreference.h"
+#include "geninlineasm.h"
 #include "../type/subtype.h"
 #include "../../libponyrt/mem/pool.h"
 #include "ponyassert.h"
@@ -219,6 +220,10 @@ LLVMValueRef gen_expr(compile_t* c, ast_t* ast)
 
     case TK_VALUEFORMALARG:
       ret = gen_expr(c, ast_child(ast));
+      break;
+
+    case TK_ASM:
+      ret = gen_inlineasm(c, ast);
       break;
 
     default:

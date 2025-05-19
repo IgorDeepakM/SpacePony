@@ -189,6 +189,7 @@ static const lextoken_t keywords[] =
   { "with", TK_WITH },
   { "error", TK_ERROR },
   { "compile_error", TK_COMPILE_ERROR },
+  { "asm", TK_ASM },
 
   { "not", TK_NOT },
   { "and", TK_AND },
