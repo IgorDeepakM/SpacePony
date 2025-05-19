@@ -1,6 +1,7 @@
 #include "geninlineasm.h"
 #include "gentype.h"
 #include "genexpr.h"
+#include "genopt.h"
 
 #include "llvm_config_begin.h"
 
@@ -61,8 +62,15 @@ extern "C" LLVMValueRef gen_inlineasm(compile_t* c, ast_t* ast)
   size_t constraints_string_len = ast_name_len(ast_constraints_string);
   StringRef constraints_string(constraints_string_c, constraints_string_len);
 
+  InlineAsm::AsmDialect dialect = InlineAsm::AsmDialect::AD_ATT;
+  if(target_is_x86(c->opt->triple))
+  {
+    // Default assembly language dialect for x86 is Intel
+    dialect = InlineAsm::AsmDialect::AD_Intel;
+  }
+
   InlineAsm *ia = InlineAsm::get(asm_function, asm_string, constraints_string,
-    true, false, InlineAsm::AD_Intel); 
+    true, false, dialect);
   
   CallInst *call_inst = builder->CreateCall(ia, asm_func_value_params);
 
