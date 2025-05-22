@@ -601,6 +601,34 @@ static ast_result_t syntax_ffi(pass_opt_t* opt, ast_t* ast,
   pony_assert(ast != NULL);
   ast_result_t r = AST_OK;
 
+  // Check if this is addressof @FFI_Func expression, check that it is only
+  // the FFI reference
+  if(ast_id(ast_parent(ast)) == TK_ADDRESS)
+  {
+    if(ast_id(ast_childidx(ast, 1)) != TK_NONE ||
+       ast_childidx(ast, 2) != NULL)
+    {
+      ast_error(opt->check.errors, ast,
+      "Address of FFI function cannot have any extra parameters after the FFI reference");
+      r = AST_ERROR;
+    }
+
+    return r;
+  }
+  else
+  {
+    if(ast_childidx(ast, 1) == NULL ||
+       ast_childidx(ast, 2) == NULL ||
+       ast_childidx(ast, 3) == NULL)
+    {
+      ast_error(opt->check.errors, ast,
+      "An FFI declaration or FFI call must have an associated parameter body");
+      r = AST_ERROR;
+    }
+
+    return r;
+  }
+
   AST_GET_CHILDREN(ast, id, typeargs, ffi_args, ffi_named_args);
   // We don't check FFI names are legal, if the lexer allows it so do we
   if((ast_child(typeargs) == NULL && is_declaration) ||

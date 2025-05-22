@@ -889,6 +889,12 @@ static ast_result_t sugar_ffi(pass_opt_t* opt, ast_t* ast)
   ast_t* new_id = ast_from_string(id, stringtab_consume(new_name, len + 2));
   ast_replace(&id, new_id);
 
+  // If this is a addressof @FFI_Func expression, change the ast node to TK_FFIREF
+  if(ast_id(ast_parent(ast)) == TK_ADDRESS)
+  {
+    ast_setid(ast, TK_FFIREF);
+  }
+
   return AST_OK;
 }
 
@@ -1293,8 +1299,7 @@ ast_result_t pass_sugar(ast_t** astp, pass_opt_t* options)
     case TK_UNARY_MINUS_TILDE:   return sugar_unop(astp, "neg_unsafe");
     case TK_NOT:                 return sugar_unop(astp, "op_not");
     case TK_FFIDECL:
-    case TK_FFICALL:
-    case TK_FFIREF:              return sugar_ffi(options, ast);
+    case TK_FFICALL:             return sugar_ffi(options, ast);
     case TK_IFDEF:               return sugar_ifdef(options, ast);
     case TK_USE:                 return sugar_use(options, ast);
     case TK_SEMI:                return sugar_semi(options, astp);

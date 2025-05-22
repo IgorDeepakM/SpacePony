@@ -503,13 +503,9 @@ DEF(location);
   TOKEN(NULL, TK_LOCATION);
   DONE();
 
-// AT (ID | STRING) typeargs (LPAREN | LPAREN_NEW) [positional] RPAREN
-// [QUESTION]
-DEF(ffi);
+DEF(ffi_call);
   PRINT_INLINE();
-  TOKEN(NULL, TK_AT);
-  MAP_ID(TK_AT, TK_FFICALL);
-  TOKEN("ffi name", TK_ID, TK_STRING);
+  AST_NODE(TK_FLATTEN);
   OPT RULE("return type", typeargs);
   SKIP(NULL, TK_LPAREN, TK_LPAREN_NEW);
   OPT RULE("ffi arguments", positional);
@@ -518,27 +514,14 @@ DEF(ffi);
   OPT TOKEN(NULL, TK_QUESTION);
   DONE();
 
-// AT (ID | STRING)
-DEF(ffiref);
+// AT (ID | STRING) typeargs (LPAREN | LPAREN_NEW) [positional] RPAREN
+// [QUESTION]
+DEF(ffi);
   PRINT_INLINE();
   TOKEN(NULL, TK_AT);
-  MAP_ID(TK_AT, TK_FFIREF);
+  MAP_ID(TK_AT, TK_FFICALL);
   TOKEN("ffi name", TK_ID, TK_STRING);
-  DONE();
-
-DEF(xofatom);
-  RULE("value", ref, ffiref);
-  DONE();
-
-DEF(xofpostfix);
-  RULE("value", xofatom);
-  SEQ("postfix expression", dot, call);
-  DONE();
-
-DEF(xofoperator);
-  PRINT_INLINE();
-  TOKEN(NULL, TK_ADDRESS);
-  RULE("expression", xofpostfix);
+  OPT RULE("ffi call", ffi_call);
   DONE();
 
 // atom
@@ -634,7 +617,7 @@ DEF(local);
 DEF(prefix);
   PRINT_INLINE();
   TOKEN("prefix", TK_NOT, TK_MINUS, TK_MINUS_TILDE, TK_MINUS_NEW,
-    TK_MINUS_TILDE_NEW, TK_DIGESTOF, TK_OFFSETOF, TK_SIZEOF);
+    TK_MINUS_TILDE_NEW, TK_ADDRESS, TK_DIGESTOF, TK_OFFSETOF, TK_SIZEOF);
   MAP_ID(TK_MINUS, TK_UNARY_MINUS);
   MAP_ID(TK_MINUS_TILDE, TK_UNARY_MINUS_TILDE);
   MAP_ID(TK_MINUS_NEW, TK_UNARY_MINUS);
@@ -647,7 +630,7 @@ DEF(prefix);
 DEF(caseprefix);
   PRINT_INLINE();
   TOKEN("prefix", TK_NOT, TK_MINUS, TK_MINUS_TILDE, TK_MINUS_NEW,
-    TK_MINUS_TILDE_NEW, TK_DIGESTOF, TK_OFFSETOF, TK_SIZEOF);
+    TK_MINUS_TILDE_NEW, TK_ADDRESS, TK_DIGESTOF, TK_OFFSETOF, TK_SIZEOF);
   MAP_ID(TK_MINUS, TK_UNARY_MINUS);
   MAP_ID(TK_MINUS_TILDE, TK_UNARY_MINUS_TILDE);
   MAP_ID(TK_MINUS_NEW, TK_UNARY_MINUS);
@@ -658,7 +641,7 @@ DEF(caseprefix);
 // (NOT | AMP | MINUS_NEW | MINUS_TILDE_NEW | DIGESTOF) pattern
 DEF(nextprefix);
   PRINT_INLINE();
-  TOKEN("prefix", TK_NOT, TK_MINUS_NEW, TK_MINUS_TILDE_NEW,
+  TOKEN("prefix", TK_NOT, TK_MINUS_NEW, TK_MINUS_TILDE_NEW, TK_ADDRESS,
     TK_DIGESTOF, TK_OFFSETOF, TK_SIZEOF);
   MAP_ID(TK_MINUS_NEW, TK_UNARY_MINUS);
   MAP_ID(TK_MINUS_TILDE_NEW, TK_UNARY_MINUS_TILDE);
@@ -667,17 +650,17 @@ DEF(nextprefix);
 
 // (prefix | postfix)
 DEF(parampattern);
-  RULE("pattern", xofoperator, prefix, postfix);
+  RULE("pattern", prefix, postfix);
   DONE();
 
 // (caseprefix | casepostfix)
 DEF(caseparampattern);
-  RULE("pattern", xofoperator, caseprefix, casepostfix);
+  RULE("pattern", caseprefix, casepostfix);
   DONE();
 
 // (prefix | postfix)
 DEF(nextparampattern);
-  RULE("pattern", xofoperator, nextprefix, nextpostfix);
+  RULE("pattern", nextprefix, nextpostfix);
   DONE();
 
 // (local | prefix | postfix)
