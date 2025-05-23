@@ -48,3 +48,7 @@ Best effort platforms mean that there is support for the platform in the codebas
 ## Contributing
 
 We welcome contributions to Pony. Please read through [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to get started.
+
+## License
+
+Pony is distributed under the terms of the [2-Clause BSD License](https://opensource.org/licenses/BSD-2-Clause). See [LICENSE](LICENSE) for details.

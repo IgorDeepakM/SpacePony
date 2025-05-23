@@ -1,54 +1,56 @@
-# Pony
+# SpacePony
 
-Pony is an open-source, object-oriented, actor-model, capabilities-secure, high-performance programming language.
+SpacePony is an experimental fork of the [Pony programming language](https://github.com/ponylang/ponyc). The goal of the fork is to improve the FFI capabilities and add more systems programming language features.
 
-## Status
+## List of changes.
 
-Pony is still pre-1.0 and as such, semi-regularly introduces breaking changes. These changes are usually fairly easy to adapt to. Applications written in Pony are currently used in production environments.
+### Pointer
 
-## Supported platforms
+* The Pointer type can be used **everywhere** not only as FFI function arguments.
+* It can be initialized using from_usize(addr: USize) in order to initialize a Pointer with any desired number.
+* The convert method is made public in order to make it possible to cast one pointer type to another.
+* Added to to_reftype method to convert the Pointer to the underlying reference type. This is equivalent to the apply method of the NullablePointer type.
+* Added to to_reftype_no_check method to convert the Pointer to the underlying reference type without any null pointer check.
 
-### Operating Systems
+### addressof
 
-* Linux
-* macOS
-* Windows 10
+* addressof can be used **everywhere**
+* It is possible to use addressof of an FFI function.
 
-### CPUs
+### Constant values in generics
 
-* Full support for 64-bit platforms
-  * x86, ARM and RISC-V CPUs only
-* Partial support for 32-bit platforms
-  * The `arm` and `armhf` architectures are tested via CI (Continuous
-    Integration testing)
+* It is possible to use constants (literals) as type arguments in generics, both as type arguments for types and type arguments for functions.
+* Default value type arguments are supported.
 
-## Best effort platforms
+### CFixedSizedArray
 
-Best effort platforms mean that there is support for the platform in the codebase but, we don't have any testing for the platform. We won't intentionally break a best-effort platform or remove support for it from the codebase, at the same time, we do make no effort to maintain it. When you go build a "best effort platform" from source, you might find it doesn't build. We welcome thoughtful pull requests to bring the platform up-to-date.
+* Added CFixedSizedArray in order to be able to model C fixed sized arrays found in C.
 
-* DragonFlyBSD (x86 only)
-* FreeBSD (x86 only)
+### offsetof
 
-## More Information
+* Added offsetof in order to get an offset of a member in a struct or class.
 
-* [Installation](INSTALL.md)
-* [Building from source](BUILD.md)
-* [Docker images](INSTALL_DOCKER.md)
-* [Editor support](EDITORS.md)
+### sizeof
 
-## Resources
+* Added sizeof operator to obtain the size of any type. Also works on nested types.
 
-* [Learn more about Pony](https://www.ponylang.io/discover/)
-* [Start learning Pony](https://www.ponylang.io/learn/)
-  * [Getting help](https://www.ponylang.io/learn/#getting-help)
-* [Try Pony online](https://playground.ponylang.io)
-* [Frequently Asked Questions](https://www.ponylang.io/faq/)
-* [Community](https://www.ponylang.io/community/)
+### Added FFI pass by value parameters.
 
-## Contributing
+* Structs and classes can be passed as value to FFI functions.
 
-We welcome contributions to Pony. Please read through [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to get started.
+### Inline assembler supported
 
-## License
+* Added support for an LLVM like syntax for inline assembler.
 
-Pony is distributed under the terms of the [2-Clause BSD License](https://opensource.org/licenses/BSD-2-Clause). See [LICENSE](LICENSE) for details.
+### Atomics
+
+* Added an atomic library in the built in package.
+
+### Added an extra capability, nhb.
+
+* Added the extra cability called **nhb**. The nhb capability makes it possible to mutably share a class among actors. This is inteded when it is possible to mutably share a class when the class has implemented some form of custom synchronization like atomics or mutexes. 
+
+
+## The original Pony README is here with instruction how to compile.
+
+* [Pony README](README_old_Pony.md)
