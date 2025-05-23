@@ -157,7 +157,8 @@ RULE(compile_error,
 
 RULE(ffi_ref,
   HAS_TYPE(type)
-  CHILD(id),
+  CHILD(id)
+  OPTIONAL(none),
   TK_FFIREF);
 
 RULE(xofoperator,
@@ -276,10 +277,10 @@ RULE(ffi_call,
   HAS_TYPE(type)
   HAS_DATA  // FFI declaration to use.
   CHILD(id, string)
-  CHILD(type_args, none)
-  CHILD(positional_args, none)
-  CHILD(named_args, none)
-  CHILD(question, none),
+  OPTIONAL(type_args, none)
+  OPTIONAL(positional_args, none)
+  OPTIONAL(named_args, none)
+  OPTIONAL(question, none),
   TK_FFICALL);
 
 RULE(positional_args, ZERO_OR_MORE(seq_or_rawseq), TK_POSITIONALARGS);

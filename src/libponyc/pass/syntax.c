@@ -623,10 +623,8 @@ static ast_result_t syntax_ffi(pass_opt_t* opt, ast_t* ast,
     {
       ast_error(opt->check.errors, ast,
       "An FFI declaration or FFI call must have an associated parameter body");
-      r = AST_ERROR;
+      return AST_ERROR;
     }
-
-    return r;
   }
 
   AST_GET_CHILDREN(ast, id, typeargs, ffi_args, ffi_named_args);
