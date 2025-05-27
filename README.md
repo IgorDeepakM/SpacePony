@@ -135,7 +135,7 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
 
   ...
 
-  var ar = Array.from_cpointer(s.cpointer(), s.size)
+  var ar = Array.from_cpointer(s.buf.cpointer(), s.size)
   ```
 
 ### offsetof
@@ -169,7 +169,7 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
   var s = S
   let sz_u32 = sizeof U32 // Any base type can be used
   let sz_s = sizeof s // Gets the size of the struct s
-  let sz_s_2 =  sizeof S // Type can be used directly as base in a dot expression
+  let sz_s_2 = sizeof S // Type can be used directly as base in a dot expression
   let sz_s_y = sizeof s.y // Size of members can be used
   let sz_s_y_2_ = sizeof S.y // Also with the type directly as base
   ```
@@ -284,6 +284,25 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
       _ta.beh(nc2)
       _ta2.beh(nc2) // Yes, you can send that nhb class all you want, over and over again. Have fun.
     ```
+
+## Future directions
+
+### Short term
+
+* Right now there is a class called FixedSizedArray which is copy of CFixedSizedArray but implemented as a class with a type descriptor. However, since it is already "spoiled" with a an extra class member, why not add a size field as well. In this case FixedSizedArray can be converted to a FixedCapacityArray instead. It is unclear what is the most useful, if FixedCapacityArray or FixedSizedArray are necessary at all in addition to CFixedSizedArray.
+
+* Since there are suddenly several different arrays, a Slice class might be needed. This would be eqvivalent to std::span in C++. However, it is also possible to reuse the Array class for this purpose as it is possible to load the Array with outside raw pointers. This is possible because the Array class use garbage collected pointers which can co-exist with foreign raw pointers. The D language has chosen this approach where there is a merge between the slice and the dynamic array. Slices or reuse Array as both their pros and cons.
+
+* ponyta (https://github.com/lukecheeseman/ponyta) also developed a basic form of constant expression evaluation. SpacePony should add some form of CTFE, but will not reuse the syntax from ponyta (using `#postexpr`, for example `#3 + 4`). The reason is that `#` can be used for better purposes and there are two forms of CTFE, best effort and compulsory. Best effort can be used at key points in the AST, for example functions parameters in order to attempt to reduce an expression to a constant. Compulsory is when it is required to reduce the expression to a constant. This is eqvivalent to consteval in C++. SpacePony will probably use a `comptime expression end` to force a constant evaluation, influensed by the syntax in Zig.
+
+### Long term (read never)
+
+* Move to MLIR backend
+
+* GPU offload. The capability/actor model of Pony is very well suited for running parts of the actors in GPUs.
+
+* Improve the Pony type system.
+
 
 ## The original Pony README is here with instruction how to compile.
 
