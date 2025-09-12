@@ -1,8 +1,7 @@
-name: push_or_pr
+name: PR
 
 on:
-    pull_request:
-    push:
+    pull_request
 
 jobs:
   x86_64-windows:
