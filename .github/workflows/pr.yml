@@ -8,7 +8,7 @@ concurrency:
 
 jobs:
   x86_64-windows:
-    runs-on: windows-2025
+    runs-on: windows-latest
     defaults:
       run:
         shell: pwsh
@@ -50,3 +50,37 @@ jobs:
       - name: Build examples
         run: .\make.ps1 -Command build-examples
   
+  arm64-macos:
+    runs-on: macos-latest
+
+    name: arm64 Apple Darwin
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.1.1
+      - name: Restore Libs Cache
+        id: restore-libs
+        uses: actions/cache/restore@v4
+        with:
+          path: build/libs
+          key: libs-arm64-macos-15-${{ hashFiles('Makefile', 'CMakeLists.txt', 'lib/CMakeLists.txt', 'lib/llvm/patches/*') }}
+      - name: Build Libs
+        if: steps.restore-libs.outputs.cache-hit != 'true'
+        run: make libs build_flags=-j8
+      - name: Save Libs Cache
+        if: steps.restore-libs.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: build/libs
+          key: libs-arm64-macos-15-${{ hashFiles('Makefile', 'CMakeLists.txt', 'lib/CMakeLists.txt', 'lib/llvm/patches/*') }}
+      - name: Build Debug Runtime
+        run: |
+          make configure arch=armv8  config=debug
+          make build config=debug
+      - name: Test with Debug Runtime
+        run: make test-ci config=debug
+      - name: Build Release Runtime
+        run: |
+          make configure arch=armv8  config=release
+          make build config=release
+      - name: Test with Release Runtime
+        run: make test-ci config=release
