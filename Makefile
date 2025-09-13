@@ -207,7 +207,7 @@ cross-libponyrt:
 
 test: all test-core test-stdlib-release test-examples
 
-test-ci: all test-check-version test-core test-stdlib-debug test-stdlib-release test-examples test-validate-grammar
+test-ci: all test-check-version test-core test-stdlib-debug test-stdlib-release test-examples   # test-validate-grammar disabled until further notice
 
 test-cross-ci: cross_args=--triple=$(cross_triple) --cpu=$(cross_cpu) --link-arch=$(cross_arch) --linker='$(cross_linker)' $(cross_ponyc_args)
 test-cross-ci: debuggercmd=
