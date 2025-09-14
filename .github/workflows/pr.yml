@@ -92,6 +92,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4.1.1
+      - name: Install lldb
+        run: sudo apt install -y lldb
       - name: Restore Libs Cache
         id: restore-libs
         uses: actions/cache/restore@v4
