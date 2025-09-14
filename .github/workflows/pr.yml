@@ -88,6 +88,7 @@ jobs:
   x86_64-linux:
     runs-on: ubuntu-latest
 
+    name: x86-64 Ubuntu Linux
     steps:
       - name: Checkout
         uses: actions/checkout@v4.1.1
