@@ -127,3 +127,27 @@ TEST_F(AnnotationsTest, StandardAnnotationLocationBad)
 
   DO(test_expected_errors(src, "syntax", errs));
 }
+
+TEST_F(AnnotationsTest, PassByValueWrongLocation)
+{
+  const char* src =
+    "class \\passbyvalue\\ A\n";
+
+  TEST_ERROR(src);
+}
+
+TEST_F(AnnotationsTest, PassByValueCorrectLocationLambda)
+{
+  const char* src =
+    "class S\n"
+    "  var x: U32 = 0\n"
+    "\n"
+    "class T\n"
+    "  var lambda: @{(\\passbyvalue\\ S): \\passbyvalue\\ S}\n"
+    "  new create() =>\n"
+    "    lambda = @{(s: \\passbyvalue\\ S): \\passbyvalue\\ S =>\n"
+    "      s\n"
+    "    }\n";
+
+  TEST_COMPILE(src, "syntax");
+}

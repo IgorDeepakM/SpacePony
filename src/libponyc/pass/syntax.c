@@ -1565,6 +1565,45 @@ static bool check_annotation_location(pass_opt_t* opt, ast_t* ast,
 
         return false;
     }
+  } else if(strcmp(str, "passbyvalue") == 0) {
+    ast_t* parent1 = ast_parent(ast);
+    ast_t* parent2 = ast_parent(parent1);
+    if(ast_id(parent2) == TK_PARAM)
+    {
+      pony_assert(ast_id(ast_parent(parent2)) == TK_PARAMS);
+      ast_t* parent4 = ast_parent(ast_parent(parent2));
+      if(ast_id(parent4) == TK_FFIDECL || ast_id(parent4) == TK_BARELAMBDA)
+      {
+        return true;
+      }
+    }
+    else if(ast_id(parent2) == TK_TYPEARGS)
+    {
+      // This is the return value of the FFI declaration
+      ast_t* parent3 = ast_parent(parent2);
+      if(ast_id(parent3) == TK_FFIDECL)
+      {
+        return true;
+      }
+    }
+    else if(ast_id(parent2) == TK_PARAMS)
+    {
+      ast_t* parent3 = ast_parent(parent2);
+      if(ast_id(parent3) == TK_BARELAMBDATYPE)
+      {
+        return true;
+      }
+    }
+    else if(ast_id(parent2) == TK_BARELAMBDATYPE || ast_id(parent2) == TK_BARELAMBDA)
+    {
+      // The return value of a bare lambda call or type declaration
+      return true;
+    }
+
+    ast_error(opt->check.errors, loc,
+      "a 'passbyvalue' annotation can only be used on parameter types in FFI "
+      "and bare lambda declarations");
+    return false;
   }
 
   return true;
