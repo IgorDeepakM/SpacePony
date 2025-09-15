@@ -174,6 +174,7 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
   let sz_s_y_2_ = sizeof S.y // Also with the type directly as base
   ```
 
+* Keep in mind that both sizeof and offsetof are not compile time constants, meaning they do not behave like a literal. They can unfortunately not be used as type values in generics. They created during the code generation step becoming a compile time constant in the LLVM code and not before that. The reason for this is the the SpacePony compiler use LLVM in order build target dependent aggregate types in the code generation pass which is one of the last passes. It is not impossible to make sizeof and offsetof into a literal but that require using LLVM to build up the types in earlier passes.
 
 ### Added FFI pass by value parameters.
 
@@ -183,13 +184,12 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
 
 * Currently supported targets:
   * x86-64 Linux, Windows
-  * Aarch64 Macos
+  * Aarch64 Linux, Macos
   * Arm32 EABI
 
 * These are not supported or tested but should be easy to get working:
   * x86-32 Windows
   * x86-64 Macos, which should be System V ABI for x86-64 just as Linux.
-  * Aarch64 for Linux as it is close to the stock ARM suggested ABI.
 
   ```pony
   use @FFI_Func[\passbyvalue\ S](x: \passbyvalue\ S, y: \passbyvalue\ S)
@@ -219,6 +219,8 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
   ```
 
 * Note pass by value in lambdas is currently essentially a double copy (only inside SpacePony). First the argument is copied to the stack and then it is copied to a heap allocated structure. Why? Because there is no escape analysis and the passed aggregate can be sent or stored somewhere and because of that it cannot be on the stack. There is room for future optimizations regarding this, similar to how Pony can allocate on stack rather than heap.
+
+* Currently not supported is the C `const` qualifier. This might affect lowering for some targets and therefore it must taken into account in the future. To map the `const` qualifier in SpacePony, one possibility to have `let` be const in the C FFI. However, this doesn't cover everything as `embed` also might be const. Adding an annotation `\cconst\` to the type can cover this.
 
 ### Inline assembler supported
 
@@ -294,6 +296,8 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
 * Since there are suddenly several different arrays, a Slice class might be needed. This would be eqvivalent to std::span in C++. However, it is also possible to reuse the Array class for this purpose as it is possible to load the Array with outside raw pointers. This is possible because the Array class use garbage collected pointers which can co-exist with foreign raw pointers. The D language has chosen this approach where there is a merge between the slice and the dynamic array. Slices or reuse Array as both their pros and cons.
 
 * ponyta (https://github.com/lukecheeseman/ponyta) also developed a basic form of constant expression evaluation. SpacePony should add some form of CTFE, but will not reuse the syntax from ponyta (using `#postexpr`, for example `#3 + 4`). The reason is that `#` can be used for better purposes and there are two forms of CTFE, best effort and compulsory. Best effort can be used at key points in the AST, for example functions parameters in order to attempt to reduce an expression to a constant. Compulsory is when it is required to reduce the expression to a constant. This is eqvivalent to consteval in C++. SpacePony will probably use a `comptime expression end` to force a constant evaluation, influensed by the syntax in Zig.
+
+* Real asynchronous IO and not a POSIX like wrapper. An API that can be used for anything streaming like Files, HTTP, TCP. The API should also use the best available asynchrounous OS API primitives.
 
 ### Long term (read never)
 
