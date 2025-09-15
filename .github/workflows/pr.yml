@@ -34,7 +34,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: build/libs
-          key: libs-windows-2025-${{ hashFiles('make.ps1', 'CMakeLists.txt', 'lib/CMakeLists.txt', 'lib/llvm/patches/*') }}
+          key: libs-windows-latest-${{ hashFiles('make.ps1', 'CMakeLists.txt', 'lib/CMakeLists.txt', 'lib/llvm/patches/*') }}
       - name: Build Debug Runtime
         run: |
           .\make.ps1 -Command configure -Config Debug
@@ -108,7 +108,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: build/libs
-          key: libs-${{ matrix.image }}-${{ hashFiles('Makefile', 'CMakeLists.txt', 'lib/CMakeLists.txt', 'lib/llvm/patches/*') }}
+          key: libs-x86_64-ubuntu-latest-${{ hashFiles('Makefile', 'CMakeLists.txt', 'lib/CMakeLists.txt', 'lib/llvm/patches/*') }}
       - name: Build Debug Runtime
         run: |
           make configure arch=x86-64 config=debug
@@ -121,4 +121,40 @@ jobs:
           make build config=release
       - name: Test with Release Runtime
         run: make test-ci config=release usedebugger=lldb
-  
+
+  arm64-linux:
+    runs-on: ubuntu-24.04-arm
+
+    name: arm64 Ubuntu Linux
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.1.1
+      - name: Install lldb
+        run: sudo apt install -y lldb
+      - name: Restore Libs Cache
+        id: restore-libs
+        uses: actions/cache/restore@v4
+        with:
+          path: build/libs
+          key: libs-arm64-ubuntu-24.04-${{ hashFiles('Makefile', 'CMakeLists.txt', 'lib/CMakeLists.txt', 'lib/llvm/patches/*') }}
+      - name: Build Libs
+        if: steps.restore-libs.outputs.cache-hit != 'true'
+        run: make libs build_flags=-j8
+      - name: Save Libs Cache
+        if: steps.restore-libs.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: build/libs
+          key: libs-arm64-ubuntu-24.04-${{ hashFiles('Makefile', 'CMakeLists.txt', 'lib/CMakeLists.txt', 'lib/llvm/patches/*') }}
+      - name: Build Debug Runtime
+        run: |
+          make configure arch=armv8 config=debug
+          make build config=debug
+      - name: Test with Debug Runtime
+        run: make test-ci config=debug usedebugger=lldb
+      - name: Build Release Runtime
+        run: |
+          make configure arch=armv8 config=release
+          make build config=release
+      - name: Test with Release Runtime
+        run: make test-ci config=release usedebugger=lldb
