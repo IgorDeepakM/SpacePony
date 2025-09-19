@@ -799,6 +799,11 @@ lexint_t* ast_int(ast_t* ast)
   return token_int(ast->t);
 }
 
+void ast_set_int(ast_t* ast, lexint_t* val)
+{
+  token_set_int(ast->t, val);
+}
+
 ast_t* ast_type(ast_t* ast)
 {
   pony_assert(ast != NULL);

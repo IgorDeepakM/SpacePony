@@ -159,12 +159,73 @@ const char* token_print(token_t* token)
       return token->string;
 
     case TK_INT:
-      if (token->printed == NULL)
-        token->printed = (char*)ponyint_pool_alloc_size(64);
+    {
+      lexint_t value = token->integer;
+      bool is_negative = value.is_negative;
+      if(is_negative)
+        lexint_negate(&value, &value);
 
-      snprintf(token->printed, 64, "%llu",
-        (unsigned long long)token->integer.low);
-      return token->printed;
+      if (value.high == 0)
+      {
+        int size = is_negative ? 65 : 64;
+        if (token->printed == NULL)
+          token->printed = (char*)ponyint_pool_alloc_size(size);
+
+        if (is_negative)
+          snprintf(token->printed, size, "-%llu",
+            (unsigned long long)value.low);
+        else
+          snprintf(token->printed, size, "%llu",
+            (unsigned long long)value.low);
+        return token->printed;
+      }
+      else
+      {
+        if (token->printed == NULL)
+        {
+          int size = is_negative ? 129 : 128;
+          token->printed = (char*)ponyint_pool_alloc_size(size);
+        }
+
+        char* start = token->printed;
+        if(is_negative)
+          *(start++) = '-';
+
+        char* digit = start;
+
+        lexint_t t;
+        t.low = value.low;
+        t.high = value.high;
+        t.is_negative = false;
+
+        lexint_t rem;
+        rem.is_negative = false;
+
+        lexint_t tmp;
+        while (lexint_cmp64(&t, 0) != 0)
+        {
+          rem.low = t.low;
+          rem.high = t.high;
+          lexint_div64(&t, &t, 10);
+          lexint_mul64(&tmp, &t, 10);
+          lexint_sub(&rem, &rem, &tmp);
+          *(digit++) = (char)('0' + rem.low);
+        }
+        *digit = '\0';
+
+        // the string representation of the value is backwards so reverse it
+        char* end = digit - 1;
+        while (start < end)
+        {
+          char tmp = *start;
+          *start = *end;
+          *end = tmp;
+          start++;
+          end--;
+        }
+        return token->printed;
+      }
+    }
 
     case TK_FLOAT:
     {

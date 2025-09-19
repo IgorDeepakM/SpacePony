@@ -595,6 +595,21 @@ static bool uif_type_from_chain(pass_opt_t* opt, ast_t* literal,
       lexint_t* actual = ast_int(literal);
       int test = lexint_cmp(actual, &_str_uif_types[i].limit);
 
+      // if the value has the negative bit set from evaluation
+      // then we need to check the positive value
+      if(actual->is_negative)
+      {
+        lexint_t t;
+        lexint_zero(&t);
+        lexint_sub(&t, &t, actual);
+        test = lexint_cmp(&t, &_str_uif_types[i].limit);
+        neg_plus_one = true;
+      }
+      else
+      {
+        test = lexint_cmp(actual, &_str_uif_types[i].limit);
+      }
+
       if((test > 0) || (!neg_plus_one && (test == 0)))
       {
         // Illegal value.

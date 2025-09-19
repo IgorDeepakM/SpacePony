@@ -169,6 +169,7 @@ static const lextoken_t keywords[] =
   { "continue", TK_CONTINUE },
   { "consume", TK_CONSUME },
   { "recover", TK_RECOVER },
+  { "comptime", TK_COMPTIME },
 
   { "if", TK_IF },
   { "ifdef", TK_IFDEF },

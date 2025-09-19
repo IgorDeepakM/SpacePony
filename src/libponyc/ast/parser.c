@@ -99,11 +99,13 @@ DEF(literal);
   TOKEN("literal", TK_TRUE, TK_FALSE, TK_INT, TK_FLOAT, TK_STRING);
   DONE();
 
-// HASH postfix
-DEF(const_expr);
+// COMPTIME [annotations] seq END
+DEF(comptime_expr);
   PRINT_INLINE();
-  TOKEN(NULL, TK_CONSTANT);
-  RULE("formal argument value", postfix);
+  TOKEN(NULL, TK_COMPTIME);
+  ANNOTATE(annotations)
+  RULE("comptime expression value", seq);
+  TERMINATE("comptime expression", TK_END);
   DONE();
 
 DEF(valueformalarg);
@@ -1015,18 +1017,18 @@ DEF(test_ifdef_flag);
   DONE();
 
 // cond | ifdef | iftypeset | match | whileloop | repeat | forloop | with | try |
-// recover | consume | pattern | const_expr | test_<various>
+// recover | consume | pattern | comptime_expr | test_<various>
 DEF(term);
   RULE("value", cond, ifdef, iftypeset, match, whileloop, repeat, forloop, with,
-    try_block, recover, inline_asm, consume, pattern, const_expr, test_noseq,
+    try_block, recover, inline_asm, consume, pattern, comptime_expr, test_noseq,
     test_seq_scope, test_try_block, test_ifdef_flag, test_prefix);
   DONE();
 
 // cond | ifdef | iftypeset | match | whileloop | repeat | forloop | with | try |
-// recover | consume | pattern | const_expr | test_<various>
+// recover | consume | pattern | comptime_expr | test_<various>
 DEF(nextterm);
   RULE("value", cond, ifdef, iftypeset, match, whileloop, repeat, forloop, with,
-    try_block, recover, inline_asm, consume, nextpattern, const_expr, test_noseq,
+    try_block, recover, inline_asm, consume, nextpattern, comptime_expr, test_noseq,
     test_seq_scope, test_try_block, test_ifdef_flag, test_prefix);
   DONE();
 

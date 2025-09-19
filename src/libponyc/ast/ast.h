@@ -96,6 +96,7 @@ size_t ast_name_len(ast_t* ast);
 void ast_set_name(ast_t* ast, const char* name);
 double ast_float(ast_t* ast);
 lexint_t* ast_int(ast_t* ast);
+void ast_set_int(ast_t* ast, lexint_t* val);
 ast_t* ast_type(ast_t* ast);
 void ast_settype(ast_t* ast, ast_t* type);
 ast_t* ast_annotation(ast_t* ast);
