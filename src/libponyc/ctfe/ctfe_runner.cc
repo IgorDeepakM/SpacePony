@@ -23,6 +23,8 @@ CtfeRunner::~CtfeRunner()
       case CtfeValue::Type::AggRef:
         delete elem.get_agg_ref();
         break;
+      default:
+        break;
     }
   }
 }
@@ -81,6 +83,10 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
       recv_type = ast_type(rec_type);
       break;
     }
+    default:
+      ast_error_frame(errors, ast,
+              "Unsupported function call receiver");
+      return CtfeValue(CtfeValue::Type::ComptimeError);
   }
 
   if(!rec_val.is_none())

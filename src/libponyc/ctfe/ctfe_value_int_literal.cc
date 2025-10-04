@@ -136,7 +136,7 @@ double CtfeValueIntLiteral::to_double()
   return lexint_double(&m_val);
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::and(CtfeValueIntLiteral& b)
+CtfeValueIntLiteral CtfeValueIntLiteral::op_and(CtfeValueIntLiteral& b)
 {
   CtfeValueIntLiteral dst;
   lexint_and(&dst.m_val, &m_val, &b.m_val);
@@ -150,7 +150,7 @@ CtfeValueIntLiteral CtfeValueIntLiteral::and64(uint64_t b)
   return dst;
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::or(CtfeValueIntLiteral& b)
+CtfeValueIntLiteral CtfeValueIntLiteral::op_or(CtfeValueIntLiteral& b)
 {
   CtfeValueIntLiteral dst;
   lexint_or(&dst.m_val, &m_val, &b.m_val);
@@ -164,7 +164,7 @@ CtfeValueIntLiteral CtfeValueIntLiteral::or64(uint64_t b)
   return dst;
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::xor(CtfeValueIntLiteral& b)
+CtfeValueIntLiteral CtfeValueIntLiteral::op_xor(CtfeValueIntLiteral& b)
 {
   CtfeValueIntLiteral dst;
   lexint_xor(&dst.m_val, &m_val, &b.m_val);
@@ -178,7 +178,7 @@ CtfeValueIntLiteral CtfeValueIntLiteral::xor64(uint64_t b)
   return dst;
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::not()
+CtfeValueIntLiteral CtfeValueIntLiteral::op_not()
 {
   CtfeValueIntLiteral dst;
   lexint_not(&dst.m_val, &m_val);
@@ -309,19 +309,19 @@ bool CtfeValueIntLiteral::run_method(pass_opt_t* opt, errorframe_t* errors, ast_
     }
     else if(method_name == "op_and")
     {
-      CtfeValueIntLiteral r = rec_val.and(first_arg);
+      CtfeValueIntLiteral r = rec_val.op_and(first_arg);
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "op_or")
     {
-      CtfeValueIntLiteral r = rec_val.or(first_arg);
+      CtfeValueIntLiteral r = rec_val.op_or(first_arg);
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "op_xor")
     {
-      CtfeValueIntLiteral r = rec_val.xor(first_arg);
+      CtfeValueIntLiteral r = rec_val.op_xor(first_arg);
       result = CtfeValue(r);
       return true;
     }
@@ -378,7 +378,7 @@ bool CtfeValueIntLiteral::run_method(pass_opt_t* opt, errorframe_t* errors, ast_
   {
     if(method_name == "op_not")
     {
-      CtfeValueIntLiteral r = rec_val.not();
+      CtfeValueIntLiteral r = rec_val.op_not();
       result = CtfeValue(r);
       return true;
     }

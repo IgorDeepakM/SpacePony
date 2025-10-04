@@ -43,13 +43,13 @@ public:
   double to_double();
   uint64_t to_uint64() const { return m_val.low; }
 
-  CtfeValueIntLiteral and(CtfeValueIntLiteral& b);
+  CtfeValueIntLiteral op_and(CtfeValueIntLiteral& b);
   CtfeValueIntLiteral and64(uint64_t b);
-  CtfeValueIntLiteral or(CtfeValueIntLiteral& b);
+  CtfeValueIntLiteral op_or(CtfeValueIntLiteral& b);
   CtfeValueIntLiteral or64(uint64_t b);
-  CtfeValueIntLiteral xor(CtfeValueIntLiteral& b);
+  CtfeValueIntLiteral op_xor(CtfeValueIntLiteral& b);
   CtfeValueIntLiteral xor64(uint64_t b);
-  CtfeValueIntLiteral not();
+  CtfeValueIntLiteral op_not();
 
   CtfeValueIntLiteral negate();
 

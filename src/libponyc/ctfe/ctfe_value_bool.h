@@ -17,10 +17,10 @@ public:
   CtfeValueBool();
   CtfeValueBool(bool val);
 
-  CtfeValueBool and(const CtfeValueBool& b);
-  CtfeValueBool or(const CtfeValueBool& b);
-  CtfeValueBool xor(const CtfeValueBool& b);
-  CtfeValueBool not();
+  CtfeValueBool op_and(const CtfeValueBool& b);
+  CtfeValueBool op_or(const CtfeValueBool& b);
+  CtfeValueBool op_xor(const CtfeValueBool& b);
+  CtfeValueBool op_not();
 
   bool get_value() const { return m_val; }
 

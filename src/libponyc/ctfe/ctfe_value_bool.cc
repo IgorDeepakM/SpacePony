@@ -16,25 +16,25 @@ CtfeValueBool::CtfeValueBool(bool val)
 }
   
 
-CtfeValueBool CtfeValueBool::and(const CtfeValueBool& b)
+CtfeValueBool CtfeValueBool::op_and(const CtfeValueBool& b)
 {
   return CtfeValueBool(m_val && b.m_val);
 }
 
 
-CtfeValueBool CtfeValueBool::or(const CtfeValueBool& b)
+CtfeValueBool CtfeValueBool::op_or(const CtfeValueBool& b)
 {
   return CtfeValueBool(m_val || b.m_val);
 }
 
 
-CtfeValueBool CtfeValueBool::xor(const CtfeValueBool& b)
+CtfeValueBool CtfeValueBool::op_xor(const CtfeValueBool& b)
 {
   return CtfeValueBool(m_val != b.m_val);
 }
 
 
-CtfeValueBool CtfeValueBool::not()
+CtfeValueBool CtfeValueBool::op_not()
 {
   return CtfeValueBool(!m_val);
 }
@@ -56,19 +56,19 @@ bool CtfeValueBool::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast
   {
     if(method_name == "op_and")
     {
-      CtfeValueBool r = args[0].get_bool().and(args[1].get_bool());
+      CtfeValueBool r = args[0].get_bool().op_and(args[1].get_bool());
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "op_or")
     {
-      CtfeValueBool r = args[0].get_bool().or(args[1].get_bool());
+      CtfeValueBool r = args[0].get_bool().op_or(args[1].get_bool());
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "op_xor")
     {
-      CtfeValueBool r = args[0].get_bool().xor(args[1].get_bool());
+      CtfeValueBool r = args[0].get_bool().op_xor(args[1].get_bool());
       result = CtfeValue(r);
       return true;
     }
@@ -77,7 +77,7 @@ bool CtfeValueBool::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast
   {
     if(method_name == "op_not")
     {
-      CtfeValueBool r = args[0].get_bool().not();
+      CtfeValueBool r = args[0].get_bool().op_not();
       result = CtfeValue(r);
       return true;
     }

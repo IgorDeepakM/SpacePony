@@ -88,7 +88,7 @@ public:
   template <typename T>
   CtfeValue(const CtfeValueTypedInt<T>& val);
   template <typename T>
-  CtfeValue::CtfeValue(const CtfeValueTypedInt<T>& val, Type type);
+  CtfeValue(const CtfeValueTypedInt<T>& val, Type type);
   CtfeValue(const CtfeValue& val, const std::string& pony_type);
   CtfeValue(const CtfeValueBool& val);
   CtfeValue(CtfeValueAggregate* ref);
