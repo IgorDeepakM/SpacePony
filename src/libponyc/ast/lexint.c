@@ -478,3 +478,8 @@ void lexint_negate(lexint_t* dst, lexint_t* src)
   lexint_zero(&t);
   lexint_sub(dst, &t, src);
 }
+
+bool lexint_is_negative(lexint_t const* v)
+{
+  return v->is_negative;
+}

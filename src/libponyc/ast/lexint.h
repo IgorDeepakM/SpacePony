@@ -68,6 +68,8 @@ void lexint_not(lexint_t* dst, lexint_t* src);
 
 void lexint_negate(lexint_t* dst, lexint_t* src);
 
+bool lexint_is_negative(lexint_t const* v);
+
 PONY_EXTERN_C_END
 
 #endif
