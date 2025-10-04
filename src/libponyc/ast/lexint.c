@@ -85,42 +85,35 @@ void lexint_shr(lexint_t* dst, lexint_t* a, uint64_t b)
 {
   dst->is_negative = a->is_negative;
 
-  if(!a->is_negative)
+  if(b >= 128)
   {
-    if(b >= 128)
-    {
-      lexint_zero(dst);
-    } else if(b > 64) {
-      dst->low = a->high >> (b - 64);
-      dst->high = 0;
-    } else if(b == 64) {
-      dst->low = a->high;
-      dst->high = 0;
-    } else if(b > 0) {
-      dst->low = (a->high << (64 - b)) + (a->low >> b);
-      dst->high = a->high >> b;
-    } else {
-      dst->high = a->high;
-      dst->low = a->low;
-    }
+    lexint_zero(dst);
+  } else if(b > 64) {
+    dst->low = a->high >> (b - 64);
+    dst->high = 0;
+  } else if(b == 64) {
+    dst->low = a->high;
+    dst->high = 0;
+  } else if(b > 0) {
+    dst->low = (a->high << (64 - b)) + (a->low >> b);
+    dst->high = a->high >> b;
+  } else {
+    dst->high = a->high;
+    dst->low = a->low;
   }
-  else
+
+  // If negative we need to shift down the value from the 129's bit (is_signed)
+  if(a->is_negative && b > 0)
   {
-    if(b >= 128)
+    int64_t high_shift = 0x8000000000000000;
+    high_shift >>= (b - 1);
+
+    dst->high |= (uint64_t)high_shift;
+    if (b > 64)
     {
-      lexint_zero(dst);
-    } else if(b > 64) {
-      dst->low = (int64_t)a->high >> (b - 64);
-      dst->high = 0;
-    } else if(b == 64) {
-      dst->low = a->high;
-      dst->high = 0;
-    } else if(b > 0) {
-      dst->low = ((int64_t)a->high << (64 - b)) + (a->low >> b);
-      dst->high = (int64_t)a->high >> b;
-    } else {
-      dst->high = a->high;
-      dst->low = a->low;
+      int64_t low_shift = 0x8000000000000000;
+      low_shift >>= (b - 64 - 1);
+      dst->low |= (uint64_t)low_shift;
     }
   }
 }
