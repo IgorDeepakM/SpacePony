@@ -17,6 +17,7 @@ static lexint_t* lexint(lexint_t* i, uint64_t high, uint64_t low)
   pony_assert(i != NULL);
   i->low = low;
   i->high = high;
+  i->is_negative = false;
   return i;
 }
 
