@@ -287,6 +287,16 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
       _ta2.beh(nc2) // Yes, you can send that nhb class all you want, over and over again. Have fun.
     ```
 
+### Added CTFE (Compile Time Function Execution)
+
+* Added CTFE to the pony compiler. Currently it is only supported using a `comptime expression end` statement. The compile time evaluation is mandatory inside this expression and a failure to evaluate the expression at compile time will result that the compilation fails. This corresponds to `consteval` in C++
+
+* The CTFE implementation is currently in its early stages and not all expressions and types are supported yet.
+
+* The CTFE has taken some ideas and code from (https://github.com/lukecheeseman/ponyta) but most of the implementation is completely new. The `#postexpr` in ponyta will not be used at all and the `#` character can be used for future purposes instead.
+
+* It is possible to go really far with CTFE and the goal is to support as many expressions and types as possible. CTFE will be added to more places than only `comptime expression end`. It is also possible for the CTFE to try evaulating at key places in the code. In the D language it is possible load files at compile time using `import("file.txt")` which can be used together with CTFE and similar functionality should be added to SpacePony as well.
+
 ## Future directions
 
 ### Short term
@@ -295,9 +305,9 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
 
 * Since there are suddenly several different arrays, a Slice class might be needed. This would be eqvivalent to std::span in C++. However, it is also possible to reuse the Array class for this purpose as it is possible to load the Array with outside raw pointers. This is possible because the Array class use garbage collected pointers which can co-exist with foreign raw pointers. The D language has chosen this approach where there is a merge between the slice and the dynamic array. Slices or reuse Array as both their pros and cons.
 
-* ponyta (https://github.com/lukecheeseman/ponyta) also developed a basic form of constant expression evaluation. SpacePony should add some form of CTFE, but will not reuse the syntax from ponyta (using `#postexpr`, for example `#3 + 4`). The reason is that `#` can be used for better purposes and there are two forms of CTFE, best effort and compulsory. Best effort can be used at key points in the AST, for example functions parameters in order to attempt to reduce an expression to a constant. Compulsory is when it is required to reduce the expression to a constant. This is eqvivalent to consteval in C++. SpacePony will probably use a `comptime expression end` to force a constant evaluation, influenced by the syntax in Zig.
-
 * Real asynchronous IO and not a POSIX like wrapper. An API that can be used for anything streaming like Files, HTTP, TCP. The API should also use the best available asynchrounous OS API primitives.
+
+* Implement a good and comprehensive reflection interface.
 
 ### Long term (read never)
 
