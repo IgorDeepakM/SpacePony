@@ -167,11 +167,14 @@ const char* token_print(token_t* token)
         lexint_negate(&value, &value);
       }
 
+      const int size = 64;
+
       if (value.high == 0)
       {
-        int size = 64;
         if (token->printed == NULL)
+        {
           token->printed = (char*)ponyint_pool_alloc_size(size);
+        }
 
         if (is_negative)
           snprintf(token->printed, size, "-%llu",
@@ -185,7 +188,6 @@ const char* token_print(token_t* token)
       {
         if (token->printed == NULL)
         {
-          int size = 64;
           token->printed = (char*)ponyint_pool_alloc_size(size);
         }
 
@@ -202,7 +204,10 @@ const char* token_print(token_t* token)
 
         lexint_t tmp;
         lexint_zero(&tmp);
-        while (lexint_cmp64(&t, 0) != 0)
+
+        int i = 0;
+
+        while (lexint_cmp64(&t, 0) != 0 && i < (size - 1))
         {
           rem.low = t.low;
           rem.high = t.high;
@@ -210,6 +215,7 @@ const char* token_print(token_t* token)
           lexint_mul64(&tmp, &t, 10);
           lexint_sub(&rem, &rem, &tmp);
           *(digit++) = (char)('0' + rem.low);
+          i++;
         }
         *digit = '\0';
 

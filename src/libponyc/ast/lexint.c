@@ -214,11 +214,6 @@ void lexint_mul64(lexint_t* dst, lexint_t* a, uint64_t b)
 {
   dst->is_negative = a->is_negative;
 
-#ifdef USE_NATIVE128
-  NATIVE(v1, a);
-  __uint128_t v2 = v1 * b;
-  LEXINT(v2, dst);
-#else
   lexint_t t = *a;
   lexint_zero(dst);
 
@@ -230,7 +225,6 @@ void lexint_mul64(lexint_t* dst, lexint_t* a, uint64_t b)
     lexint_shl(&t, &t, 1);
     b >>= 1;
   }
-#endif
 }
 
 // This method is provided only to handle negative divisions.
@@ -265,11 +259,6 @@ void lexint_div64(lexint_t* dst, lexint_t* a, uint64_t b)
     a = &t;
   }
 
-#ifdef USE_NATIVE128
-  NATIVE(v1, a);
-  __uint128_t v2 = v1 / b;
-  LEXINT(v2, dst);
-#else
   lexint_t o = *a;
   lexint_zero(dst);
 
@@ -297,7 +286,6 @@ void lexint_div64(lexint_t* dst, lexint_t* a, uint64_t b)
       lexint_setbit(dst, dst, i);
     }
   }
-#endif
 
   dst->is_negative = false;
   if(negate)
