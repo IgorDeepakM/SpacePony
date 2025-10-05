@@ -289,7 +289,25 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
 
 ### Added CTFE (Compile Time Function Execution)
 
-* Added CTFE to the pony compiler. Currently it is only supported using a `comptime expression end` statement. The compile time evaluation is mandatory inside this expression and a failure to evaluate the expression at compile time will result that the compilation fails. This corresponds to `consteval` in C++
+* Added CTFE to the pony compiler. Currently it is only supported using a `comptime expression end` statement. The compile time evaluation is mandatory inside this expression and a failure to evaluate the expression at compile time will result that the compilation fails. This corresponds to `consteval` in C++.
+
+* Example:
+  ```pony
+  var x1: ILong = comptime count_to(10) end
+
+  ...
+
+  fun count_to(r: ILong): ILong =>
+    var tt: ILong = 0
+ 
+     while tt < r do
+       tt = tt + 1
+     end
+
+     tt
+  ```
+  This will be run at compile and be reduced to a single literal of type `Ilong`.
+
 
 * The CTFE implementation is currently in its early stages and not all expressions and types are supported yet.
 
