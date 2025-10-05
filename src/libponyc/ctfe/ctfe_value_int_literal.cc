@@ -26,7 +26,7 @@ void CtfeValueIntLiteral::set(const CtfeValueIntLiteral& b)
 
 void CtfeValueIntLiteral::zero()
 {
-  lexint_zero(&m_val);
+  m_val = lexint_zero();
 }
 
 int CtfeValueIntLiteral::cmp(const CtfeValueIntLiteral& b) const
@@ -34,96 +34,74 @@ int CtfeValueIntLiteral::cmp(const CtfeValueIntLiteral& b) const
   return lexint_cmp(&m_val, &b.m_val);
 }
 
-int CtfeValueIntLiteral::cmp64(uint64_t b)
+int CtfeValueIntLiteral::cmp64(uint64_t b) const
 {
   return lexint_cmp64(&m_val, b);
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::shl(uint64_t b)
+CtfeValueIntLiteral CtfeValueIntLiteral::shl(uint64_t b) const
 {
-  CtfeValueIntLiteral dst;
-  lexint_shl(&dst.m_val, &m_val, b);
-  return dst;
+  return CtfeValueIntLiteral(lexint_shl(&m_val, b));
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::shr(uint64_t b)
+CtfeValueIntLiteral CtfeValueIntLiteral::shr(uint64_t b) const
 {
-  CtfeValueIntLiteral dst;
-  lexint_shr(&dst.m_val, &m_val, b);
-  return dst;
+  return CtfeValueIntLiteral(lexint_shr(&m_val, b));
 }
 
-uint64_t CtfeValueIntLiteral::testbit(uint8_t b)
+uint64_t CtfeValueIntLiteral::testbit(uint8_t b) const
 {
   return lexint_testbit(&m_val, b);
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::setbit(uint8_t b)
+CtfeValueIntLiteral CtfeValueIntLiteral::setbit(uint8_t b) const
 {
-  CtfeValueIntLiteral dst;
-  lexint_setbit(&dst.m_val, &m_val, b);
-  return dst;
+  return CtfeValueIntLiteral(lexint_setbit(&m_val, b));
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::add(CtfeValueIntLiteral& b)
+CtfeValueIntLiteral CtfeValueIntLiteral::add(const CtfeValueIntLiteral& b) const
 {
-  CtfeValueIntLiteral dst;
-  lexint_add(&dst.m_val, &m_val, &b.m_val);
-  return dst;
+  return CtfeValueIntLiteral(lexint_add(&m_val, &b.m_val));
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::add64(uint64_t b)
+CtfeValueIntLiteral CtfeValueIntLiteral::add64(uint64_t b) const
 {
-  CtfeValueIntLiteral dst;
-  lexint_add64(&dst.m_val, &m_val, b);
-  return dst;
+  return CtfeValueIntLiteral(lexint_add64(&m_val, b));
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::sub(CtfeValueIntLiteral& b)
+CtfeValueIntLiteral CtfeValueIntLiteral::sub(const CtfeValueIntLiteral& b) const
 {
-  CtfeValueIntLiteral dst;
-  lexint_sub(&dst.m_val, &m_val, &b.m_val);
-  return dst;
+  return CtfeValueIntLiteral(lexint_sub(&m_val, &b.m_val));
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::sub64(uint64_t b)
+CtfeValueIntLiteral CtfeValueIntLiteral::sub64(uint64_t b) const
 {
-  CtfeValueIntLiteral dst;
-  lexint_add64(&dst.m_val, &m_val, b);
-  return dst;
+  return CtfeValueIntLiteral(lexint_add64(&m_val, b));
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::mul(CtfeValueIntLiteral& b)
+CtfeValueIntLiteral CtfeValueIntLiteral::mul(const CtfeValueIntLiteral& b) const
 {
-  CtfeValueIntLiteral dst;
-  lexint_mul(&dst.m_val, &m_val, &b.m_val);
-  return dst;
+  return CtfeValueIntLiteral(lexint_mul(&m_val, &b.m_val));
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::mul64(uint64_t b)
+CtfeValueIntLiteral CtfeValueIntLiteral::mul64(uint64_t b) const
 {
-  CtfeValueIntLiteral dst;
-  lexint_mul64(&dst.m_val, &m_val, b);
-  return dst;
+  return CtfeValueIntLiteral(lexint_mul64(&m_val, b));
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::div(CtfeValueIntLiteral& b)
+CtfeValueIntLiteral CtfeValueIntLiteral::div(const CtfeValueIntLiteral& b) const
 {
-  CtfeValueIntLiteral dst;
-  lexint_div(&dst.m_val, &m_val, &b.m_val);
-  return dst;
+  return CtfeValueIntLiteral(lexint_div(&m_val, &b.m_val));
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::div64(uint64_t b)
+CtfeValueIntLiteral CtfeValueIntLiteral::div64(uint64_t b) const
 {
-  CtfeValueIntLiteral dst;
-  lexint_div64(&dst.m_val, &m_val, b);
-  return dst;
+  return CtfeValueIntLiteral(lexint_div64(&m_val, b));
 }
 
 void CtfeValueIntLiteral::from_char(int c)
 {
-  lexint_char(&m_val, c);
+  m_val = lexint_char(&m_val, c);
 }
 
 bool CtfeValueIntLiteral::accum(uint64_t digit, uint64_t base)
@@ -131,69 +109,53 @@ bool CtfeValueIntLiteral::accum(uint64_t digit, uint64_t base)
   return lexint_accum(&m_val, digit, base);
 }
 
-double CtfeValueIntLiteral::to_double()
+double CtfeValueIntLiteral::to_double() const
 {
   return lexint_double(&m_val);
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::op_and(CtfeValueIntLiteral& b)
+CtfeValueIntLiteral CtfeValueIntLiteral::op_and(const CtfeValueIntLiteral& b) const
 {
-  CtfeValueIntLiteral dst;
-  lexint_and(&dst.m_val, &m_val, &b.m_val);
-  return dst;
+  return CtfeValueIntLiteral(lexint_and(&m_val, &b.m_val));
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::and64(uint64_t b)
+CtfeValueIntLiteral CtfeValueIntLiteral::and64(uint64_t b) const
 {
-  CtfeValueIntLiteral dst;
-  lexint_and64(&dst.m_val, &m_val, b);
-  return dst;
+  return CtfeValueIntLiteral(lexint_and64(&m_val, b));
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::op_or(CtfeValueIntLiteral& b)
+CtfeValueIntLiteral CtfeValueIntLiteral::op_or(const CtfeValueIntLiteral& b) const
 {
-  CtfeValueIntLiteral dst;
-  lexint_or(&dst.m_val, &m_val, &b.m_val);
-  return dst;
+  return CtfeValueIntLiteral(lexint_or(&m_val, &b.m_val));
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::or64(uint64_t b)
+CtfeValueIntLiteral CtfeValueIntLiteral::or64(uint64_t b) const
 {
-  CtfeValueIntLiteral dst;
-  lexint_or64(&dst.m_val, &m_val, b);
-  return dst;
+  return CtfeValueIntLiteral(lexint_or64(&m_val, b));
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::op_xor(CtfeValueIntLiteral& b)
+CtfeValueIntLiteral CtfeValueIntLiteral::op_xor(const CtfeValueIntLiteral& b) const
 {
-  CtfeValueIntLiteral dst;
-  lexint_xor(&dst.m_val, &m_val, &b.m_val);
-  return dst;
+  return CtfeValueIntLiteral(lexint_xor(&m_val, &b.m_val));
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::xor64(uint64_t b)
+CtfeValueIntLiteral CtfeValueIntLiteral::xor64(uint64_t b) const
 {
-  CtfeValueIntLiteral dst;
-  lexint_xor64(&dst.m_val, &m_val, b);
-  return dst;
+  return CtfeValueIntLiteral(lexint_xor64(&m_val, b));
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::op_not()
+CtfeValueIntLiteral CtfeValueIntLiteral::op_not() const
 {
-  CtfeValueIntLiteral dst;
-  lexint_not(&dst.m_val, &m_val);
-  return dst;
+  return CtfeValueIntLiteral(lexint_not(&m_val));
 }
 
-CtfeValueIntLiteral CtfeValueIntLiteral::negate()
+CtfeValueIntLiteral CtfeValueIntLiteral::negate() const
 {
-  CtfeValueIntLiteral dst;
-  lexint_negate(&dst.m_val, &m_val);
-  return dst;
+  return CtfeValueIntLiteral(lexint_negate(&m_val));
 }
 
 
-CtfeValueBool CtfeValueIntLiteral::eq(CtfeValueIntLiteral& b)
+CtfeValueBool CtfeValueIntLiteral::eq(const CtfeValueIntLiteral& b) const
 {
   int cmp = lexint_cmp(&m_val, &b.m_val);
   if(cmp == 0)
@@ -205,7 +167,7 @@ CtfeValueBool CtfeValueIntLiteral::eq(CtfeValueIntLiteral& b)
 }
 
 
-CtfeValueBool CtfeValueIntLiteral::ne(CtfeValueIntLiteral& b)
+CtfeValueBool CtfeValueIntLiteral::ne(const CtfeValueIntLiteral& b) const
 {
   int cmp = lexint_cmp(&m_val, &b.m_val);
   if(cmp != 0)
@@ -217,7 +179,7 @@ CtfeValueBool CtfeValueIntLiteral::ne(CtfeValueIntLiteral& b)
 }
 
 
-CtfeValueBool CtfeValueIntLiteral::lt(CtfeValueIntLiteral& b)
+CtfeValueBool CtfeValueIntLiteral::lt(const CtfeValueIntLiteral& b) const
 {
   int cmp = lexint_cmp(&m_val, &b.m_val);
   if(cmp < 0)
@@ -229,7 +191,7 @@ CtfeValueBool CtfeValueIntLiteral::lt(CtfeValueIntLiteral& b)
 }
 
 
-CtfeValueBool CtfeValueIntLiteral::le(CtfeValueIntLiteral& b)
+CtfeValueBool CtfeValueIntLiteral::le(const CtfeValueIntLiteral& b) const
 {
   int cmp = lexint_cmp(&m_val, &b.m_val);
   if(cmp <= 0)
@@ -241,7 +203,7 @@ CtfeValueBool CtfeValueIntLiteral::le(CtfeValueIntLiteral& b)
 }
 
 
-CtfeValueBool CtfeValueIntLiteral::gt(CtfeValueIntLiteral& b)
+CtfeValueBool CtfeValueIntLiteral::gt(const CtfeValueIntLiteral& b) const
 {
   int cmp = lexint_cmp(&m_val, &b.m_val);
   if(cmp > 0)
@@ -253,7 +215,7 @@ CtfeValueBool CtfeValueIntLiteral::gt(CtfeValueIntLiteral& b)
 }
 
 
-CtfeValueBool CtfeValueIntLiteral::ge(CtfeValueIntLiteral& b)
+CtfeValueBool CtfeValueIntLiteral::ge(const CtfeValueIntLiteral& b) const
 {
   int cmp = lexint_cmp(&m_val, &b.m_val);
   if(cmp >= 0)

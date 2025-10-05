@@ -164,7 +164,7 @@ const char* token_print(token_t* token)
       bool is_negative = lexint_is_negative(&value);
       if(is_negative)
       {
-        lexint_negate(&value, &value);
+        value = lexint_negate(&value);
       }
 
       const int size = 64;
@@ -188,11 +188,8 @@ const char* token_print(token_t* token)
 
         lexint_t t = value;
 
-        lexint_t rem;
-        lexint_zero(&rem);
-
-        lexint_t tmp;
-        lexint_zero(&tmp);
+        lexint_t rem = lexint_zero();
+        lexint_t tmp = lexint_zero();
 
         int i = 0;
 
@@ -200,9 +197,9 @@ const char* token_print(token_t* token)
         {
           rem.low = t.low;
           rem.high = t.high;
-          lexint_div64(&t, &t, 10);
-          lexint_mul64(&tmp, &t, 10);
-          lexint_sub(&rem, &rem, &tmp);
+          t = lexint_div64(&t, 10);
+          tmp = lexint_mul64(&t, 10);
+          rem = lexint_sub(&rem, &tmp);
           *(digit++) = (char)('0' + rem.low);
           i++;
         }

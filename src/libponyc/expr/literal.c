@@ -599,9 +599,8 @@ static bool uif_type_from_chain(pass_opt_t* opt, ast_t* literal,
       // then we need to check the positive value
       if(lexint_is_negative(actual))
       {
-        lexint_t t;
-        lexint_zero(&t);
-        lexint_sub(&t, &t, actual);
+        lexint_t t = lexint_zero();
+        t = lexint_sub(&t, actual);
         test = lexint_cmp(&t, &_str_uif_types[i].limit);
         neg_plus_one = true;
       }

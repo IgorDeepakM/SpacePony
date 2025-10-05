@@ -73,8 +73,7 @@ CtfeValueTypedInt<T>::CtfeValueTypedInt(const CtfeValueIntLiteral& b)
   T min_val = std::numeric_limits<T>::min();
   T max_val = std::numeric_limits<T>::max();
 
-  lexint_t lexint_min;
-  lexint_zero(&lexint_min);
+  lexint_t lexint_min = lexint_zero();
   if constexpr (sizeof(T) > 8)
   {
     lexint_min.high = min_val >> 64;
@@ -89,8 +88,7 @@ CtfeValueTypedInt<T>::CtfeValueTypedInt(const CtfeValueIntLiteral& b)
     lexint_min.is_negative = true;
   }
 
-  lexint_t lexint_max;
-  lexint_zero(&lexint_max);
+  lexint_t lexint_max = lexint_zero();
   if constexpr (sizeof(T) > 8)
   {
     lexint_max.high = max_val >> 64;

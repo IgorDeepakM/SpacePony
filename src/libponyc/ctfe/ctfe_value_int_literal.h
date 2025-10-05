@@ -24,41 +24,41 @@ public:
   void set(const CtfeValueIntLiteral& b);
   void zero();
   int cmp(const CtfeValueIntLiteral& b) const;
-  int cmp64(uint64_t b);
-  CtfeValueIntLiteral shl(uint64_t b);
-  CtfeValueIntLiteral shr(uint64_t b);
-  uint64_t testbit(uint8_t b);
-  CtfeValueIntLiteral setbit(uint8_t b);
-  CtfeValueIntLiteral add(CtfeValueIntLiteral& b);
-  CtfeValueIntLiteral add64(uint64_t b);
-  CtfeValueIntLiteral sub(CtfeValueIntLiteral& b);
-  CtfeValueIntLiteral sub64(uint64_t b);
-  CtfeValueIntLiteral mul(CtfeValueIntLiteral& b);
-  CtfeValueIntLiteral mul64(uint64_t b);
-  CtfeValueIntLiteral div(CtfeValueIntLiteral& b);
-  CtfeValueIntLiteral div64( uint64_t b);
+  int cmp64(uint64_t b) const;
+  CtfeValueIntLiteral shl(uint64_t b) const;
+  CtfeValueIntLiteral shr(uint64_t b) const;
+  uint64_t testbit(uint8_t b) const;
+  CtfeValueIntLiteral setbit(uint8_t b) const;
+  CtfeValueIntLiteral add(const CtfeValueIntLiteral& b) const;
+  CtfeValueIntLiteral add64(uint64_t b) const;
+  CtfeValueIntLiteral sub(const CtfeValueIntLiteral& b) const;
+  CtfeValueIntLiteral sub64(uint64_t b) const;
+  CtfeValueIntLiteral mul(const CtfeValueIntLiteral& b) const;
+  CtfeValueIntLiteral mul64(uint64_t b) const;
+  CtfeValueIntLiteral div(const CtfeValueIntLiteral& b) const;
+  CtfeValueIntLiteral div64( uint64_t b) const;
 
   void from_char(int c);
   bool accum(uint64_t digit, uint64_t base);
-  double to_double();
+  double to_double() const;
   uint64_t to_uint64() const { return m_val.low; }
 
-  CtfeValueIntLiteral op_and(CtfeValueIntLiteral& b);
-  CtfeValueIntLiteral and64(uint64_t b);
-  CtfeValueIntLiteral op_or(CtfeValueIntLiteral& b);
-  CtfeValueIntLiteral or64(uint64_t b);
-  CtfeValueIntLiteral op_xor(CtfeValueIntLiteral& b);
-  CtfeValueIntLiteral xor64(uint64_t b);
-  CtfeValueIntLiteral op_not();
+  CtfeValueIntLiteral op_and(const CtfeValueIntLiteral& b) const;
+  CtfeValueIntLiteral and64(uint64_t b) const;
+  CtfeValueIntLiteral op_or(const CtfeValueIntLiteral& b) const;
+  CtfeValueIntLiteral or64(uint64_t b) const;
+  CtfeValueIntLiteral op_xor(const CtfeValueIntLiteral& b) const;
+  CtfeValueIntLiteral xor64(uint64_t b) const;
+  CtfeValueIntLiteral op_not() const;
 
-  CtfeValueIntLiteral negate();
+  CtfeValueIntLiteral negate() const;
 
-  CtfeValueBool eq(CtfeValueIntLiteral& b);
-  CtfeValueBool ne(CtfeValueIntLiteral& b);
-  CtfeValueBool lt(CtfeValueIntLiteral& b);
-  CtfeValueBool le(CtfeValueIntLiteral& b);
-  CtfeValueBool gt(CtfeValueIntLiteral& b);
-  CtfeValueBool ge(CtfeValueIntLiteral& b);
+  CtfeValueBool eq(const CtfeValueIntLiteral& b) const;
+  CtfeValueBool ne(const CtfeValueIntLiteral& b) const;
+  CtfeValueBool lt(const CtfeValueIntLiteral& b) const;
+  CtfeValueBool le(const CtfeValueIntLiteral& b) const;
+  CtfeValueBool gt(const CtfeValueIntLiteral& b) const;
+  CtfeValueBool ge(const CtfeValueIntLiteral& b) const;
 
   ast_t* create_ast_literal_node();
 
@@ -70,7 +70,7 @@ public:
 template<typename T>
 CtfeValueIntLiteral::CtfeValueIntLiteral(T b)
 {
-  lexint_zero(&m_val);
+  m_val = lexint_zero();
 
   if constexpr (std::is_integral<T>::value)
   {
