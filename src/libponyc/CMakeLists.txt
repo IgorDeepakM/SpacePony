@@ -44,9 +44,16 @@ add_library(libponyc STATIC
     codegen/gendebug.cc
     codegen/genopt.cc
     codegen/host.cc
+    ctfe/ctfe_frames.cc
+    ctfe/ctfe_runner.cc
+    ctfe/ctfe_value.cc
+    ctfe/ctfe_value_aggregate.cc
+    ctfe/ctfe_value_bool.cc
+    ctfe/ctfe_value_int_literal.cc
     expr/array.c
     expr/call.c
     expr/control.c
+    expr/ctfe.cc
     expr/ffi.c
     expr/inlineasm.cc
     expr/lambda.c

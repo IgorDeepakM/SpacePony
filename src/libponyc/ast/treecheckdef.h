@@ -166,6 +166,11 @@ RULE(xofoperator,
   CHILD(expr),
   TK_ADDRESS);
 
+RULE(comptime,
+  HAS_TYPE(type)
+  CHILD(expr),
+  TK_COMPTIME);
+
 GROUP(expr,
   local, binop, isop, assignop, asop, tuple, consume, recover, xofoperator, prefix, dot,
   tilde, chain, qualify, call, ffi_call, match_capture, ffi_ref,
@@ -173,7 +178,7 @@ GROUP(expr,
   disposing_block, match, try_expr, lambda, barelambda, array_literal,
   object_literal, int_literal, float_literal, string, bool_literal, id, rawseq,
   package_ref, location, this_ref, ref, fun_ref, type_ref, field_ref,
-  tuple_elem_ref, local_ref, param_ref, value_formal_param_ref);
+  tuple_elem_ref, local_ref, param_ref, value_formal_param_ref, comptime);
 
 RULE(local,
   HAS_TYPE(type)

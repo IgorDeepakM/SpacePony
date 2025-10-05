@@ -450,7 +450,7 @@ ast_t* ast_from_int(ast_t* ast, uint64_t value)
   token_t* t = token_dup(ast->t);
   token_set_id(t, TK_INT);
 
-  lexint_t lexint = {value, 0};
+  lexint_t lexint = {value, 0, false};
   token_set_int(t, &lexint);
 
   ast_t* new_ast = ast_token(t);
@@ -797,6 +797,11 @@ lexint_t* ast_int(ast_t* ast)
 {
   pony_assert(ast != NULL);
   return token_int(ast->t);
+}
+
+void ast_set_int(ast_t* ast, lexint_t* val)
+{
+  token_set_int(ast->t, val);
 }
 
 ast_t* ast_type(ast_t* ast)

@@ -203,7 +203,7 @@ static bool is_literal_equal(ast_t* a, ast_t* b)
       {
         lexint_t* lex_a = ast_int(a);
         lexint_t* lex_b = ast_int(b);
-        if (lex_a->high == lex_b->high && lex_a->low == lex_b->low)
+        if (lexint_cmp(lex_a, lex_b) == 0)
         {
           return true;
         }

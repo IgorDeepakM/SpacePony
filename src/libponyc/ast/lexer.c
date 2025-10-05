@@ -169,6 +169,7 @@ static const lextoken_t keywords[] =
   { "continue", TK_CONTINUE },
   { "consume", TK_CONSUME },
   { "recover", TK_RECOVER },
+  { "comptime", TK_COMPTIME },
 
   { "if", TK_IF },
   { "ifdef", TK_IFDEF },
@@ -874,8 +875,7 @@ static token_t* character(lexer_t* lexer)
   consume_chars(lexer, 1);  // Leading '
 
   size_t chars_consumed = 0;
-  lexint_t value;
-  lexint_zero(&value);
+  lexint_t value = lexint_zero();
 
   while(true)
   {
@@ -910,7 +910,9 @@ static token_t* character(lexer_t* lexer)
     // Just ignore bad escapes here and carry on. They've already been
     // reported and this allows catching later errors.
     if(c >= 0)
-      lexint_char(&value, c);
+    {
+      value = lexint_char(&value, c);
+    }
 
     // TODO: Should we catch overflow and treat as an error?
   }
@@ -1006,8 +1008,7 @@ static token_t* real(lexer_t* lexer, lexint_t* integral_value)
 {
   lexint_t significand = *integral_value;
 
-  lexint_t e;
-  lexint_zero(&e);
+  lexint_t e = lexint_zero();
   bool exp_neg = false;
 
   uint32_t mantissa_digit_count = 0;
@@ -1070,8 +1071,7 @@ static token_t* real(lexer_t* lexer, lexint_t* integral_value)
 static token_t* nondecimal_number(lexer_t* lexer, int base,
   const char* context)
 {
-  lexint_t value;
-  lexint_zero(&value);
+  lexint_t value = lexint_zero();
 
   if(!lex_integer(lexer, base, &value, NULL, false, context))
     return make_token(lexer, TK_LEX_ERROR);
@@ -1105,8 +1105,7 @@ static token_t* number(lexer_t* lexer)
   }
 
   // Decimal
-  lexint_t value;
-  lexint_zero(&value);
+  lexint_t value = lexint_zero();
 
   if(!lex_integer(lexer, 10, &value, NULL, true, "decimal number"))
     return make_token(lexer, TK_LEX_ERROR);

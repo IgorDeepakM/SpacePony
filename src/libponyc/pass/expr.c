@@ -10,6 +10,7 @@
 #include "../expr/ffi.h"
 #include "../expr/lambda.h"
 #include "../expr/inlineasm.h"
+#include "../expr/ctfe.h"
 #include "../type/assemble.h"
 #include "../type/lookup.h"
 #include "../type/subtype.h"
@@ -665,6 +666,10 @@ ast_result_t pass_expr(ast_t** astp, pass_opt_t* options)
 
     case TK_ASM:
       r = expr_asm(options, ast);
+      break;
+
+    case TK_COMPTIME:
+      r = expr_comptime(options, astp);
       break;
 
     default: {}

@@ -159,12 +159,66 @@ const char* token_print(token_t* token)
       return token->string;
 
     case TK_INT:
-      if (token->printed == NULL)
-        token->printed = (char*)ponyint_pool_alloc_size(64);
+    {
+      lexint_t value = token->integer;
+      bool is_negative = lexint_is_negative(&value);
+      if(is_negative)
+      {
+        value = lexint_negate(&value);
+      }
 
-      snprintf(token->printed, 64, "%llu",
-        (unsigned long long)token->integer.low);
+      const int size = 64;
+      if (token->printed == NULL)
+      {
+        token->printed = (char*)ponyint_pool_alloc_size(size);
+      }
+
+      if (value.high == 0 && !lexint_is_negative(&value))
+      {
+        snprintf(token->printed, size, "%llu", (unsigned long long)value.low);
+      }
+      else
+      {
+        char* start = token->printed;
+        if(is_negative)
+        {
+          *(start++) = '-';
+        }
+        char* digit = start;
+
+        lexint_t t = value;
+
+        lexint_t rem = lexint_zero();
+        lexint_t tmp = lexint_zero();
+
+        int i = 0;
+
+        while (lexint_cmp64(&t, 0) != 0 && i < (size - 1))
+        {
+          rem.low = t.low;
+          rem.high = t.high;
+          t = lexint_div64(&t, 10);
+          tmp = lexint_mul64(&t, 10);
+          rem = lexint_sub(&rem, &tmp);
+          *(digit++) = (char)('0' + rem.low);
+          i++;
+        }
+        *digit = '\0';
+
+        // the string representation of the value is backwards so reverse it
+        char* end = digit - 1;
+        while (start < end)
+        {
+          char tmp = *start;
+          *start = *end;
+          *end = tmp;
+          start++;
+          end--;
+        }
+      }
+
       return token->printed;
+    }
 
     case TK_FLOAT:
     {

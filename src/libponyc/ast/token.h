@@ -147,6 +147,7 @@ typedef enum token_id
   TK_CONTINUE,
   TK_CONSUME,
   TK_RECOVER,
+  TK_COMPTIME,
 
   TK_IF,
   TK_IFDEF,

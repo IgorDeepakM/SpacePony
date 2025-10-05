@@ -17,6 +17,7 @@ static lexint_t* lexint(lexint_t* i, uint64_t high, uint64_t low)
   pony_assert(i != NULL);
   i->low = low;
   i->high = high;
+  i->is_negative = false;
   return i;
 }
 
@@ -71,28 +72,28 @@ TEST_F(LexIntTest, LexIntShiftLeft)
 {
   lexint_t a, dst;
 
-  lexint_shl(&dst, lexint(&a, 0, 0), 0);
+  dst = lexint_shl(lexint(&a, 0, 0), 0);
   ASSERT_LIEQ(dst, 0, 0);
 
-  lexint_shl(&dst, lexint(&a, 0, 0), 4);
+  dst = lexint_shl(lexint(&a, 0, 0), 4);
   ASSERT_LIEQ(dst, 0, 0);
 
-  lexint_shl(&dst, lexint(&a, 0, 1), 4);
+  dst = lexint_shl(lexint(&a, 0, 1), 4);
   ASSERT_LIEQ(dst, 0, 16);
 
-  lexint_shl(&dst, lexint(&a, 0, 0x1122334455667788), 16);
+  dst = lexint_shl(lexint(&a, 0, 0x1122334455667788), 16);
   ASSERT_LIEQ(dst, 0x1122, 0x3344556677880000);
 
-  lexint_shl(&dst, lexint(&a, 0x8877665544332211, 0x1122334455667788), 16);
+  dst = lexint_shl(lexint(&a, 0x8877665544332211, 0x1122334455667788), 16);
   ASSERT_LIEQ(dst, 0x6655443322111122, 0x3344556677880000);
 
-  lexint_shl(&dst, lexint(&a, 0, 0x1122334455667788), 64);
+  dst = lexint_shl(lexint(&a, 0, 0x1122334455667788), 64);
   ASSERT_LIEQ(dst, 0x1122334455667788, 0);
 
-  lexint_shl(&dst, lexint(&a, 0, 0x1122334455667788), 72);
+  dst = lexint_shl(lexint(&a, 0, 0x1122334455667788), 72);
   ASSERT_LIEQ(dst, 0x2233445566778800, 0);
 
-  lexint_shl(&dst, lexint(&a, 0x1122334455667788, 0x1122334455667788), 128);
+  dst = lexint_shl(lexint(&a, 0x1122334455667788, 0x1122334455667788), 128);
   ASSERT_LIEQ(dst, 0, 0);
 }
 
@@ -101,31 +102,31 @@ TEST_F(LexIntTest, LexIntShiftRight)
 {
   lexint_t a, dst;
 
-  lexint_shr(&dst, lexint(&a, 0, 0), 0);
+  dst = lexint_shr(lexint(&a, 0, 0), 0);
   ASSERT_LIEQ(dst, 0, 0);
 
-  lexint_shr(&dst, lexint(&a, 0, 0), 4);
+  dst = lexint_shr(lexint(&a, 0, 0), 4);
   ASSERT_LIEQ(dst, 0, 0);
 
-  lexint_shr(&dst, lexint(&a, 0, 16), 4);
+  dst = lexint_shr(lexint(&a, 0, 16), 4);
   ASSERT_LIEQ(dst, 0, 1);
 
-  lexint_shr(&dst, lexint(&a, 0, 0x1122334455667788), 16);
+  dst = lexint_shr(lexint(&a, 0, 0x1122334455667788), 16);
   ASSERT_LIEQ(dst, 0, 0x112233445566);
 
-  lexint_shr(&dst, lexint(&a, 0x1122334455667788, 0), 16);
+  dst = lexint_shr(lexint(&a, 0x1122334455667788, 0), 16);
   ASSERT_LIEQ(dst, 0x112233445566, 0x7788000000000000);
 
-  lexint_shr(&dst, lexint(&a, 0x8877665544332211, 0x1122334455667788), 16);
+  dst = lexint_shr(lexint(&a, 0x8877665544332211, 0x1122334455667788), 16);
   ASSERT_LIEQ(dst, 0x887766554433, 0x2211112233445566);
 
-  lexint_shr(&dst, lexint(&a, 0x1122334455667788, 0), 64);
+  dst = lexint_shr(lexint(&a, 0x1122334455667788, 0), 64);
   ASSERT_LIEQ(dst, 0, 0x1122334455667788);
 
-  lexint_shr(&dst, lexint(&a, 0x1122334455667788, 0), 72);
+  dst = lexint_shr(lexint(&a, 0x1122334455667788, 0), 72);
   ASSERT_LIEQ(dst, 0, 0x11223344556677);
 
-  lexint_shr(&dst, lexint(&a, 0x1122334455667788, 0x1122334455667788), 128);
+  dst = lexint_shr(lexint(&a, 0x1122334455667788, 0x1122334455667788), 128);
   ASSERT_LIEQ(dst, 0, 0);
 }
 
@@ -176,28 +177,28 @@ TEST_F(LexIntTest, LexIntSetBit)
 {
   lexint_t a, dst;
 
-  lexint_setbit(&dst, lexint(&a, 0, 0), 0);
+  dst = lexint_setbit(lexint(&a, 0, 0), 0);
   ASSERT_LIEQ(dst, 0, 1);
 
-  lexint_setbit(&dst, lexint(&a, 0, 1), 0);
+  dst = lexint_setbit(lexint(&a, 0, 1), 0);
   ASSERT_LIEQ(dst, 0, 1);
 
-  lexint_setbit(&dst, lexint(&a, 0, 0), 1);
+  dst = lexint_setbit(lexint(&a, 0, 0), 1);
   ASSERT_LIEQ(dst, 0, 2);
 
-  lexint_setbit(&dst, lexint(&a, 0, 0), 63);
+  dst = lexint_setbit(lexint(&a, 0, 0), 63);
   ASSERT_LIEQ(dst, 0, 0x8000000000000000);
 
-  lexint_setbit(&dst, lexint(&a, 0, 0), 64);
+  dst = lexint_setbit(lexint(&a, 0, 0), 64);
   ASSERT_LIEQ(dst, 1, 0);
 
-  lexint_setbit(&dst, lexint(&a, 0, 0), 65);
+  dst = lexint_setbit(lexint(&a, 0, 0), 65);
   ASSERT_LIEQ(dst, 2, 0);
 
-  lexint_setbit(&dst, lexint(&a, 0, 0), 127);
+  dst = lexint_setbit(lexint(&a, 0, 0), 127);
   ASSERT_LIEQ(dst, 0x8000000000000000, 0);
 
-  lexint_setbit(&dst, lexint(&a, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF), 37);
+  dst = lexint_setbit(lexint(&a, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF), 37);
   ASSERT_LIEQ(dst, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF);
 }
 
@@ -206,35 +207,35 @@ TEST_F(LexIntTest, LexIntAdd)
 {
   lexint_t a, b, dst;
 
-  lexint_add(&dst, lexint(&a, 0, 0), lexint(&b, 0, 0));
+  dst = lexint_add(lexint(&a, 0, 0), lexint(&b, 0, 0));
   ASSERT_LIEQ(dst, 0, 0);
 
-  lexint_add(&dst, lexint(&a, 0, 1), lexint(&b, 0, 0));
+  dst = lexint_add(lexint(&a, 0, 1), lexint(&b, 0, 0));
   ASSERT_LIEQ(dst, 0, 1);
 
-  lexint_add(&dst, lexint(&a, 0, 0), lexint(&b, 0, 1));
+  dst = lexint_add(lexint(&a, 0, 0), lexint(&b, 0, 1));
   ASSERT_LIEQ(dst, 0, 1);
 
-  lexint_add(&dst, lexint(&a, 2, 0), lexint(&b, 0, 0));
+  dst = lexint_add(lexint(&a, 2, 0), lexint(&b, 0, 0));
   ASSERT_LIEQ(dst, 2, 0);
 
-  lexint_add(&dst, lexint(&a, 0, 0), lexint(&b, 3, 0));
+  dst = lexint_add(lexint(&a, 0, 0), lexint(&b, 3, 0));
   ASSERT_LIEQ(dst, 3, 0);
 
-  lexint_add(&dst, lexint(&a, 1, 2), lexint(&b, 3, 4));
+  dst = lexint_add(lexint(&a, 1, 2), lexint(&b, 3, 4));
   ASSERT_LIEQ(dst, 4, 6);
 
-  lexint_add(&dst, lexint(&a, 0, 0xFFFFFFFFFFFFFFFF), lexint(&b, 0, 2));
+  dst = lexint_add(lexint(&a, 0, 0xFFFFFFFFFFFFFFFF), lexint(&b, 0, 2));
   ASSERT_LIEQ(dst, 1, 1);
 
-  lexint_add(&dst, lexint(&a, 37, 0xFFFFFFFFFFFFFFFF), lexint(&b, 4, 7));
+  dst = lexint_add(lexint(&a, 37, 0xFFFFFFFFFFFFFFFF), lexint(&b, 4, 7));
   ASSERT_LIEQ(dst, 42, 6);
 
-  lexint_add(&dst, lexint(&a, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF),
+  dst = lexint_add(lexint(&a, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF),
     lexint(&b, 0, 1));
   ASSERT_LIEQ(dst, 0, 0);
 
-  lexint_add(&dst, lexint(&a, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF),
+  dst = lexint_add(lexint(&a, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF),
     lexint(&b, 0, 4));
   ASSERT_LIEQ(dst, 0, 3)
 }
@@ -244,31 +245,31 @@ TEST_F(LexIntTest, LexIntAdd64)
 {
   lexint_t a, dst;
 
-  lexint_add64(&dst, lexint(&a, 0, 0), 0);
+  dst = lexint_add64(lexint(&a, 0, 0), 0);
   ASSERT_LIEQ(dst, 0, 0);
 
-  lexint_add64(&dst, lexint(&a, 0, 1), 0);
+  dst = lexint_add64(lexint(&a, 0, 1), 0);
   ASSERT_LIEQ(dst, 0, 1);
 
-  lexint_add64(&dst, lexint(&a, 0, 0), 1);
+  dst = lexint_add64(lexint(&a, 0, 0), 1);
   ASSERT_LIEQ(dst, 0, 1);
 
-  lexint_add64(&dst, lexint(&a, 2, 0), 0);
+  dst = lexint_add64(lexint(&a, 2, 0), 0);
   ASSERT_LIEQ(dst, 2, 0);
 
-  lexint_add64(&dst, lexint(&a, 1, 2), 3);
+  dst = lexint_add64(lexint(&a, 1, 2), 3);
   ASSERT_LIEQ(dst, 1, 5);
 
-  lexint_add64(&dst, lexint(&a, 0, 0xFFFFFFFFFFFFFFFF), 2);
+  dst = lexint_add64(lexint(&a, 0, 0xFFFFFFFFFFFFFFFF), 2);
   ASSERT_LIEQ(dst, 1, 1);
 
-  lexint_add64(&dst, lexint(&a, 37, 0xFFFFFFFFFFFFFFFF), 7);
+  dst = lexint_add64(lexint(&a, 37, 0xFFFFFFFFFFFFFFFF), 7);
   ASSERT_LIEQ(dst, 38, 6);
 
-  lexint_add64(&dst, lexint(&a, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF), 1);
+  dst = lexint_add64(lexint(&a, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF), 1);
   ASSERT_LIEQ(dst, 0, 0);
 
-  lexint_add64(&dst, lexint(&a, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF), 4);
+  dst = lexint_add64(lexint(&a, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF), 4);
   ASSERT_LIEQ(dst, 0, 3)
 }
 
@@ -277,28 +278,28 @@ TEST_F(LexIntTest, LexIntSub)
 {
   lexint_t a, b, dst;
 
-  lexint_sub(&dst, lexint(&a, 0, 0), lexint(&b, 0, 0));
+  dst = lexint_sub(lexint(&a, 0, 0), lexint(&b, 0, 0));
   ASSERT_LIEQ(dst, 0, 0);
 
-  lexint_sub(&dst, lexint(&a, 0, 1), lexint(&b, 0, 0));
+  dst = lexint_sub(lexint(&a, 0, 1), lexint(&b, 0, 0));
   ASSERT_LIEQ(dst, 0, 1);
 
-  lexint_sub(&dst, lexint(&a, 2, 0), lexint(&b, 0, 0));
+  dst = lexint_sub(lexint(&a, 2, 0), lexint(&b, 0, 0));
   ASSERT_LIEQ(dst, 2, 0);
 
-  lexint_sub(&dst, lexint(&a, 4, 3), lexint(&b, 1, 2));
+  dst = lexint_sub(lexint(&a, 4, 3), lexint(&b, 1, 2));
   ASSERT_LIEQ(dst, 3, 1);
 
-  lexint_sub(&dst, lexint(&a, 1, 1), lexint(&b, 0, 2));
+  dst = lexint_sub(lexint(&a, 1, 1), lexint(&b, 0, 2));
   ASSERT_LIEQ(dst, 0, 0xFFFFFFFFFFFFFFFF);
 
-  lexint_sub(&dst, lexint(&a, 42, 3), lexint(&b, 4, 7));
+  dst = lexint_sub(lexint(&a, 42, 3), lexint(&b, 4, 7));
   ASSERT_LIEQ(dst, 37, 0xFFFFFFFFFFFFFFFC);
 
-  lexint_sub(&dst, lexint(&a, 0, 0), lexint(&b, 0, 1));
+  dst = lexint_sub(lexint(&a, 0, 0), lexint(&b, 0, 1));
   ASSERT_LIEQ(dst, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF);
 
-  lexint_sub(&dst, lexint(&a, 0, 0), lexint(&b, 3, 0));
+  dst = lexint_sub(lexint(&a, 0, 0), lexint(&b, 3, 0));
   ASSERT_LIEQ(dst, 0xFFFFFFFFFFFFFFFD, 0);
 }
 
@@ -307,28 +308,28 @@ TEST_F(LexIntTest, LexIntSub64)
 {
   lexint_t a, dst;
 
-  lexint_sub64(&dst, lexint(&a, 0, 0), 0);
+  dst = lexint_sub64(lexint(&a, 0, 0), 0);
   ASSERT_LIEQ(dst, 0, 0);
 
-  lexint_sub64(&dst, lexint(&a, 0, 1), 0);
+  dst = lexint_sub64(lexint(&a, 0, 1), 0);
   ASSERT_LIEQ(dst, 0, 1);
 
-  lexint_sub64(&dst, lexint(&a, 2, 0), 0);
+  dst = lexint_sub64(lexint(&a, 2, 0), 0);
   ASSERT_LIEQ(dst, 2, 0);
 
-  lexint_sub64(&dst, lexint(&a, 4, 3), 2);
+  dst = lexint_sub64(lexint(&a, 4, 3), 2);
   ASSERT_LIEQ(dst, 4, 1);
 
-  lexint_sub64(&dst, lexint(&a, 1, 1), 2);
+  dst = lexint_sub64(lexint(&a, 1, 1), 2);
   ASSERT_LIEQ(dst, 0, 0xFFFFFFFFFFFFFFFF);
 
-  lexint_sub64(&dst, lexint(&a, 38, 3), 7);
+  dst = lexint_sub64(lexint(&a, 38, 3), 7);
   ASSERT_LIEQ(dst, 37, 0xFFFFFFFFFFFFFFFC);
 
-  lexint_sub64(&dst, lexint(&a, 0, 0), 1);
+  dst = lexint_sub64(lexint(&a, 0, 0), 1);
   ASSERT_LIEQ(dst, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF);
 
-  lexint_sub64(&dst, lexint(&a, 0, 0), 0xFFFFFFFFFFFFFFFF);
+  dst = lexint_sub64(lexint(&a, 0, 0), 0xFFFFFFFFFFFFFFFF);
   ASSERT_LIEQ(dst, 0xFFFFFFFFFFFFFFFF, 1);
 }
 
@@ -337,34 +338,34 @@ TEST_F(LexIntTest, LexIntMul64)
 {
   lexint_t a, dst;
 
-  lexint_mul64(&dst, lexint(&a, 0, 0), 0);
+  dst = lexint_mul64(lexint(&a, 0, 0), 0);
   ASSERT_LIEQ(dst, 0, 0);
 
-  lexint_mul64(&dst, lexint(&a, 0, 1), 0);
+  dst = lexint_mul64(lexint(&a, 0, 1), 0);
   ASSERT_LIEQ(dst, 0, 0);
 
-  lexint_mul64(&dst, lexint(&a, 0, 0), 1);
+  dst = lexint_mul64(lexint(&a, 0, 0), 1);
   ASSERT_LIEQ(dst, 0, 0);
 
-  lexint_mul64(&dst, lexint(&a, 12, 34), 1);
+  dst = lexint_mul64(lexint(&a, 12, 34), 1);
   ASSERT_LIEQ(dst, 12, 34);
 
-  lexint_mul64(&dst, lexint(&a, 12, 34), 2);
+  dst = lexint_mul64(lexint(&a, 12, 34), 2);
   ASSERT_LIEQ(dst, 24, 68);
 
-  lexint_mul64(&dst, lexint(&a, 12, 34), 3);
+  dst = lexint_mul64(lexint(&a, 12, 34), 3);
   ASSERT_LIEQ(dst, 36, 102);
 
-  lexint_mul64(&dst, lexint(&a, 0, 0x100000000), 0x100000000);
+  dst = lexint_mul64(lexint(&a, 0, 0x100000000), 0x100000000);
   ASSERT_LIEQ(dst, 1, 0);
 
-  lexint_mul64(&dst, lexint(&a, 1, 0x100000000), 0x100000000);
+  dst = lexint_mul64(lexint(&a, 1, 0x100000000), 0x100000000);
   ASSERT_LIEQ(dst, 0x100000001, 0);
 
-  lexint_mul64(&dst, lexint(&a, 0x100000000, 0x100000000), 0x100000000);
+  dst = lexint_mul64(lexint(&a, 0x100000000, 0x100000000), 0x100000000);
   ASSERT_LIEQ(dst, 1, 0);
 
-  lexint_mul64(&dst, lexint(&a, 0x1122334455667788, 0x1122334455667788),
+  dst = lexint_mul64(lexint(&a, 0x1122334455667788, 0x1122334455667788),
     0x1000);
   ASSERT_LIEQ(dst, 0x2334455667788112, 0x2334455667788000);
 }
@@ -374,32 +375,32 @@ TEST_F(LexIntTest, LexIntDiv64)
 {
   lexint_t a, dst;
 
-  lexint_div64(&dst, lexint(&a, 0, 0), 1);
+  dst = lexint_div64(lexint(&a, 0, 0), 1);
   ASSERT_LIEQ(dst, 0, 0);
 
-  lexint_div64(&dst, lexint(&a, 36, 102), 1);
+  dst = lexint_div64(lexint(&a, 36, 102), 1);
   ASSERT_LIEQ(dst, 36, 102);
 
-  lexint_div64(&dst, lexint(&a, 36, 102), 2);
+  dst = lexint_div64(lexint(&a, 36, 102), 2);
   ASSERT_LIEQ(dst, 18, 51);
 
-  lexint_div64(&dst, lexint(&a, 36, 102), 3);
+  dst = lexint_div64(lexint(&a, 36, 102), 3);
   ASSERT_LIEQ(dst, 12, 34);
 
-  lexint_div64(&dst, lexint(&a, 1, 0), 0x100000000);
+  dst = lexint_div64(lexint(&a, 1, 0), 0x100000000);
   ASSERT_LIEQ(dst, 0, 0x100000000);
 
-  lexint_div64(&dst, lexint(&a, 0x100000001, 0), 0x100000000);
+  dst = lexint_div64(lexint(&a, 0x100000001, 0), 0x100000000);
   ASSERT_LIEQ(dst, 1, 0x100000000);
 
-  lexint_div64(&dst, lexint(&a, 0x2334455667788112, 0x2334455667788000),
+  dst = lexint_div64(lexint(&a, 0x2334455667788112, 0x2334455667788000),
     0x1000);
   ASSERT_LIEQ(dst, 0x2334455667788, 0x1122334455667788);
 
-  lexint_mul64(&dst, lexint(&a, 0, 1), 0);
+  dst = lexint_mul64(lexint(&a, 0, 1), 0);
   ASSERT_LIEQ(dst, 0, 0);
 
-  lexint_mul64(&dst, lexint(&a, 0, 0), 0);
+  dst = lexint_mul64(lexint(&a, 0, 0), 0);
   ASSERT_LIEQ(dst, 0, 0);
 }
 
@@ -409,58 +410,58 @@ TEST_F(LexIntTest, LexIntChar)
   lexint_t a;
   lexint(&a, 0, 0);
 
-  lexint_char(&a, 'A');
+  a = lexint_char(&a, 'A');
   ASSERT_LIEQ(a, 0, 0x41);
 
-  lexint_char(&a, 'B');
+  a = lexint_char(&a, 'B');
   ASSERT_LIEQ(a, 0, 0x4142);
 
-  lexint_char(&a, 'C');
+  a = lexint_char(&a, 'C');
   ASSERT_LIEQ(a, 0, 0x414243);
 
-  lexint_char(&a, 'D');
+  a = lexint_char(&a, 'D');
   ASSERT_LIEQ(a, 0, 0x41424344);
 
-  lexint_char(&a, 'E');
+  a = lexint_char(&a, 'E');
   ASSERT_LIEQ(a, 0, 0x4142434445);
 
-  lexint_char(&a, 'F');
+  a = lexint_char(&a, 'F');
   ASSERT_LIEQ(a, 0, 0x414243444546);
 
-  lexint_char(&a, 'G');
+  a = lexint_char(&a, 'G');
   ASSERT_LIEQ(a, 0, 0x41424344454647);
 
-  lexint_char(&a, 'H');
+  a = lexint_char(&a, 'H');
   ASSERT_LIEQ(a, 0, 0x4142434445464748);
 
-  lexint_char(&a, 'I');
+  a = lexint_char(&a, 'I');
   ASSERT_LIEQ(a, 0x41, 0x4243444546474849);
 
-  lexint_char(&a, 'J');
+  a = lexint_char(&a, 'J');
   ASSERT_LIEQ(a, 0x4142, 0x434445464748494A);
 
-  lexint_char(&a, 'K');
+  a = lexint_char(&a, 'K');
   ASSERT_LIEQ(a, 0x414243, 0x4445464748494A4B);
 
-  lexint_char(&a, 'L');
+  a = lexint_char(&a, 'L');
   ASSERT_LIEQ(a, 0x41424344, 0x45464748494A4B4C);
 
-  lexint_char(&a, 'M');
+  a = lexint_char(&a, 'M');
   ASSERT_LIEQ(a, 0x4142434445, 0x464748494A4B4C4D);
 
-  lexint_char(&a, 'N');
+  a = lexint_char(&a, 'N');
   ASSERT_LIEQ(a, 0x414243444546, 0x4748494A4B4C4D4E);
 
-  lexint_char(&a, 'O');
+  a = lexint_char(&a, 'O');
   ASSERT_LIEQ(a, 0x41424344454647, 0x48494A4B4C4D4E4F);
 
-  lexint_char(&a, 'P');
+  a = lexint_char(&a, 'P');
   ASSERT_LIEQ(a, 0x4142434445464748, 0x494A4B4C4D4E4F50);
 
-  lexint_char(&a, 'Q');
+  a = lexint_char(&a, 'Q');
   ASSERT_LIEQ(a, 0x4243444546474849, 0x4A4B4C4D4E4F5051);
 
-  lexint_char(&a, 'R');
+  a = lexint_char(&a, 'R');
   ASSERT_LIEQ(a, 0x434445464748494A, 0x4B4C4D4E4F505152);
 }
 
