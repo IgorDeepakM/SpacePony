@@ -3,14 +3,6 @@
 #include <math.h>
 #include <assert.h>
 
-#if !defined(PLATFORM_IS_ILP32) && !defined(PLATFORM_IS_WINDOWS)
-#define USE_NATIVE128
-#define NATIVE(a, b) \
-  __uint128_t a = ((__uint128_t)(b)->high << 64) | (b)->low;
-#define LEXINT(a, b) \
-  (b)->low = (uint64_t)(a); \
-  (b)->high = (uint64_t)((a) >> 64);
-#endif
 
 void lexint_zero(lexint_t* i)
 {
@@ -300,20 +292,6 @@ void lexint_char(lexint_t* i, int c)
 
 bool lexint_accum(lexint_t* i, uint64_t digit, uint64_t base)
 {
-#ifdef USE_NATIVE128
-  NATIVE(v1, i);
-  __uint128_t v2 = v1 * base;
-
-  if((v2 / base) != v1)
-    return false;
-
-  v2 += digit;
-
-  if(v2 < v1)
-    return false;
-
-  LEXINT(v2, i);
-#else
   lexint_t v2;
   lexint_zero(&v2);
   lexint_mul64(&v2, i, base);
@@ -334,7 +312,7 @@ bool lexint_accum(lexint_t* i, uint64_t digit, uint64_t base)
     return false;
 
   *i = v2;
-#endif
+
   return true;
 }
 
