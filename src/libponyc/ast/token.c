@@ -168,33 +168,22 @@ const char* token_print(token_t* token)
       }
 
       const int size = 64;
-
-      if (value.high == 0)
+      if (token->printed == NULL)
       {
-        if (token->printed == NULL)
-        {
-          token->printed = (char*)ponyint_pool_alloc_size(size);
-        }
+        token->printed = (char*)ponyint_pool_alloc_size(size);
+      }
 
-        if (is_negative)
-          snprintf(token->printed, size, "-%llu",
-            (unsigned long long)value.low);
-        else
-          snprintf(token->printed, size, "%llu",
-            (unsigned long long)value.low);
-        return token->printed;
+      if (value.high == 0 && !lexint_is_negative(&value))
+      {
+        snprintf(token->printed, size, "%llu", (unsigned long long)value.low);
       }
       else
       {
-        if (token->printed == NULL)
-        {
-          token->printed = (char*)ponyint_pool_alloc_size(size);
-        }
-
         char* start = token->printed;
         if(is_negative)
+        {
           *(start++) = '-';
-
+        }
         char* digit = start;
 
         lexint_t t = value;
@@ -229,8 +218,9 @@ const char* token_print(token_t* token)
           start++;
           end--;
         }
-        return token->printed;
       }
+
+      return token->printed;
     }
 
     case TK_FLOAT:
