@@ -315,6 +315,8 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
 
 * It is possible to go really far with CTFE and the goal is to support as many expressions and types as possible. CTFE will be added to more places than only `comptime expression end`. It is also possible for the CTFE to try evaulating at key places in the code. In the D language it is possible load files at compile time using `import("file.txt")` which can be used together with CTFE and similar functionality should be added to SpacePony as well.
 
+* Note that the purpose of CTFE is not really optimizations but rather a guarantee that an expression can be evaluated at compile time. LLVM already does good constant folding and can do the much of same job as CTFE. One important decision to add CTFE was to be able to have expressions in value type parameters in generics.
+
 ## Future directions
 
 ### Short term
