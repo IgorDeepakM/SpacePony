@@ -12,7 +12,7 @@
 #include <type_traits>	
 
 
-class CtfeValueAggregate;
+class CtfeValueStruct;
 
 class CtfeValue
 {
@@ -36,7 +36,7 @@ public:
     TypedIntUSize,
     RealLiteral,
     String,
-    AggRef,
+    StructRef,
     ComptimeError,
   };
 
@@ -65,7 +65,6 @@ private:
   {
     CtfeValueBool m_bool_value;
     CtfeValueIntLiteral m_int_literal_value;
-    CtfeValueAggregate* m_agg_ref;
     CtfeValueTypedInt<int8_t> m_i8_value;
     CtfeValueTypedInt<uint8_t> m_u8_value;
     CtfeValueTypedInt<int16_t> m_i16_value;
@@ -74,6 +73,7 @@ private:
     CtfeValueTypedInt<uint32_t> m_u32_value;
     CtfeValueTypedInt<int64_t> m_i64_value;
     CtfeValueTypedInt<uint64_t> m_u64_value;
+    CtfeValueStruct* m_struct_ref;
   };
 
   void convert_from_int_literal_to_type(const CtfeValueIntLiteral& val,
@@ -91,7 +91,7 @@ public:
   CtfeValue(const CtfeValueTypedInt<T>& val, Type type);
   CtfeValue(const CtfeValue& val, const std::string& pony_type);
   CtfeValue(const CtfeValueBool& val);
-  CtfeValue(CtfeValueAggregate* ref);
+  CtfeValue(CtfeValueStruct* ref);
   CtfeValue(ast_t *ast);
 
   Type get_type() const { return m_type; }
@@ -108,9 +108,9 @@ public:
 
   uint64_t to_uint64() const;
 
-  CtfeValueAggregate* get_agg_ref() { return m_agg_ref; }
+  CtfeValueStruct* get_struct_ref() const { return m_struct_ref; }
 
-  ast_t* create_ast_literal_node(pass_opt_t* opt, ast_t* from);
+  ast_t* create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors, ast_t* from);
 
   std::string get_pony_type_name() const;
 

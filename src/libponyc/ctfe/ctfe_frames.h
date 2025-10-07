@@ -16,7 +16,7 @@ class CtfeFrame
 public:
   ~CtfeFrame();
   bool new_value(const std::string& name, const CtfeValue& value);
-  bool update_value(const std::string& name, const CtfeValue& value, CtfeValue& old_value);
+  bool update_value(const std::string& name, const CtfeValue& value);
   bool get_value(const std::string& name, CtfeValue& value) const;
 };
 
@@ -34,6 +34,6 @@ public:
   void pop_frame();
 
   bool new_value(const std::string& name, const CtfeValue& value);
-  bool update_value(const std::string& name, const CtfeValue& value, CtfeValue& old_value);
+  bool update_value(const std::string& name, const CtfeValue& value);
   bool get_value(const std::string& name, CtfeValue& value) const;
 };

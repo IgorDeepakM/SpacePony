@@ -16,12 +16,11 @@ bool CtfeFrame::new_value(const string& name, const CtfeValue& value)
 }
 
 
-bool CtfeFrame::update_value(const string& name, const CtfeValue& value, CtfeValue& old_value)
+bool CtfeFrame::update_value(const string& name, const CtfeValue& value)
 {
   auto it = m_vars.find(name);
   if(it != m_vars.end())
   {
-    old_value = it->second;
     it->second = value;
     return true;
   }
@@ -41,6 +40,7 @@ bool CtfeFrame::get_value(const string& name, CtfeValue& value) const
 
   return false;
 }
+
 
 
 
@@ -90,13 +90,13 @@ bool CtfeFrames::new_value(const string& name, const CtfeValue& value)
 }
 
 
-bool CtfeFrames::update_value(const string& name, const CtfeValue& value, CtfeValue& old_value)
+bool CtfeFrames::update_value(const string& name, const CtfeValue& value)
 {
   size_t i = m_current_frame;
 
   do
   {
-    if(m_frame[i].update_value(name, value, old_value))
+    if(m_frame[i].update_value(name, value))
     {
       return true;
     }

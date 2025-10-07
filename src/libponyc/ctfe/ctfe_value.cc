@@ -1,5 +1,5 @@
 #include "ctfe_value.h"
-#include "ctfe_value_aggregate.h"
+#include "ctfe_value_struct.h"
 #include "ctfe_value_typed_int_run_method.h"
 
 #include "ponyassert.h"
@@ -118,8 +118,8 @@ CtfeValue::CtfeValue(const CtfeValue& val):
         pony_assert(false);
       }
       break;
-    case Type::AggRef:
-      m_agg_ref = val.m_agg_ref;
+    case Type::StructRef:
+      m_struct_ref = val.m_struct_ref;
       break;
 
     default:
@@ -175,11 +175,11 @@ CtfeValue::CtfeValue(const CtfeValue& val, const std::string& pony_type):
 }
 
 
-CtfeValue::CtfeValue(CtfeValueAggregate* ref):
-  m_type{Type::AggRef},
+CtfeValue::CtfeValue(CtfeValueStruct* ref):
+  m_type{Type::StructRef},
   m_ctrlFlow{ControlFlowModifier::None}
 {
-  m_agg_ref = ref;
+  m_struct_ref = ref;
 }
 
 
@@ -301,7 +301,8 @@ void CtfeValue::convert_from_int_literal_to_type(const CtfeValueIntLiteral& val,
 }
 
 
-ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, ast_t* from)
+ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
+  ast_t* from)
 {
   ast_t* new_node = NULL;
 
@@ -391,6 +392,10 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, ast_t* from)
         pony_assert(false);
       }
       break;
+    case Type::StructRef:
+      ast_error_frame(errors, from,
+              "It is currently not possible to create a literal from "
+              "a class or struct reference.");
     default:
       return NULL;
   }
@@ -679,8 +684,8 @@ string CtfeValue::get_pony_type_name() const
       return "ISize";
     case Type::TypedIntUSize:
       return "USize";
-    case Type::AggRef:
-      return "Reference";
+    case Type::StructRef:
+      return "Struct Reference";
     default:
       return "No type name found";
   }
