@@ -1,5 +1,5 @@
 #include "ctfe_runner.h"
-#include "ctfe_value_aggregate.h"
+#include "ctfe_value_struct.h"
 #include "../ast/astbuild.h"
 #include "../type/subtype.h"
 #include "ponyassert.h"
@@ -20,8 +20,8 @@ CtfeRunner::~CtfeRunner()
   {
     switch(elem.get_type())
     {
-      case CtfeValue::Type::AggRef:
-        delete elem.get_agg_ref();
+      case CtfeValue::Type::StructRef:
+        delete elem.get_struct_ref();
         break;
       default:
         break;
@@ -32,6 +32,69 @@ CtfeRunner::~CtfeRunner()
 void CtfeRunner::add_allocated_reference(CtfeValue& ref)
 {
   m_allocated.push_back(ref);
+}
+
+bool CtfeRunner::populate_struct_members(pass_opt_t* opt, errorframe_t* errors,
+  CtfeValueStruct* s, ast_t* members)
+{
+  ast_t* member = ast_child(members);
+
+  while(member != NULL)
+  {
+    switch(ast_id(member))
+    {
+      case TK_FVAR:
+      case TK_FLET:
+      {
+        const char* var_name = ast_name(ast_child(member));
+        if(!s->new_value(var_name, CtfeValue()))
+        {
+          return false;
+        }
+        break;
+      }
+      case TK_EMBED:
+      {
+        ast_t* embed_type = ast_type(member);
+        ast_t* underlying_type = (ast_t*)ast_data(embed_type);
+        CtfeValue embed_val;
+
+        if(ast_id(underlying_type) == TK_STRUCT ||
+           ast_id(underlying_type) == TK_CLASS)
+        {
+          CtfeValueStruct* embed_s = new CtfeValueStruct;
+          embed_val = CtfeValue(embed_s);
+          add_allocated_reference(embed_val);
+
+          ast_t* embed_members = ast_childidx(underlying_type, 4);
+
+          bool r = populate_struct_members(opt, errors, embed_s, embed_members);
+          if(!r)
+          {
+            return false;
+          }
+        }
+        else
+        {
+          return false;
+        }
+
+        const char* var_name = ast_name(ast_child(member));
+        if(!s->new_value(var_name, embed_val))
+        {
+          return false;
+        }
+
+        break;
+      }
+      default:
+        break;
+    }
+
+    member = ast_sibling(member);
+  }
+
+  return true;
 }
 
 CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
@@ -69,6 +132,24 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
       AST_GET_CHILDREN(receiver, typeref, new_name);
       recv_type = ast_type(typeref);
       method_name = ast_name(new_name);
+
+      ast_t* underlying_type = (ast_t*)ast_data(recv_type);
+      if(ast_id(underlying_type) == TK_STRUCT ||
+         ast_id(underlying_type) == TK_CLASS)
+      {
+        CtfeValueStruct* s = new CtfeValueStruct;
+        rec_val = CtfeValue(s);
+        add_allocated_reference(rec_val);
+
+        ast_t* members = ast_childidx(underlying_type, 4);
+        bool r = populate_struct_members(opt, errors, s, members);
+        if(!r)
+        {
+          ast_error_frame(errors, ast,
+              "Failed to populate struct/class members");
+          return CtfeValue(CtfeValue::Type::ComptimeError);
+        }
+      }
       break;
     }
     case TK_FUNREF:
@@ -181,7 +262,13 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
     }
   }
 
-  return return_value;
+  switch(ast_id(receiver))
+  {
+    case TK_NEWREF:
+      return rec_val;
+    default:
+      return return_value;
+  }
 }
 
 CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* expression, int depth)
@@ -221,7 +308,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       if(!m_frames.get_value("this", this_ref))
       {
         ast_error_frame(errors, expression,
-          "\"this\" reference was not previously not defined");
+          "'this' reference was not previously not defined");
         return CtfeValue(CtfeValue::Type::ComptimeError);
       }
       return this_ref;
@@ -294,67 +381,151 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       return ret;
     }
 
-    case TK_ASSIGN:
+    case TK_VAR:
+    case TK_LET:
     {
-      AST_GET_CHILDREN(expression, right, left);
-
-      const char* var_name = NULL;
-      bool new_value = false;
-
-      switch(ast_id(right))
-      {
-        case TK_VAR:
-        case TK_LET:
-        {
-          var_name = ast_name(ast_child(right));
-          if(!m_frames.new_value(var_name, CtfeValue()))
-          {
-            ast_error_frame(errors, expression,
-              "Symbol %s was already previously created in this frame", var_name);
-            return CtfeValue(CtfeValue::Type::ComptimeError);
-          }
-          new_value = true;
-          break;
-        }
-        case TK_VARREF:
-        case TK_LETREF:
-        {
-          var_name = ast_name(ast_child(right));
-          break;
-        }
-        default:
-          break;
-      }
-
-      CtfeValue ret = evaluate(opt, errors, left, depth + 1);
-      if(ret.has_comptime_error())
-      {
-        return ret;
-      }
-
-      CtfeValue old_value;
-      if(!m_frames.update_value(var_name, ret, old_value))
+      const char* var_name = ast_name(ast_child(expression));
+      if(!m_frames.new_value(var_name, CtfeValue()))
       {
         ast_error_frame(errors, expression,
-          "Symbol %s was not found or previously set", var_name);
+          "CTFE runner tried to create symbol %s twice in the same frame", var_name);
         return CtfeValue(CtfeValue::Type::ComptimeError);
       }
-      return new_value ? CtfeValue() : old_value;
+
+      return CtfeValue();
     }
 
     case TK_VARREF:
     case TK_LETREF:
     {
-      ast_t* id = ast_child(expression);
-      const char* var_name = ast_name(id);
-      CtfeValue ret;
-      if(!m_frames.get_value(var_name, ret))
+      const char* var_name = ast_name(ast_child(expression));
+      CtfeValue found_value;
+      if (!m_frames.get_value(var_name, found_value))
       {
         ast_error_frame(errors, expression,
-          "Symbol %s was not found or previously set", var_name);
+          "Symbol %s was not found because it was not previously created", var_name);
         return CtfeValue(CtfeValue::Type::ComptimeError);
       }
-      return ret;
+      return found_value;
+    }
+
+    case TK_FVARREF:
+    case TK_EMBEDREF:
+    case TK_FLETREF:
+    {
+      AST_GET_CHILDREN(expression, receiver, id);
+      CtfeValue evaluated_receiver = evaluate(opt, errors, receiver, depth + 1);
+      if(evaluated_receiver.has_comptime_error())
+      {
+        return CtfeValue(CtfeValue::Type::ComptimeError);
+      }
+
+      if(evaluated_receiver.is_none())
+      {
+        ast_error_frame(errors, expression,
+          "Cannot access variables in 'this' the comptime expression frame.");
+          return CtfeValue(CtfeValue::Type::ComptimeError);
+      }
+
+      const char* var_name = ast_name(id);
+
+      CtfeValue found_value;
+      switch(evaluated_receiver.get_type())
+      {
+        case CtfeValue::Type::StructRef:
+        {
+          CtfeValueStruct* s = evaluated_receiver.get_struct_ref();
+          if (!s->get_value(var_name, found_value))
+          {
+            ast_error_frame(errors, expression,
+              "Symbol '%s' was not found in struct, this should not happen", var_name);
+            return CtfeValue(CtfeValue::Type::ComptimeError);
+          }
+          break;
+        }
+        default:
+          ast_error_frame(errors, expression,
+            "Unsupported field variable type");
+          return CtfeValue(CtfeValue::Type::ComptimeError);
+      }
+
+      return found_value;
+    }
+
+    case TK_ASSIGN:
+    {
+      AST_GET_CHILDREN(expression, left, right);
+
+      const char* var_name = NULL;
+      bool new_value = false;
+
+      CtfeValue left_value = evaluate(opt, errors, left, depth + 1);
+      if(left_value.has_comptime_error())
+      {
+        return left_value;
+      }
+
+      CtfeValue right_value = evaluate(opt, errors, right, depth + 1);
+      if(right_value.has_comptime_error())
+      {
+        return right_value;
+      }
+
+      switch(ast_id(left))
+      {
+        case TK_VAR:
+        case TK_LET:
+        case TK_VARREF:
+        case TK_LETREF:
+        {
+          const char* var_name = ast_name(ast_child(left));
+          if (!m_frames.update_value(var_name, right_value))
+          {
+            ast_error_frame(errors, expression,
+              "Symbol %s was not found or previously set", var_name);
+            return CtfeValue(CtfeValue::Type::ComptimeError);
+          }
+          break;
+        }
+
+        case TK_FVARREF:
+        case TK_EMBEDREF:
+        case TK_FLETREF:
+        {
+          AST_GET_CHILDREN(left, receiver, id);
+          CtfeValue evaluated_receiver = evaluate(opt, errors, receiver, depth + 1);
+          if(evaluated_receiver.has_comptime_error())
+          {
+            return CtfeValue(CtfeValue::Type::ComptimeError);
+          }
+
+          const char* var_name = ast_name(id);
+
+          switch(evaluated_receiver.get_type())
+          {
+            case CtfeValue::Type::StructRef:
+            {
+              CtfeValueStruct* s = evaluated_receiver.get_struct_ref();
+              if (!s->update_value(var_name, right_value))
+              {
+                ast_error_frame(errors, expression,
+                  "Could not update symbol '%s' was not found in struct, this "
+                  "should not happen", var_name);
+                return CtfeValue(CtfeValue::Type::ComptimeError);
+              }
+              break;
+            }
+            default:
+              ast_error_frame(errors, expression,
+                "Unsupported field variable type");
+              return CtfeValue(CtfeValue::Type::ComptimeError);
+          }
+        }
+        default:
+          break;
+      }
+
+      return left_value;
     }
 
     case TK_WHILE:
@@ -493,7 +664,8 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
 
     default:
       ast_error_frame(errors, expression,
-        "expression interpeter does not support this expression");
+        "The CTFE runner does not support the '%s' expression",
+        ast_get_print(expression));
       return CtfeValue(CtfeValue::Type::ComptimeError);
   }
 
@@ -516,10 +688,9 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
 
   ast_t* expression = ast_child(ast);
 
-  // Insert a this reference for good measure
-  CtfeValue base_this = CtfeValue(new CtfeValueAggregate);
-  add_allocated_reference(base_this);
-  m_frames.new_value("this", base_this);
+  // Insert an empty this reference so that we can at least call functions inside the
+  // current object. However it is not possible to access any variables.
+  m_frames.new_value("this", CtfeValue());
 
   // We can't evaluate expressions which still have references to value
   // parameters so we simply stop, indicating no error yet.
@@ -530,19 +701,25 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
   // evaluating a method on an object
   errorframe_t errors = NULL;
   CtfeValue evaluated = evaluate(opt, &errors, expression, 0);
+  if(!evaluated.has_comptime_error())
+  {
+    ast_t* new_literal = evaluated.create_ast_literal_node(opt, &errors, ast);
+    if(new_literal != NULL)
+    {
+      ast_replace(astp, new_literal);
+      return true;
+    }
+  }
 
   // We may not have errored in a couple of ways, NULL, is some error that
   // occured as we could not evaluate the expression
-  if(evaluated.has_comptime_error())
-  {
-    ast_settype(ast, ast_from(ast_type(expression), TK_ERRORTYPE));
-    errorframe_t frame = NULL;
-    ast_error_frame(&frame, ast, "could not evaluate compile time expression");
-    errorframe_append(&frame, &errors);
-    errorframe_report(&frame, opt->check.errors);
-    //opt->check.evaluation_error = true;
-    return false;
-  }
+  ast_settype(ast, ast_from(ast_type(expression), TK_ERRORTYPE));
+  errorframe_t frame = NULL;
+  ast_error_frame(&frame, ast, "could not evaluate compile time expression");
+  errorframe_append(&frame, &errors);
+  errorframe_report(&frame, opt->check.errors);
+  //opt->check.evaluation_error = true;
+
 
   // TK_ERROR means we encountered some error expression and it hasn't been
   // resolved. We will error out on this case, using this to provide static
@@ -585,8 +762,5 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
   cache_ast(ast, evaluated);
   ast_replace(astp, evaluated);*/
 
-  ast_t* new_literal = evaluated.create_ast_literal_node(opt, ast);
-  ast_replace(astp, new_literal);
-
-  return true;
+  return false;
 }

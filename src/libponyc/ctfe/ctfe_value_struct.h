@@ -5,9 +5,7 @@
 
 #include "ctfe_value.h"
 
-class CtfeValue;
-
-class CtfeValueAggregate
+class CtfeValueStruct
 {
   std::map<std::string, CtfeValue> m_vars;
 

@@ -16,6 +16,8 @@ class CtfeRunner
   CtfeValue evaluate_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, int depth);
   CtfeValue evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* expression, int depth);
   void add_allocated_reference(CtfeValue& ref);
+  bool populate_struct_members(pass_opt_t* opt, errorframe_t* errors, CtfeValueStruct* s,
+    ast_t* members);
 
 public:
   CtfeRunner(pass_opt_t* opt);
