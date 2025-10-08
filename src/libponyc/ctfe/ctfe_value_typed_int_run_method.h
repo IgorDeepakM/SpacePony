@@ -82,8 +82,7 @@ bool CtfeValueTypedInt<T>::run_method(pass_opt_t* opt, errorframe_t* errors, ast
       {
         ast_error_frame(errors, ast,
           "Divide by zero in div_unsafe at compile time");
-        result = CtfeValue(CtfeValue::Type::ComptimeError);
-        return true;
+        throw CtfeValueException();
       }
       if constexpr (std::is_signed<T>::value)
       {
@@ -91,8 +90,7 @@ bool CtfeValueTypedInt<T>::run_method(pass_opt_t* opt, errorframe_t* errors, ast
         {
           ast_error_frame(errors, ast,
             "Divide overflow in div_unsafe at compile time");
-          result = CtfeValue(CtfeValue::Type::ComptimeError);
-          return true;
+          throw CtfeValueException();
         }
       }
       CtfeValueTypedInt<T> r = rec_val.div(first_arg);
@@ -105,8 +103,7 @@ bool CtfeValueTypedInt<T>::run_method(pass_opt_t* opt, errorframe_t* errors, ast
       {
         ast_error_frame(errors, ast,
           "Divide by zero in rem_unsafe at compile time");
-        result = CtfeValue(CtfeValue::Type::ComptimeError);
-        return true;
+        throw CtfeValueException();
       }
       if constexpr (std::is_signed<T>::value)
       {
@@ -114,8 +111,7 @@ bool CtfeValueTypedInt<T>::run_method(pass_opt_t* opt, errorframe_t* errors, ast
         {
           ast_error_frame(errors, ast,
             "Divide overflow in rem_unsafe at compile time");
-          result = CtfeValue(CtfeValue::Type::ComptimeError);
-          return true;
+          throw CtfeValueException();
         }
       }
       CtfeValueTypedInt<T> r = rec_val.rem(first_arg);

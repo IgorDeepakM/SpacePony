@@ -1,6 +1,7 @@
 #include "ctfe_value.h"
 #include "ctfe_value_struct.h"
 #include "ctfe_value_typed_int_run_method.h"
+#include "ctfe_exception.h"
 
 #include "ponyassert.h"
 #include "../pass/pass.h"

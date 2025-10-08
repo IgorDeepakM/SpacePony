@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ctfe_value_int_literal.h"
-#include "ctfe_value_exception.h"
 #include "ctfe_value_typed_int.h"
 #include "ctfe_value_bool.h"
 #include "ctfe_value_tuple.h"
@@ -38,8 +37,7 @@ public:
     RealLiteral,
     String,
     StructRef,
-    Tuple,
-    ComptimeError,
+    Tuple
   };
 
   enum class ControlFlowModifier
@@ -99,8 +97,6 @@ public:
 
   Type get_type() const { return m_type; }
   bool is_none() const { return m_type == Type::None; }
-
-  bool has_comptime_error() const { return m_type == Type::ComptimeError; }
 
   CtfeValueIntLiteral& get_int_literal() { return m_int_literal_value; };
 
