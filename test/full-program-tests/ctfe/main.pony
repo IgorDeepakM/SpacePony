@@ -17,6 +17,7 @@ actor Main
     test_if_else(60)
     test_try(80)
     test_member_access(100)
+    test_tuple(120)
 
 
   fun test_literal_int(exit_add: I32) =>
@@ -277,3 +278,75 @@ actor Main
     s1.z.em = 22
 
     s1.x.ilong() + s1.z.em
+
+  fun test_tuple(exit_add: I32) =>
+    var c1: Bool = comptime test_tuple_creation_assignment() end
+    var c2: Bool = test_tuple_creation_assignment()
+
+    if (c1 != true) or (c2 != true) then
+      @pony_exitcode(exit_add + 1)
+    end
+
+    c1 = comptime test_nested_tuple_creation_assignment() end
+    c2 = test_nested_tuple_creation_assignment()
+
+    if (c1 != true) or (c2 != true) then
+      @pony_exitcode(exit_add + 1)
+    end
+
+  fun test_tuple_creation_assignment(): Bool =>
+    var x: (I32, I32, I64) = (1, 2, 3)
+
+    var x1 = x._1
+    var x2 = x._2
+    var x3 = x._3
+
+    if (x1 != 1) or (x2 != 2) or (x3 != 3) then
+      return false
+    end
+
+    var x22: I32
+    (var x11, x22, var x33: I64) = x
+
+    if (x11 != 1) or (x22 != 2) or (x33 != 3) then
+      return false
+    end
+
+    x = (11, 22, 33)
+
+    (x11, _, x33) = x
+
+    if (x11 != 11) or (x22 != 2) or (x33 != 33) then
+      return false
+    end
+
+    true
+
+  fun test_nested_tuple_creation_assignment(): Bool =>
+    var x: (I32, (I32, I64)) = (1, (2, 3))
+
+    var x1 = x._1
+    var xt2 = x._2
+    var x2 = xt2._1
+    var x3 = xt2._2
+
+    if (x1 != 1) or (x2 != 2) or (x3 != 3) then
+      return false
+    end
+
+    var x22: I32
+    (var x11, (x22, var x33: I64)) = x
+
+    if (x11 != 1) or (x22 != 2) or (x33 != 3) then
+      return false
+    end
+
+    x = (11, (22, 33))
+
+    (x11, (_, x33)) = x
+
+    if (x11 != 11) or (x22 != 2) or (x33 != 33) then
+      return false
+    end
+
+    true

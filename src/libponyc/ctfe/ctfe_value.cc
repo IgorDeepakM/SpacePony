@@ -18,6 +18,19 @@ CtfeValue::CtfeValue():
 }
 
 
+CtfeValue::~CtfeValue()
+{
+  switch(m_type)
+  {
+    case Type::Tuple:
+      m_tuple_value.~CtfeValueTuple();
+      break;
+    default:
+      break;
+  }
+}
+
+
 CtfeValue::CtfeValue(Type type):
   m_type{type},
   m_ctrlFlow{ControlFlowModifier::None}
@@ -121,11 +134,15 @@ CtfeValue::CtfeValue(const CtfeValue& val):
     case Type::StructRef:
       m_struct_ref = val.m_struct_ref;
       break;
+    case Type::Tuple:
+      m_tuple_value = val.m_tuple_value;
+      break;
 
     default:
       break;
   }
 }
+
 
 CtfeValue::CtfeValue(ast_t *ast):
   m_type{Type::None},
@@ -188,6 +205,124 @@ CtfeValue::CtfeValue(const CtfeValueBool& val):
   m_ctrlFlow{ControlFlowModifier::None}
 {
   m_bool_value = val;
+}
+
+
+CtfeValue::CtfeValue(const CtfeValueTuple& val):
+  m_type{Type::Tuple},
+  m_ctrlFlow{ControlFlowModifier::None},
+  m_tuple_value{CtfeValueTuple()}
+{
+  m_tuple_value = val;
+}
+
+
+CtfeValue& CtfeValue::operator=(const CtfeValue& val)
+{
+  m_type = val.m_type;
+  m_ctrlFlow = val.m_ctrlFlow;
+
+  switch(val.m_type)
+  {
+    case Type::Bool:
+      m_bool_value = val.m_bool_value;
+      break;
+    case Type::IntLiteral:
+      m_int_literal_value = val.m_int_literal_value;
+      break;
+    case Type::TypedIntI8:
+      m_i8_value = val.m_i8_value;
+      break;
+    case Type::TypedIntU8:
+      m_u8_value = val.m_u8_value;
+      break;
+    case Type::TypedIntI16:
+      m_i16_value = val.m_i16_value;
+      break;
+    case Type::TypedIntU16:
+      m_u16_value = val.m_u16_value;
+      break;
+    case Type::TypedIntI32:
+      m_i32_value = val.m_i32_value;
+      break;
+    case Type::TypedIntU32:
+      m_u32_value = val.m_u32_value;
+      break;
+    case Type::TypedIntI64:
+      m_i64_value = val.m_i64_value;
+      break;
+    case Type::TypedIntU64:
+      m_u64_value = val.m_u64_value;
+      break;
+    case Type::TypedIntILong:
+      if(m_long_size == 4)
+      {
+        m_i32_value = val.m_i32_value;
+      }
+      else if(m_long_size == 8)
+      {
+        m_i64_value = val.m_i64_value;
+      }
+      else
+      {
+        pony_assert(false);
+      }
+      break;
+    case Type::TypedIntULong:
+      if(m_long_size == 4)
+      {
+        m_u32_value = val.m_u32_value;
+      }
+      else if(m_long_size == 8)
+      {
+        m_u64_value = val.m_u64_value;
+      }
+      else
+      {
+        pony_assert(false);
+      }
+      break;
+    case Type::TypedIntISize:
+      if(m_size_size == 4)
+      {
+        m_i32_value = val.m_i32_value;
+      }
+      else if(m_size_size == 8)
+      {
+        m_i64_value = val.m_i64_value;
+      }
+      else
+      {
+        pony_assert(false);
+      }
+      break;
+    case Type::TypedIntUSize:
+      if(m_size_size == 4)
+      {
+        m_u32_value = val.m_u32_value;
+      }
+      else if(m_size_size == 8)
+      {
+        m_u64_value = val.m_u64_value;
+      }
+      else
+      {
+        pony_assert(false);
+      }
+      break;
+    case Type::StructRef:
+      m_struct_ref = val.m_struct_ref;
+      break;
+    case Type::Tuple:
+      m_tuple_value = CtfeValueTuple();
+      m_tuple_value = val.m_tuple_value;
+      break;
+
+    default:
+      break;
+  }
+
+  return *this;
 }
 
 
@@ -602,10 +737,6 @@ bool CtfeValue::is_typed_int() const
 
 
 bool CtfeValue::m_static_initialized = false;
-string CtfeValue::m_ilong_type_name;
-string CtfeValue::m_ulong_type_name;
-string CtfeValue::m_isize_type_name;
-string CtfeValue::m_usize_type_name;
 uint8_t CtfeValue::m_long_size = 0;
 uint8_t CtfeValue::m_size_size = 0;
 
@@ -621,28 +752,16 @@ void CtfeValue::initialize(pass_opt_t* opt)
 
     if(ilp32)
     {
-      m_ilong_type_name = "I32";
-      m_ulong_type_name = "U32";
-      m_isize_type_name = "I32";
-      m_usize_type_name = "U32";
       m_long_size = 4;
       m_size_size = 4;
     }
     else if(lp64)
     {
-      m_ilong_type_name = "I64";
-      m_ulong_type_name = "U64";
-      m_isize_type_name = "I64";
-      m_usize_type_name = "U64";
       m_long_size = 8;
       m_size_size = 8;
     }
     else if(llp64)
     {
-      m_ilong_type_name = "I32";
-      m_ulong_type_name = "U32";
-      m_isize_type_name = "I64";
-      m_usize_type_name = "U64";
       m_long_size = 4;
       m_size_size = 8;
     }
