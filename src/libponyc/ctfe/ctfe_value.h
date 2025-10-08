@@ -4,6 +4,7 @@
 #include "ctfe_value_exception.h"
 #include "ctfe_value_typed_int.h"
 #include "ctfe_value_bool.h"
+#include "ctfe_value_tuple.h"
 
 #include "../ast/ast.h"
 
@@ -37,6 +38,7 @@ public:
     RealLiteral,
     String,
     StructRef,
+    Tuple,
     ComptimeError,
   };
 
@@ -51,10 +53,6 @@ public:
 
 private:
   static bool m_static_initialized;
-  static std::string m_ilong_type_name;
-  static std::string m_ulong_type_name;
-  static std::string m_isize_type_name;
-  static std::string m_usize_type_name;
   static uint8_t m_long_size;
   static uint8_t m_size_size;
 
@@ -74,6 +72,7 @@ private:
     CtfeValueTypedInt<int64_t> m_i64_value;
     CtfeValueTypedInt<uint64_t> m_u64_value;
     CtfeValueStruct* m_struct_ref;
+    CtfeValueTuple m_tuple_value;
   };
 
   void convert_from_int_literal_to_type(const CtfeValueIntLiteral& val,
@@ -81,6 +80,7 @@ private:
 
 public:
   CtfeValue();
+  ~CtfeValue();
   CtfeValue(Type type);
   CtfeValue(const CtfeValue& val);
   CtfeValue(const CtfeValueIntLiteral& val);
@@ -92,7 +92,10 @@ public:
   CtfeValue(const CtfeValue& val, const std::string& pony_type);
   CtfeValue(const CtfeValueBool& val);
   CtfeValue(CtfeValueStruct* ref);
+  CtfeValue(const CtfeValueTuple& val);
   CtfeValue(ast_t *ast);
+
+  CtfeValue& operator=(const CtfeValue& val);
 
   Type get_type() const { return m_type; }
   bool is_none() const { return m_type == Type::None; }
@@ -109,6 +112,7 @@ public:
   uint64_t to_uint64() const;
 
   CtfeValueStruct* get_struct_ref() const { return m_struct_ref; }
+  CtfeValueTuple& get_tuple() { return m_tuple_value; }
 
   ast_t* create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors, ast_t* from);
 

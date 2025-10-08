@@ -18,6 +18,8 @@ class CtfeRunner
   void add_allocated_reference(CtfeValue& ref);
   bool populate_struct_members(pass_opt_t* opt, errorframe_t* errors, CtfeValueStruct* s,
     ast_t* members);
+  CtfeValue left_side_assign(pass_opt_t* opt, errorframe_t* errors,
+    ast_t* left, CtfeValue& right_val, int depth);
 
 public:
   CtfeRunner(pass_opt_t* opt);

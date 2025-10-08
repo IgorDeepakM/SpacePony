@@ -284,6 +284,8 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
   switch(ast_id(expression))
   {
     case TK_NONE:
+    case TK_DONTCARE:
+    case TK_DONTCAREREF:
       return CtfeValue();
     case TK_TRUE:
       return CtfeValue(CtfeValueBool(true));
@@ -471,58 +473,10 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
         return right_value;
       }
 
-      switch(ast_id(left))
+      CtfeValue ret = left_side_assign(opt, errors, left, right_value, depth + 1);
+      if(ret.has_comptime_error())
       {
-        case TK_VAR:
-        case TK_LET:
-        case TK_VARREF:
-        case TK_LETREF:
-        {
-          const char* var_name = ast_name(ast_child(left));
-          if (!m_frames.update_value(var_name, right_value))
-          {
-            ast_error_frame(errors, expression,
-              "Symbol %s was not found or previously set", var_name);
-            return CtfeValue(CtfeValue::Type::ComptimeError);
-          }
-          break;
-        }
-
-        case TK_FVARREF:
-        case TK_EMBEDREF:
-        case TK_FLETREF:
-        {
-          AST_GET_CHILDREN(left, receiver, id);
-          CtfeValue evaluated_receiver = evaluate(opt, errors, receiver, depth + 1);
-          if(evaluated_receiver.has_comptime_error())
-          {
-            return CtfeValue(CtfeValue::Type::ComptimeError);
-          }
-
-          const char* var_name = ast_name(id);
-
-          switch(evaluated_receiver.get_type())
-          {
-            case CtfeValue::Type::StructRef:
-            {
-              CtfeValueStruct* s = evaluated_receiver.get_struct_ref();
-              if (!s->update_value(var_name, right_value))
-              {
-                ast_error_frame(errors, expression,
-                  "Could not update symbol '%s' was not found in struct, this "
-                  "should not happen", var_name);
-                return CtfeValue(CtfeValue::Type::ComptimeError);
-              }
-              break;
-            }
-            default:
-              ast_error_frame(errors, expression,
-                "Unsupported field variable type");
-              return CtfeValue(CtfeValue::Type::ComptimeError);
-          }
-        }
-        default:
-          break;
+        return ret;
       }
 
       return left_value;
@@ -662,6 +616,72 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       return repeat_value;
     }
 
+    case TK_TUPLE:
+    {
+      ast_t* elem = ast_child(expression);
+
+      // First go through and check how many members
+      size_t tuple_size = 0;
+      while(elem != NULL)
+      {
+        tuple_size++;
+        elem = ast_sibling(elem);
+      }
+
+      CtfeValueTuple tuple = CtfeValueTuple(tuple_size);
+
+      elem = ast_child(expression);
+      size_t i = 0;
+      while(elem != NULL)
+      {
+        CtfeValue evaluated_elem = evaluate(opt, errors, elem, depth + 1);
+        if(evaluated_elem.has_comptime_error())
+        {
+          return evaluated_elem;
+        }
+
+        if(!tuple.update_value(i, evaluated_elem))
+        {
+          ast_error_frame(errors, expression,
+            "Creating tuple failed, tuple index out of range");
+          return CtfeValue(CtfeValue::Type::ComptimeError);
+        }
+
+        i++;
+        elem = ast_sibling(elem);
+      }
+
+      return CtfeValue(tuple);
+    }
+
+    case TK_TUPLEELEMREF:
+    {
+      AST_GET_CHILDREN(expression, receiver, nr);
+
+      CtfeValue evaluated_rec = evaluate(opt, errors, receiver, depth + 1);
+      if(evaluated_rec.has_comptime_error())
+      {
+        return evaluated_rec;
+      }
+
+      pony_assert(evaluated_rec.get_type() == CtfeValue::Type::Tuple);
+
+      lexint_t* lexpos = ast_int(nr);
+      size_t tuple_pos = (size_t)lexpos->low;
+
+      CtfeValue ret;
+      CtfeValueTuple& tuple = evaluated_rec.get_tuple();
+      if(!tuple.get_value(tuple_pos, ret))
+      {
+        ast_error_frame(errors, expression,
+          "Accessing tuple value failed, tuple index out of range");
+        return CtfeValue(CtfeValue::Type::ComptimeError);
+      }
+
+
+      return ret;
+    }
+
     default:
       ast_error_frame(errors, expression,
         "The CTFE runner does not support the '%s' expression",
@@ -670,6 +690,102 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
   }
 
   return CtfeValue(CtfeValue::Type::ComptimeError);
+}
+
+
+CtfeValue CtfeRunner::left_side_assign(pass_opt_t* opt, errorframe_t* errors,
+  ast_t* left, CtfeValue& right_val, int depth)
+{
+  switch(ast_id(left))
+  {
+    case TK_VAR:
+    case TK_LET:
+    case TK_VARREF:
+    case TK_LETREF:
+    {
+      const char* var_name = ast_name(ast_child(left));
+      if (!m_frames.update_value(var_name, right_val))
+      {
+        ast_error_frame(errors, left,
+          "Symbol %s was not found or previously set", var_name);
+        return CtfeValue(CtfeValue::Type::ComptimeError);
+      }
+      break;
+    }
+
+    case TK_FVARREF:
+    case TK_EMBEDREF:
+    case TK_FLETREF:
+    {
+      AST_GET_CHILDREN(left, receiver, id);
+      CtfeValue evaluated_receiver = evaluate(opt, errors, receiver, depth + 1);
+      if(evaluated_receiver.has_comptime_error())
+      {
+        return CtfeValue(CtfeValue::Type::ComptimeError);
+      }
+
+      const char* var_name = ast_name(id);
+
+      switch(evaluated_receiver.get_type())
+      {
+        case CtfeValue::Type::StructRef:
+        {
+          CtfeValueStruct* s = evaluated_receiver.get_struct_ref();
+          if (!s->update_value(var_name, right_val))
+          {
+            ast_error_frame(errors, left,
+              "Could not update symbol '%s' was not found in struct, this "
+              "should not happen", var_name);
+            return CtfeValue(CtfeValue::Type::ComptimeError);
+          }
+          break;
+        }
+        default:
+          ast_error_frame(errors, left,
+            "Unsupported field variable type");
+          return CtfeValue(CtfeValue::Type::ComptimeError);
+      }
+      break;
+    }
+    case TK_TUPLE:
+    {
+      pony_assert(right_val.get_type() == CtfeValue::Type::Tuple);
+
+      ast_t* seq_elem = ast_child(left);
+      size_t i = 0;
+      while(seq_elem != NULL)
+      {
+        ast_t* elem = ast_child(seq_elem);
+
+        CtfeValue right_tuple_value;
+        CtfeValueTuple& tuple = right_val.get_tuple();
+        if(!tuple.get_value(i, right_tuple_value))
+        {
+          ast_error_frame(errors, left,
+            "Accessing tuple value failed, tuple index out of range");
+          return CtfeValue(CtfeValue::Type::ComptimeError);
+        }
+
+        CtfeValue ret = left_side_assign(opt, errors, elem, right_tuple_value, depth + 1);
+        if(ret.has_comptime_error())
+        {
+          return ret;
+        }
+
+        i++;
+        seq_elem = ast_sibling(seq_elem);
+      }
+      break;
+    }
+    case TK_DONTCAREREF:
+      break;
+    default:
+      ast_error_frame(errors, left,
+        "Unsupported assignment receiver type");
+      return CtfeValue(CtfeValue::Type::ComptimeError);
+  }
+
+  return CtfeValue();
 }
 
 
