@@ -109,7 +109,7 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
   CtfeValue rec_val;
   ast_t* recv_type = NULL;
   const char* method_name = NULL;
-  CtfeValue return_value = CtfeValue(CtfeValue::Type::ComptimeError);
+  CtfeValue return_value;
 
   switch(ast_id(receiver))
   {
@@ -117,10 +117,6 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
     {
       ast_t* lh = ast_child(receiver);
       rec_val = evaluate(opt, errors, lh, depth + 1);
-      if(rec_val.has_comptime_error())
-      {
-        return rec_val;
-      }
       ast_t* rh = ast_childidx(receiver, 1);
       method_name = ast_name(rh);
       recv_type = ast_type(lh);
@@ -147,7 +143,7 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
         {
           ast_error_frame(errors, ast,
               "Failed to populate struct/class members");
-          return CtfeValue(CtfeValue::Type::ComptimeError);
+          throw CtfeFailToEvaluateException();
         }
       }
       break;
@@ -156,10 +152,6 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
     {
       AST_GET_CHILDREN(receiver, rec_type, pos_args);
       rec_val = evaluate(opt, errors, rec_type, depth + 1);
-      if(rec_val.has_comptime_error())
-      {
-        return rec_val;
-      }
       method_name = ast_name(ast_sibling(rec_type));
       recv_type = ast_type(rec_type);
       break;
@@ -167,7 +159,7 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
     default:
       ast_error_frame(errors, ast,
               "Unsupported function call receiver");
-      return CtfeValue(CtfeValue::Type::ComptimeError);
+      throw CtfeFailToEvaluateException();
   }
 
   if(!rec_val.is_none())
@@ -179,12 +171,6 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
   while(argument != NULL)
   {
     CtfeValue evaluated_arg = evaluate(opt, errors, argument, depth + 1);
-    if(evaluated_arg.has_comptime_error())
-    {
-      return evaluated_arg;
-    }
-    //if(eval_error(evaluated_arg))
-    //  return evaluated_arg;
 
     args.push_back(evaluated_arg);
     argument = ast_sibling(argument);
@@ -239,11 +225,7 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
           if(ast_id(ast_child(seq)) != TK_COMPILE_INTRINSIC)
           {
             return_value = evaluate(opt, errors, seq, depth + 1);
-            if(return_value.has_comptime_error())
-            {
-              return return_value;
-            }
-            else if(return_value.get_control_flow_modifier() == CtfeValue::ControlFlowModifier::Return)
+            if(return_value.get_control_flow_modifier() == CtfeValue::ControlFlowModifier::Return)
             {
               return_value.clear_control_flow_modifier();
             }
@@ -252,6 +234,7 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
           {
             ast_error_frame(errors, ast,
               "Unsupported compiler intrinsic function");
+            throw CtfeFailToEvaluateException();
           }
         }
 
@@ -311,7 +294,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       {
         ast_error_frame(errors, expression,
           "'this' reference was not previously not defined");
-        return CtfeValue(CtfeValue::Type::ComptimeError);
+        throw CtfeFailToEvaluateException();
       }
       return this_ref;
     }
@@ -324,7 +307,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       {
         ast_error_frame(errors, expression,
           "Parameter with name %s was not found in this frame", var_name);
-        return CtfeValue(CtfeValue::Type::ComptimeError);
+        throw CtfeFailToEvaluateException();
       }
 
       return var_ref;
@@ -339,10 +322,6 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       for(ast_t* p = ast_child(expression); p != NULL; p = ast_sibling(p))
       {
         evaluated = evaluate(opt, errors, p, depth + 1);
-        if(evaluated.has_comptime_error())
-        {
-          break;
-        }
 
         if(evaluated.get_control_flow_modifier() != CtfeValue::ControlFlowModifier::None)
         {
@@ -356,13 +335,6 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     {
       AST_GET_CHILDREN(expression, condition, then_branch, else_branch);
       CtfeValue condition_evaluated = evaluate(opt, errors, condition, depth + 1);
-      if(condition_evaluated.has_comptime_error())
-      {
-        return condition_evaluated;
-      }
-
-      //if(eval_error(condition_evaluated))
-      //  return condition_evaluated;
 
       pony_assert(condition_evaluated.get_type() == CtfeValue::Type::Bool);
 
@@ -374,13 +346,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     case TK_RETURN:
     {
       AST_GET_CHILDREN(expression, return_expr);
-      CtfeValue ret = evaluate(opt, errors, return_expr, depth + 1);
-      if(ret.has_comptime_error())
-      {
-        return ret;
-      }
-      ret.set_control_flow_modifier(CtfeValue::ControlFlowModifier::Return);
-      return ret;
+      return evaluate(opt, errors, return_expr, depth + 1);
     }
 
     case TK_VAR:
@@ -391,7 +357,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       {
         ast_error_frame(errors, expression,
           "CTFE runner tried to create symbol %s twice in the same frame", var_name);
-        return CtfeValue(CtfeValue::Type::ComptimeError);
+        throw CtfeFailToEvaluateException();
       }
 
       return CtfeValue();
@@ -406,7 +372,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       {
         ast_error_frame(errors, expression,
           "Symbol %s was not found because it was not previously created", var_name);
-        return CtfeValue(CtfeValue::Type::ComptimeError);
+        throw CtfeFailToEvaluateException();
       }
       return found_value;
     }
@@ -417,16 +383,12 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     {
       AST_GET_CHILDREN(expression, receiver, id);
       CtfeValue evaluated_receiver = evaluate(opt, errors, receiver, depth + 1);
-      if(evaluated_receiver.has_comptime_error())
-      {
-        return CtfeValue(CtfeValue::Type::ComptimeError);
-      }
 
       if(evaluated_receiver.is_none())
       {
         ast_error_frame(errors, expression,
           "Cannot access variables in 'this' the comptime expression frame.");
-          return CtfeValue(CtfeValue::Type::ComptimeError);
+        throw CtfeFailToEvaluateException();
       }
 
       const char* var_name = ast_name(id);
@@ -441,14 +403,14 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
           {
             ast_error_frame(errors, expression,
               "Symbol '%s' was not found in struct, this should not happen", var_name);
-            return CtfeValue(CtfeValue::Type::ComptimeError);
+            throw CtfeFailToEvaluateException();
           }
           break;
         }
         default:
           ast_error_frame(errors, expression,
             "Unsupported field variable type");
-          return CtfeValue(CtfeValue::Type::ComptimeError);
+          throw CtfeFailToEvaluateException();
       }
 
       return found_value;
@@ -462,22 +424,9 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       bool new_value = false;
 
       CtfeValue left_value = evaluate(opt, errors, left, depth + 1);
-      if(left_value.has_comptime_error())
-      {
-        return left_value;
-      }
-
       CtfeValue right_value = evaluate(opt, errors, right, depth + 1);
-      if(right_value.has_comptime_error())
-      {
-        return right_value;
-      }
 
       CtfeValue ret = left_side_assign(opt, errors, left, right_value, depth + 1);
-      if(ret.has_comptime_error())
-      {
-        return ret;
-      }
 
       return left_value;
     }
@@ -485,11 +434,8 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     case TK_WHILE:
     {
       AST_GET_CHILDREN(expression, cond, thenbody, elsebody);
+
       CtfeValue evaluated_cond = evaluate(opt, errors, cond, depth + 1);
-      if(evaluated_cond.has_comptime_error())
-      {
-        return evaluated_cond;
-      }
 
       pony_assert(evaluated_cond.get_type() == CtfeValue::Type::Bool);
 
@@ -506,10 +452,6 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       while(evaluated_cond.get_bool().get_value() == true)
       {
         evaluated_while = evaluate(opt, errors, thenbody, depth + 1);
-        if(evaluated_while.has_comptime_error())
-        {
-          break;
-        }
 
         CtfeValue::ControlFlowModifier modifier = evaluated_while.get_control_flow_modifier();
         if(modifier == CtfeValue::ControlFlowModifier::Return ||
@@ -528,10 +470,6 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
         }
 
         evaluated_cond = evaluate(opt, errors, cond, depth + 1);
-        if(evaluated_cond.has_comptime_error())
-        {
-          return evaluated_cond;
-        }
       }
 
       return evaluated_while;
@@ -548,10 +486,6 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     {
       AST_GET_CHILDREN(expression, break_expr);
       CtfeValue ret = evaluate(opt, errors, break_expr, depth + 1);
-      if(ret.has_comptime_error())
-      {
-        return ret;
-      }
       ret.set_control_flow_modifier(CtfeValue::ControlFlowModifier::Break);
       return ret;
     }
@@ -567,8 +501,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     {
       AST_GET_CHILDREN(expression, trybody, elsebody);
       CtfeValue evaluated_try = evaluate(opt, errors, trybody, depth + 1);
-      if(!evaluated_try.has_comptime_error() &&
-         evaluated_try.get_control_flow_modifier() == CtfeValue::ControlFlowModifier::Error)
+      if(evaluated_try.get_control_flow_modifier() == CtfeValue::ControlFlowModifier::Error)
       {
         evaluated_try = evaluate(opt, errors, elsebody, depth + 1);
       }
@@ -600,10 +533,6 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
         }
 
         evaluated_cond = evaluate(opt, errors, cond, depth + 1);
-        if(evaluated_cond.has_comptime_error())
-        {
-          return evaluated_cond;
-        }
 
       }while(evaluated_cond.get_bool().get_value() == false);
 
@@ -635,16 +564,12 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       while(elem != NULL)
       {
         CtfeValue evaluated_elem = evaluate(opt, errors, elem, depth + 1);
-        if(evaluated_elem.has_comptime_error())
-        {
-          return evaluated_elem;
-        }
 
         if(!tuple.update_value(i, evaluated_elem))
         {
           ast_error_frame(errors, expression,
             "Creating tuple failed, tuple index out of range");
-          return CtfeValue(CtfeValue::Type::ComptimeError);
+          throw CtfeFailToEvaluateException();
         }
 
         i++;
@@ -659,10 +584,6 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       AST_GET_CHILDREN(expression, receiver, nr);
 
       CtfeValue evaluated_rec = evaluate(opt, errors, receiver, depth + 1);
-      if(evaluated_rec.has_comptime_error())
-      {
-        return evaluated_rec;
-      }
 
       pony_assert(evaluated_rec.get_type() == CtfeValue::Type::Tuple);
 
@@ -675,7 +596,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       {
         ast_error_frame(errors, expression,
           "Accessing tuple value failed, tuple index out of range");
-        return CtfeValue(CtfeValue::Type::ComptimeError);
+        throw CtfeFailToEvaluateException();
       }
 
 
@@ -686,10 +607,10 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       ast_error_frame(errors, expression,
         "The CTFE runner does not support the '%s' expression",
         ast_get_print(expression));
-      return CtfeValue(CtfeValue::Type::ComptimeError);
+      throw CtfeFailToEvaluateException();
   }
 
-  return CtfeValue(CtfeValue::Type::ComptimeError);
+  throw CtfeFailToEvaluateException();
 }
 
 
@@ -708,7 +629,7 @@ CtfeValue CtfeRunner::left_side_assign(pass_opt_t* opt, errorframe_t* errors,
       {
         ast_error_frame(errors, left,
           "Symbol %s was not found or previously set", var_name);
-        return CtfeValue(CtfeValue::Type::ComptimeError);
+        throw CtfeFailToEvaluateException();
       }
       break;
     }
@@ -719,10 +640,6 @@ CtfeValue CtfeRunner::left_side_assign(pass_opt_t* opt, errorframe_t* errors,
     {
       AST_GET_CHILDREN(left, receiver, id);
       CtfeValue evaluated_receiver = evaluate(opt, errors, receiver, depth + 1);
-      if(evaluated_receiver.has_comptime_error())
-      {
-        return CtfeValue(CtfeValue::Type::ComptimeError);
-      }
 
       const char* var_name = ast_name(id);
 
@@ -736,14 +653,14 @@ CtfeValue CtfeRunner::left_side_assign(pass_opt_t* opt, errorframe_t* errors,
             ast_error_frame(errors, left,
               "Could not update symbol '%s' was not found in struct, this "
               "should not happen", var_name);
-            return CtfeValue(CtfeValue::Type::ComptimeError);
+            throw CtfeFailToEvaluateException();
           }
           break;
         }
         default:
           ast_error_frame(errors, left,
             "Unsupported field variable type");
-          return CtfeValue(CtfeValue::Type::ComptimeError);
+          throw CtfeFailToEvaluateException();
       }
       break;
     }
@@ -763,14 +680,10 @@ CtfeValue CtfeRunner::left_side_assign(pass_opt_t* opt, errorframe_t* errors,
         {
           ast_error_frame(errors, left,
             "Accessing tuple value failed, tuple index out of range");
-          return CtfeValue(CtfeValue::Type::ComptimeError);
+          throw CtfeFailToEvaluateException();
         }
 
         CtfeValue ret = left_side_assign(opt, errors, elem, right_tuple_value, depth + 1);
-        if(ret.has_comptime_error())
-        {
-          return ret;
-        }
 
         i++;
         seq_elem = ast_sibling(seq_elem);
@@ -782,7 +695,7 @@ CtfeValue CtfeRunner::left_side_assign(pass_opt_t* opt, errorframe_t* errors,
     default:
       ast_error_frame(errors, left,
         "Unsupported assignment receiver type");
-      return CtfeValue(CtfeValue::Type::ComptimeError);
+      throw CtfeFailToEvaluateException();
   }
 
   return CtfeValue();
@@ -816,9 +729,10 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
   // evaluate the expression passing NULL as 'this' as we aren't
   // evaluating a method on an object
   errorframe_t errors = NULL;
-  CtfeValue evaluated = evaluate(opt, &errors, expression, 0);
-  if(!evaluated.has_comptime_error())
+
+  try
   {
+    CtfeValue evaluated = evaluate(opt, &errors, expression, 0);
     ast_t* new_literal = evaluated.create_ast_literal_node(opt, &errors, ast);
     if(new_literal != NULL)
     {
@@ -826,16 +740,14 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
       return true;
     }
   }
-
-  // We may not have errored in a couple of ways, NULL, is some error that
-  // occured as we could not evaluate the expression
-  ast_settype(ast, ast_from(ast_type(expression), TK_ERRORTYPE));
-  errorframe_t frame = NULL;
-  ast_error_frame(&frame, ast, "could not evaluate compile time expression");
-  errorframe_append(&frame, &errors);
-  errorframe_report(&frame, opt->check.errors);
-  //opt->check.evaluation_error = true;
-
+  catch(const CtfeException& ex)
+  {
+    ast_settype(ast, ast_from(ast_type(expression), TK_ERRORTYPE));
+    errorframe_t frame = NULL;
+    ast_error_frame(&frame, ast, "could not evaluate compile time expression");
+    errorframe_append(&frame, &errors);
+    errorframe_report(&frame, opt->check.errors);
+  }
 
   // TK_ERROR means we encountered some error expression and it hasn't been
   // resolved. We will error out on this case, using this to provide static

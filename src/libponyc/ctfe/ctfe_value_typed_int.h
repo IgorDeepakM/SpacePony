@@ -101,11 +101,11 @@ CtfeValueTypedInt<T>::CtfeValueTypedInt(const CtfeValueIntLiteral& b)
 
   if(lexint_cmp(&val, &lexint_min) < 0)
   {
-    throw new CtfeValueException;
+    throw CtfeValueException();
   }
   else if(lexint_cmp(&val, &lexint_max) > 0)
   {
-    throw new CtfeValueException;
+    throw CtfeValueException();
   }
 
   m_val = val.low;
