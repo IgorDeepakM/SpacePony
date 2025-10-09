@@ -4,6 +4,7 @@
 #include "../ast/lexint.h"
 #include "ctfe_value_int_literal.h"
 #include "ctfe_value_bool.h"
+#include "ctfe_exception.h"
 #include "ponyassert.h"
 
 #include <vector>
@@ -110,10 +111,11 @@ CtfeValueTypedInt<T>::CtfeValueTypedInt(const CtfeValueIntLiteral& b)
 
   m_val = val.low;
 
-  if constexpr (sizeof(T) > 8)
+  // we need int128_t for this one, or at least some library for 128 bit ints
+  /*if constexpr (sizeof(T) > 8)
   {
     m_val |= val.high << 64;
-  }
+  }*/
 }
 
 
