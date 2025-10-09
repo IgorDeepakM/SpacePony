@@ -6,13 +6,17 @@
 
 using namespace std;
 
-CtfeValueTuple::CtfeValueTuple(): m_vars{nullptr}, m_size{0}
+CtfeValueTuple::CtfeValueTuple():
+  m_vars{nullptr},
+  m_size{0}
 {
 
 }
 
 
-CtfeValueTuple::CtfeValueTuple(size_t size)
+CtfeValueTuple::CtfeValueTuple(size_t size):
+  m_vars{nullptr},
+  m_size{0}
 {
   if(size > 0)
   {
@@ -26,25 +30,22 @@ CtfeValueTuple::CtfeValueTuple(size_t size)
 }
 
 
-CtfeValueTuple::CtfeValueTuple(const CtfeValueTuple& val)
+CtfeValueTuple::CtfeValueTuple(const CtfeValueTuple& val):
+  m_vars{nullptr},
+  m_size{0}
 {
   m_vars = new CtfeValue[val.m_size];
   m_size = val.m_size;
 
-  for(size_t i = 0; i < val.m_size; i++)
-  {
-    m_vars[i] = val.m_vars[i];
-  }
+  copy (val.m_vars, val.m_vars + m_size, m_vars);
 }
 
 
-CtfeValueTuple::CtfeValueTuple(CtfeValueTuple&& val)
+CtfeValueTuple::CtfeValueTuple(CtfeValueTuple&& val) noexcept:
+  m_vars{nullptr},
+  m_size{0}
 {
-  m_vars = val.m_vars;
-  m_size = val.m_size;
-
-  val.m_vars = nullptr;
-  val.m_size = 0;
+  swap(*this, val);
 }
 
 
@@ -58,20 +59,16 @@ CtfeValueTuple::~CtfeValueTuple()
 }
 
 
-CtfeValueTuple& CtfeValueTuple::operator=(const CtfeValueTuple& val)
+void swap(CtfeValueTuple& a, CtfeValueTuple& b)
 {
-  if(m_vars != nullptr)
-  {
-    delete [] m_vars;
-  }
+  swap(a.m_vars, b.m_vars);
+  swap(a.m_size, b.m_size);
+}
 
-  m_vars = new CtfeValue[val.m_size];
-  m_size = val.m_size;
 
-  for(size_t i = 0; i < val.m_size; i++)
-  {
-    m_vars[i] = val.m_vars[i];
-  }
+CtfeValueTuple& CtfeValueTuple::operator=(CtfeValueTuple val)
+{
+  swap(*this, val);
 
   return *this;
 }
