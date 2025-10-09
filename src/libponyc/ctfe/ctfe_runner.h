@@ -5,6 +5,7 @@
 
 #include "ctfe_frames.h"
 #include "ctfe_value.h"
+#include "ctfe_exception.h"
 
 #include <vector>
 
