@@ -234,7 +234,7 @@ CtfeValueTypedInt<T>& CtfeValue::get_typed_int()
     pony_assert(false);
   }
 
-  return get<CtfeValueTypedInt<T>>(m_val);
+  return std::get<CtfeValueTypedInt<T>>(m_val);
 }
 
 
