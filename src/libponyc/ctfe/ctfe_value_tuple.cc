@@ -60,6 +60,11 @@ CtfeValueTuple::~CtfeValueTuple()
 
 CtfeValueTuple& CtfeValueTuple::operator=(const CtfeValueTuple& val)
 {
+  if(m_vars != nullptr)
+  {
+    delete [] m_vars;
+  }
+
   m_vars = new CtfeValue[val.m_size];
   m_size = val.m_size;
 

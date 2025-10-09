@@ -286,7 +286,8 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
 
       return val;
     }
-
+    case TK_STRING:
+      return CtfeValue(CtfeValueStringLiteral(ast_name(expression)));
     case TK_THIS:
     {
       CtfeValue this_ref;

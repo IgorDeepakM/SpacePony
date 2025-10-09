@@ -4,6 +4,7 @@
 #include "ctfe_value_typed_int.h"
 #include "ctfe_value_bool.h"
 #include "ctfe_value_tuple.h"
+#include "ctfe_value_string_literal.h"
 
 #include "../ast/ast.h"
 
@@ -37,7 +38,8 @@ public:
     RealLiteral,
     String,
     StructRef,
-    Tuple
+    Tuple,
+    StringLiteral
   };
 
   enum class ControlFlowModifier
@@ -71,6 +73,7 @@ private:
     CtfeValueTypedInt<uint64_t> m_u64_value;
     CtfeValueStruct* m_struct_ref;
     CtfeValueTuple m_tuple_value;
+    CtfeValueStringLiteral m_string_literal_value;
   };
 
   void convert_from_int_literal_to_type(const CtfeValueIntLiteral& val,
@@ -91,31 +94,37 @@ public:
   CtfeValue(const CtfeValueBool& val);
   CtfeValue(CtfeValueStruct* ref);
   CtfeValue(const CtfeValueTuple& val);
-  CtfeValue(ast_t *ast);
+  CtfeValue(const CtfeValueStringLiteral& str);
 
   CtfeValue& operator=(const CtfeValue& val);
 
   Type get_type() const { return m_type; }
   bool is_none() const { return m_type == Type::None; }
 
-  CtfeValueIntLiteral& get_int_literal() { return m_int_literal_value; };
-
   bool is_typed_int() const;
-  template <typename T>
-  CtfeValueTypedInt<T>& get_typed_int();
+
+  CtfeValueIntLiteral& get_int_literal() { return m_int_literal_value; };
+  template <typename T> CtfeValueTypedInt<T>& get_typed_int();
   CtfeValueBool& get_bool() { return m_bool_value; }
+  CtfeValueStringLiteral& get_string_literal() { return m_string_literal_value; }
+  CtfeValueTuple& get_tuple() { return m_tuple_value; }
+
+  const CtfeValueIntLiteral& get_int_literal() const { return m_int_literal_value; };
+  template <typename T> const CtfeValueTypedInt<T>& get_typed_int() const;
+  const CtfeValueBool& get_bool() const { return m_bool_value; }
+  const CtfeValueStringLiteral& get_string_literal() const { return m_string_literal_value; }
+  const CtfeValueTuple& get_tuple() const { return m_tuple_value; }
 
   uint64_t to_uint64() const;
 
   CtfeValueStruct* get_struct_ref() const { return m_struct_ref; }
-  CtfeValueTuple& get_tuple() { return m_tuple_value; }
 
   ast_t* create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors, ast_t* from);
 
   std::string get_pony_type_name() const;
 
   static bool run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
-    std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result);
+    const std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result);
 
   ControlFlowModifier get_control_flow_modifier() const { return m_ctrlFlow; }
   void set_control_flow_modifier(ControlFlowModifier val) { m_ctrlFlow = val; }
@@ -273,4 +282,11 @@ CtfeValueTypedInt<T>& CtfeValue::get_typed_int()
   {
     static_assert(false);
   }
+}
+
+
+template <typename T>
+const CtfeValueTypedInt<T>& CtfeValue::get_typed_int() const
+{
+  return const_cast<const CtfeValueTypedInt<T>&>(const_cast<CtfeValue*>(this)->get_typed_int<T>());
 }

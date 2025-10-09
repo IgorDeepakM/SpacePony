@@ -18,6 +18,7 @@ actor Main
     test_try(80)
     test_member_access(100)
     test_tuple(120)
+    test_string_literal(140)
 
 
   fun test_literal_int(exit_add: I32) =>
@@ -350,3 +351,14 @@ actor Main
     end
 
     true
+
+  fun test_string_literal(exit_add: I32) =>
+    let c1: String = comptime test_string_literal_add("this", " that") end
+    let c2: String = test_string_literal_add("this", " that")
+
+    if (c1 != "this that") or (c2 != "this that") then
+      @pony_exitcode(exit_add + 1)
+    end
+
+  fun test_string_literal_add(s1: String, s2: String): String =>
+    s1 + s2

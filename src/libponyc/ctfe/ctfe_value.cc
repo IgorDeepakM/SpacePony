@@ -136,28 +136,17 @@ CtfeValue::CtfeValue(const CtfeValue& val):
       m_struct_ref = val.m_struct_ref;
       break;
     case Type::Tuple:
+      // Trickery so that we can run the constructor outside a
+      // constructor and run it lazily
+      new(&m_tuple_value) CtfeValueTuple();
       m_tuple_value = val.m_tuple_value;
       break;
-
+    case Type::StringLiteral:
+      new(&m_string_literal_value) string();
+      m_string_literal_value = val.m_string_literal_value;
+      break;
     default:
       break;
-  }
-}
-
-
-CtfeValue::CtfeValue(ast_t *ast):
-  m_type{Type::None},
-  m_ctrlFlow{ControlFlowModifier::None}
-{
-  switch(ast_id(ast))
-  {
-    case TK_INT:
-      m_type = Type::IntLiteral;
-      m_int_literal_value = CtfeValueIntLiteral(*ast_int(ast));
-      break;
-
-    default:
-      throw CtfeValueException();
   }
 }
 
@@ -212,16 +201,34 @@ CtfeValue::CtfeValue(const CtfeValueBool& val):
 CtfeValue::CtfeValue(const CtfeValueTuple& val):
   m_type{Type::Tuple},
   m_ctrlFlow{ControlFlowModifier::None},
-  m_tuple_value{CtfeValueTuple()}
+  m_tuple_value(val)
 {
-  m_tuple_value = val;
+
+}
+
+
+CtfeValue::CtfeValue(const CtfeValueStringLiteral& str):
+  m_type{Type::StringLiteral},
+  m_ctrlFlow{ControlFlowModifier::None},
+  m_string_literal_value{str}
+{
+
 }
 
 
 CtfeValue& CtfeValue::operator=(const CtfeValue& val)
 {
-  m_type = val.m_type;
-  m_ctrlFlow = val.m_ctrlFlow;
+  switch(m_type)
+  {
+    case Type::Tuple:
+      m_tuple_value.~CtfeValueTuple();
+      break;
+    case Type::StringLiteral:
+      m_string_literal_value.~CtfeValueStringLiteral();
+      break;
+    default:
+      break;
+  }
 
   switch(val.m_type)
   {
@@ -315,13 +322,25 @@ CtfeValue& CtfeValue::operator=(const CtfeValue& val)
       m_struct_ref = val.m_struct_ref;
       break;
     case Type::Tuple:
-      m_tuple_value = CtfeValueTuple();
+      if(m_type != Type::Tuple)
+      {
+        new(&m_tuple_value) CtfeValueTuple();
+      }
       m_tuple_value = val.m_tuple_value;
       break;
-
+    case Type::StringLiteral:
+      if(m_type != Type::StringLiteral)
+      {
+        new(&m_string_literal_value) string();
+      }
+      m_string_literal_value = val.m_string_literal_value;
+      break;
     default:
       break;
   }
+
+  m_type = val.m_type;
+  m_ctrlFlow = val.m_ctrlFlow;
 
   return *this;
 }
@@ -449,37 +468,37 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
     case Type::IntLiteral:
       return m_int_literal_value.create_ast_literal_node();
     case Type::TypedIntI8:
-      new_node = m_i8_value.create_ast_literal_node(opt, from);
+      new_node = m_i8_value.create_ast_literal_node();
       break;
     case Type::TypedIntU8:
-      new_node = m_u8_value.create_ast_literal_node(opt, from);
+      new_node = m_u8_value.create_ast_literal_node();
       break;
     case Type::TypedIntI16:
-      new_node = m_i16_value.create_ast_literal_node(opt, from);
+      new_node = m_i16_value.create_ast_literal_node();
       break;
     case Type::TypedIntU16:
-      new_node = m_u16_value.create_ast_literal_node(opt, from);
+      new_node = m_u16_value.create_ast_literal_node();
       break;
     case Type::TypedIntI32:
-      new_node = m_i32_value.create_ast_literal_node(opt, from);
+      new_node = m_i32_value.create_ast_literal_node();
       break;
     case Type::TypedIntU32:
-      new_node = m_u32_value.create_ast_literal_node(opt, from);
+      new_node = m_u32_value.create_ast_literal_node();
       break;
     case Type::TypedIntI64:
-      new_node = m_i64_value.create_ast_literal_node(opt, from);
+      new_node = m_i64_value.create_ast_literal_node();
       break;
     case Type::TypedIntU64:
-      new_node = m_u64_value.create_ast_literal_node(opt, from);
+      new_node = m_u64_value.create_ast_literal_node();
       break;
     case Type::TypedIntILong:
       if(m_long_size == 4)
       {
-        new_node = m_i32_value.create_ast_literal_node(opt, from);
+        new_node = m_i32_value.create_ast_literal_node();
       }
       else if(m_long_size == 8)
       {
-        new_node = m_i64_value.create_ast_literal_node(opt, from);
+        new_node = m_i64_value.create_ast_literal_node();
       }
       else
       {
@@ -489,11 +508,11 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
     case Type::TypedIntULong:
       if(m_long_size == 4)
       {
-        new_node = m_u32_value.create_ast_literal_node(opt, from);
+        new_node = m_u32_value.create_ast_literal_node();
       }
       else if(m_long_size == 8)
       {
-        new_node = m_u64_value.create_ast_literal_node(opt, from);
+        new_node = m_u64_value.create_ast_literal_node();
       }
       else
       {
@@ -503,11 +522,11 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
     case Type::TypedIntISize:
       if(m_size_size == 4)
       {
-        new_node = m_i32_value.create_ast_literal_node(opt, from);
+        new_node = m_i32_value.create_ast_literal_node();
       }
       else if(m_size_size == 8)
       {
-        new_node = m_i64_value.create_ast_literal_node(opt, from);
+        new_node = m_i64_value.create_ast_literal_node();
       }
       else
       {
@@ -517,16 +536,19 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
     case Type::TypedIntUSize:
       if(m_size_size == 4)
       {
-        new_node = m_u32_value.create_ast_literal_node(opt, from);
+        new_node = m_u32_value.create_ast_literal_node();
       }
       else if(m_size_size == 8)
       {
-        new_node = m_u64_value.create_ast_literal_node(opt, from);
+        new_node = m_u64_value.create_ast_literal_node();
       }
       else
       {
         pony_assert(false);
       }
+      break;
+    case Type::StringLiteral:
+      new_node = m_string_literal_value.create_ast_literal_node(opt, from);
       break;
     case Type::StructRef:
       ast_error_frame(errors, from,
@@ -547,7 +569,7 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
 
 
 bool CtfeValue::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
-  std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result)
+  const std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result)
 {
   if(args.size() < 1)
   {
@@ -632,6 +654,8 @@ bool CtfeValue::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
         pony_assert(false);
       }
       break;
+    case Type::StringLiteral:
+      return CtfeValueStringLiteral::run_method(opt, errors, ast, args, method_name, result);
     default:
       break;
   }

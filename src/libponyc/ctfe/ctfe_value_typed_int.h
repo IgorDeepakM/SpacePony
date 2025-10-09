@@ -44,25 +44,25 @@ public:
   CtfeValueTypedInt<T> op_xor(const CtfeValueTypedInt<T>& b) const { return CtfeValueTypedInt<T>(m_val ^ b.m_val); }
   CtfeValueTypedInt<T> op_not() const { return CtfeValueTypedInt<T>(~m_val); }
 
-  CtfeValueTypedInt<T> negate() { return CtfeValueTypedInt<T>(-m_val); }
+  CtfeValueTypedInt<T> negate() const { return CtfeValueTypedInt<T>(-m_val); }
 
-  CtfeValueBool eq(const CtfeValueTypedInt<T>& b) { return CtfeValueBool(m_val == b.m_val); }
-  CtfeValueBool ne(const CtfeValueTypedInt<T>& b) { return CtfeValueBool(m_val != b.m_val); }
-  CtfeValueBool lt(const CtfeValueTypedInt<T>& b) { return CtfeValueBool(m_val < b.m_val); }
-  CtfeValueBool le(const CtfeValueTypedInt<T>& b) { return CtfeValueBool(m_val <= b.m_val); }
-  CtfeValueBool gt(const CtfeValueTypedInt<T>& b) { return CtfeValueBool(m_val > b.m_val); }
-  CtfeValueBool ge(const CtfeValueTypedInt<T>& b) { return CtfeValueBool(m_val >= b.m_val); }
+  CtfeValueBool eq(const CtfeValueTypedInt<T>& b) const { return CtfeValueBool(m_val == b.m_val); }
+  CtfeValueBool ne(const CtfeValueTypedInt<T>& b) const { return CtfeValueBool(m_val != b.m_val); }
+  CtfeValueBool lt(const CtfeValueTypedInt<T>& b) const { return CtfeValueBool(m_val < b.m_val); }
+  CtfeValueBool le(const CtfeValueTypedInt<T>& b) const { return CtfeValueBool(m_val <= b.m_val); }
+  CtfeValueBool gt(const CtfeValueTypedInt<T>& b) const { return CtfeValueBool(m_val > b.m_val); }
+  CtfeValueBool ge(const CtfeValueTypedInt<T>& b) const { return CtfeValueBool(m_val >= b.m_val); }
 
   template<typename V>
-  CtfeValueTypedInt<V> cast_to() { return CtfeValueTypedInt<V>(static_cast<V>(m_val)); }
+  CtfeValueTypedInt<V> cast_to() const { return CtfeValueTypedInt<V>(static_cast<V>(m_val)); }
 
   T get_value() const { return m_val; }
   uint64_t to_uint64() const { return static_cast<uint64_t>(m_val); }
 
-  ast_t* create_ast_literal_node(pass_opt_t* opt, ast_t* from);
+  ast_t* create_ast_literal_node();
 
   static bool run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
-    std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result);
+    const std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result);
 };
 
 
@@ -120,7 +120,7 @@ CtfeValueTypedInt<T>::CtfeValueTypedInt(const CtfeValueIntLiteral& b)
 
 
 template <typename T>
-ast_t* CtfeValueTypedInt<T>::create_ast_literal_node(pass_opt_t* opt, ast_t* from)
+ast_t* CtfeValueTypedInt<T>::create_ast_literal_node()
 {
   ast_t* new_node = ast_blank(TK_INT);
   CtfeValueIntLiteral lit = CtfeValueIntLiteral(m_val);

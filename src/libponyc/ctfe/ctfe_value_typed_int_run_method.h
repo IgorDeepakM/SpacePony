@@ -11,14 +11,14 @@
 
 template <typename T>
 bool CtfeValueTypedInt<T>::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
-  std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result)
+  const std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result)
 {
   CtfeValue::Type rec_type = args[0].get_type();
-  CtfeValueTypedInt<T>& rec_val = args[0].get_typed_int<T>();
+  const CtfeValueTypedInt<T>& rec_val = args[0].get_typed_int<T>();
 
   if(args.size() == 2)
   {
-    CtfeValueTypedInt<T>& first_arg = args[1].get_typed_int<T>();
+    const CtfeValueTypedInt<T>& first_arg = args[1].get_typed_int<T>();
 
     if(method_name == "add" || method_name == "add_unsafe")
     {
