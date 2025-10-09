@@ -16,25 +16,25 @@ CtfeValueBool::CtfeValueBool(bool val)
 }
   
 
-CtfeValueBool CtfeValueBool::op_and(const CtfeValueBool& b)
+CtfeValueBool CtfeValueBool::op_and(const CtfeValueBool& b) const
 {
   return CtfeValueBool(m_val && b.m_val);
 }
 
 
-CtfeValueBool CtfeValueBool::op_or(const CtfeValueBool& b)
+CtfeValueBool CtfeValueBool::op_or(const CtfeValueBool& b) const
 {
   return CtfeValueBool(m_val || b.m_val);
 }
 
 
-CtfeValueBool CtfeValueBool::op_xor(const CtfeValueBool& b)
+CtfeValueBool CtfeValueBool::op_xor(const CtfeValueBool& b) const
 {
   return CtfeValueBool(m_val != b.m_val);
 }
 
 
-CtfeValueBool CtfeValueBool::op_not()
+CtfeValueBool CtfeValueBool::op_not() const
 {
   return CtfeValueBool(!m_val);
 }
@@ -50,7 +50,7 @@ ast_t* CtfeValueBool::create_ast_literal_node(pass_opt_t* opt, ast_t* from)
 
 
 bool CtfeValueBool::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
-  std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result)
+  const std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result)
 {
   if(args.size() == 2)
   {

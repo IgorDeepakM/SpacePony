@@ -3,26 +3,23 @@
 #include "../ast/ast.h"
 #include "../pass/pass.h"
 
-#include <vector>
 #include <string>
+#include <vector>
 
 
 class CtfeValue;
 
-class CtfeValueBool
+class CtfeValueStringLiteral
 {
-  bool m_val;
+  std::string m_str;
 
 public:
-  CtfeValueBool();
-  CtfeValueBool(bool val);
+  CtfeValueStringLiteral();
+  CtfeValueStringLiteral(const std::string& str);
 
-  CtfeValueBool op_and(const CtfeValueBool& b) const;
-  CtfeValueBool op_or(const CtfeValueBool& b) const;
-  CtfeValueBool op_xor(const CtfeValueBool& b) const;
-  CtfeValueBool op_not() const;
+  CtfeValueStringLiteral add(const CtfeValueStringLiteral& b) const;
 
-  bool get_value() const { return m_val; }
+  const std::string& get_string() const { return m_str; }
 
   ast_t* create_ast_literal_node(pass_opt_t* opt, ast_t* from);
 

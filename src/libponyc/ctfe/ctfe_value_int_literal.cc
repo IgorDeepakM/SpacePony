@@ -237,7 +237,7 @@ ast_t* CtfeValueIntLiteral::create_ast_literal_node()
 
 
 bool CtfeValueIntLiteral::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
-  std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result)
+  const std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result)
 {
   CtfeValueIntLiteral rec_val = args[0].get_int_literal();
 

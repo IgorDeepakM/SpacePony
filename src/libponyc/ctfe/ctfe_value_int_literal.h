@@ -63,7 +63,7 @@ public:
   ast_t* create_ast_literal_node();
 
   static bool run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
-    std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result);
+    const std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result);
 };
 
 

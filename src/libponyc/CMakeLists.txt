@@ -49,6 +49,7 @@ add_library(libponyc STATIC
     ctfe/ctfe_value.cc
     ctfe/ctfe_value_bool.cc
     ctfe/ctfe_value_int_literal.cc
+    ctfe/ctfe_value_string_literal.cc
     ctfe/ctfe_value_struct.cc
     ctfe/ctfe_value_tuple.cc
     expr/array.c
