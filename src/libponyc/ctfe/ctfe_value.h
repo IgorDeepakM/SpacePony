@@ -11,6 +11,7 @@
 #include <vector>
 #include <string>
 #include <type_traits>	
+#include <variant>
 
 
 class CtfeValueStruct;
@@ -59,22 +60,20 @@ private:
   Type m_type;
   ControlFlowModifier m_ctrlFlow;
 
-  union
-  {
-    CtfeValueBool m_bool_value;
-    CtfeValueIntLiteral m_int_literal_value;
-    CtfeValueTypedInt<int8_t> m_i8_value;
-    CtfeValueTypedInt<uint8_t> m_u8_value;
-    CtfeValueTypedInt<int16_t> m_i16_value;
-    CtfeValueTypedInt<uint16_t> m_u16_value;
-    CtfeValueTypedInt<int32_t> m_i32_value;
-    CtfeValueTypedInt<uint32_t> m_u32_value;
-    CtfeValueTypedInt<int64_t> m_i64_value;
-    CtfeValueTypedInt<uint64_t> m_u64_value;
-    CtfeValueStruct* m_struct_ref;
-    CtfeValueTuple m_tuple_value;
-    CtfeValueStringLiteral m_string_literal_value;
-  };
+  std::variant<
+    CtfeValueBool,
+    CtfeValueIntLiteral,
+    CtfeValueTypedInt<int8_t>,
+    CtfeValueTypedInt<uint8_t>,
+    CtfeValueTypedInt<int16_t>,
+    CtfeValueTypedInt<uint16_t>,
+    CtfeValueTypedInt<int32_t>,
+    CtfeValueTypedInt<uint32_t>,
+    CtfeValueTypedInt<int64_t>,
+    CtfeValueTypedInt<uint64_t>,
+    CtfeValueStruct*,
+    CtfeValueTuple,
+    CtfeValueStringLiteral> m_val;
 
   void convert_from_int_literal_to_type(const CtfeValueIntLiteral& val,
     const std::string& pony_type);
@@ -103,21 +102,21 @@ public:
 
   bool is_typed_int() const;
 
-  CtfeValueIntLiteral& get_int_literal() { return m_int_literal_value; };
+  CtfeValueIntLiteral& get_int_literal() { return std::get<CtfeValueIntLiteral>(m_val); };
   template <typename T> CtfeValueTypedInt<T>& get_typed_int();
-  CtfeValueBool& get_bool() { return m_bool_value; }
-  CtfeValueStringLiteral& get_string_literal() { return m_string_literal_value; }
-  CtfeValueTuple& get_tuple() { return m_tuple_value; }
+  CtfeValueBool& get_bool() { return std::get<CtfeValueBool>(m_val); }
+  CtfeValueStringLiteral& get_string_literal() { return std::get<CtfeValueStringLiteral>(m_val); }
+  CtfeValueTuple& get_tuple() { return std::get<CtfeValueTuple>(m_val); }
 
-  const CtfeValueIntLiteral& get_int_literal() const { return m_int_literal_value; };
+  const CtfeValueIntLiteral& get_int_literal() const { return std::get<CtfeValueIntLiteral>(m_val); };
   template <typename T> const CtfeValueTypedInt<T>& get_typed_int() const;
-  const CtfeValueBool& get_bool() const { return m_bool_value; }
-  const CtfeValueStringLiteral& get_string_literal() const { return m_string_literal_value; }
-  const CtfeValueTuple& get_tuple() const { return m_tuple_value; }
+  const CtfeValueBool& get_bool() const { return std::get<CtfeValueBool>(m_val); }
+  const CtfeValueStringLiteral& get_string_literal() const { return std::get<CtfeValueStringLiteral>(m_val); }
+  const CtfeValueTuple& get_tuple() const { return std::get<CtfeValueTuple>(m_val); }
 
   uint64_t to_uint64() const;
 
-  CtfeValueStruct* get_struct_ref() const { return m_struct_ref; }
+  CtfeValueStruct* get_struct_ref() const { return std::get<CtfeValueStruct*>(m_val); }
 
   ast_t* create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors, ast_t* from);
 
@@ -138,47 +137,40 @@ public:
 
 template <typename T>
 CtfeValue::CtfeValue(const CtfeValueTypedInt<T>& val):
-  m_ctrlFlow{ControlFlowModifier::None}
+  m_type{Type::None},
+  m_ctrlFlow{ControlFlowModifier::None},
+  m_val{val}
 {
   if constexpr (std::is_same<T, int8_t>::value)
   {
     m_type = Type::TypedIntI8;
-    m_i8_value = val;
   }
   else if constexpr (std::is_same<T, uint8_t>::value)
   {
     m_type = Type::TypedIntU8;
-    m_u8_value = val;
   }
   else if constexpr (std::is_same<T, int16_t>::value)
   {
     m_type = Type::TypedIntI16;
-    m_i16_value = val;
   }
   else if constexpr (std::is_same<T, uint16_t>::value)
   {
     m_type = Type::TypedIntU16;
-    m_u16_value = val;
   }
   else if constexpr (std::is_same<T, int32_t>::value)
   {
     m_type = Type::TypedIntI32;
-    m_i32_value = val;
   }
   else if constexpr (std::is_same<T, uint32_t>::value)
   {
-    m_type = Type::TypedIntU32;
-    m_u32_value = val;
-  }
+    m_type = Type::TypedIntU32;  }
   else if constexpr (std::is_same<T, int64_t>::value)
   {
     m_type = Type::TypedIntI64;
-    m_i64_value = val;
   }
   else if constexpr (std::is_same<T, uint64_t>::value)
   {
     m_type = Type::TypedIntU64;
-    m_u64_value = val;
   }
   else
   {
@@ -189,46 +181,42 @@ CtfeValue::CtfeValue(const CtfeValueTypedInt<T>& val):
 
 template <typename T>
 CtfeValue::CtfeValue(const CtfeValueTypedInt<T>& val, Type type):
-  m_ctrlFlow{ControlFlowModifier::None}
+  m_type{Type::None},
+  m_ctrlFlow{ControlFlowModifier::None},
+  m_val{val}
 {
+  m_val = val;
+
   if constexpr (std::is_same<T, int8_t>::value)
   {
-    m_i8_value = val;
     m_type = Type::TypedIntI8;
   }
   else if constexpr (std::is_same<T, uint8_t>::value)
   {
-    m_u8_value = val;
     m_type = Type::TypedIntU8;
   }
   else if constexpr (std::is_same<T, int16_t>::value)
   {
-    m_i16_value = val;
     m_type = Type::TypedIntI16;
   }
   else if constexpr (std::is_same<T, uint16_t>::value)
   {
-    m_u16_value = val;
     m_type = Type::TypedIntU16;
   }
   else if constexpr (std::is_same<T, int32_t>::value)
   {
-    m_i32_value = val;
     m_type = type;
   }
   else if constexpr (std::is_same<T, uint32_t>::value)
   {
-    m_u32_value = val;
     m_type = type;
   }
   else if constexpr (std::is_same<T, int64_t>::value)
   {
-    m_i64_value = val;
     m_type = type;
   }
   else if constexpr (std::is_same<T, uint64_t>::value)
   {
-    m_u64_value = val;
     m_type = type;
   }
   else
@@ -246,42 +234,7 @@ CtfeValueTypedInt<T>& CtfeValue::get_typed_int()
     pony_assert(false);
   }
 
-  if constexpr (std::is_same<T, int8_t>::value)
-  {
-    return m_i8_value;
-  }
-  else if constexpr (std::is_same<T, uint8_t>::value)
-  {
-    return m_u8_value;
-  }
-  else if constexpr (std::is_same<T, int16_t>::value)
-  {
-    return m_i16_value;
-  }
-  else if constexpr (std::is_same<T, uint16_t>::value)
-  {
-    return m_u16_value;
-  }
-  else if constexpr (std::is_same<T, int32_t>::value)
-  {
-    return m_i32_value;
-  }
-  else if constexpr (std::is_same<T, uint32_t>::value)
-  {
-    return m_u32_value;
-  }
-  else if constexpr (std::is_same<T, int64_t>::value)
-  {
-    return m_i64_value;
-  }
-  else if constexpr (std::is_same<T, uint64_t>::value)
-  {
-    return m_u64_value;
-  }
-  else
-  {
-    static_assert(false);
-  }
+  return get<CtfeValueTypedInt<T>>(m_val);
 }
 
 

@@ -21,14 +21,7 @@ CtfeValue::CtfeValue():
 
 CtfeValue::~CtfeValue()
 {
-  switch(m_type)
-  {
-    case Type::Tuple:
-      m_tuple_value.~CtfeValueTuple();
-      break;
-    default:
-      break;
-  }
+
 }
 
 
@@ -42,112 +35,10 @@ CtfeValue::CtfeValue(Type type):
 
 CtfeValue::CtfeValue(const CtfeValue& val):
   m_type{val.m_type},
-  m_ctrlFlow{val.m_ctrlFlow}
+  m_ctrlFlow{val.m_ctrlFlow},
+  m_val{val.m_val}
 {
-  switch(val.m_type)
-  {
-    case Type::Bool:
-      m_bool_value = val.m_bool_value;
-      break;
-    case Type::IntLiteral:
-      m_int_literal_value = val.m_int_literal_value;
-      break;
-    case Type::TypedIntI8:
-      m_i8_value = val.m_i8_value;
-      break;
-    case Type::TypedIntU8:
-      m_u8_value = val.m_u8_value;
-      break;
-    case Type::TypedIntI16:
-      m_i16_value = val.m_i16_value;
-      break;
-    case Type::TypedIntU16:
-      m_u16_value = val.m_u16_value;
-      break;
-    case Type::TypedIntI32:
-      m_i32_value = val.m_i32_value;
-      break;
-    case Type::TypedIntU32:
-      m_u32_value = val.m_u32_value;
-      break;
-    case Type::TypedIntI64:
-      m_i64_value = val.m_i64_value;
-      break;
-    case Type::TypedIntU64:
-      m_u64_value = val.m_u64_value;
-      break;
-    case Type::TypedIntILong:
-      if(m_long_size == 4)
-      {
-        m_i32_value = val.m_i32_value;
-      }
-      else if(m_long_size == 8)
-      {
-        m_i64_value = val.m_i64_value;
-      }
-      else
-      {
-        pony_assert(false);
-      }
-      break;
-    case Type::TypedIntULong:
-      if(m_long_size == 4)
-      {
-        m_u32_value = val.m_u32_value;
-      }
-      else if(m_long_size == 8)
-      {
-        m_u64_value = val.m_u64_value;
-      }
-      else
-      {
-        pony_assert(false);
-      }
-      break;
-    case Type::TypedIntISize:
-      if(m_size_size == 4)
-      {
-        m_i32_value = val.m_i32_value;
-      }
-      else if(m_size_size == 8)
-      {
-        m_i64_value = val.m_i64_value;
-      }
-      else
-      {
-        pony_assert(false);
-      }
-      break;
-    case Type::TypedIntUSize:
-      if(m_size_size == 4)
-      {
-        m_u32_value = val.m_u32_value;
-      }
-      else if(m_size_size == 8)
-      {
-        m_u64_value = val.m_u64_value;
-      }
-      else
-      {
-        pony_assert(false);
-      }
-      break;
-    case Type::StructRef:
-      m_struct_ref = val.m_struct_ref;
-      break;
-    case Type::Tuple:
-      // Trickery so that we can run the constructor outside a
-      // constructor and run it lazily
-      new(&m_tuple_value) CtfeValueTuple();
-      m_tuple_value = val.m_tuple_value;
-      break;
-    case Type::StringLiteral:
-      new(&m_string_literal_value) string();
-      m_string_literal_value = val.m_string_literal_value;
-      break;
-    default:
-      break;
-  }
+
 }
 
 
@@ -155,7 +46,7 @@ CtfeValue::CtfeValue(const CtfeValueIntLiteral& val):
   m_type{Type::IntLiteral},
   m_ctrlFlow{ControlFlowModifier::None}
 {
-  m_int_literal_value = val;
+  m_val = val;
 }
 
 
@@ -174,7 +65,7 @@ CtfeValue::CtfeValue(const CtfeValue& val, const std::string& pony_type):
   switch(val.m_type)
   {
     case Type::IntLiteral:
-      convert_from_int_literal_to_type(val.m_int_literal_value, pony_type);
+      convert_from_int_literal_to_type(m_val, pony_type);
       break;
     default:
       break;
@@ -184,24 +75,26 @@ CtfeValue::CtfeValue(const CtfeValue& val, const std::string& pony_type):
 
 CtfeValue::CtfeValue(CtfeValueStruct* ref):
   m_type{Type::StructRef},
-  m_ctrlFlow{ControlFlowModifier::None}
+  m_ctrlFlow{ControlFlowModifier::None},
+  m_val{ref}
 {
-  m_struct_ref = ref;
+
 }
 
 
 CtfeValue::CtfeValue(const CtfeValueBool& val):
   m_type{Type::Bool},
-  m_ctrlFlow{ControlFlowModifier::None}
+  m_ctrlFlow{ControlFlowModifier::None},
+  m_val{val}
 {
-  m_bool_value = val;
+
 }
 
 
 CtfeValue::CtfeValue(const CtfeValueTuple& val):
   m_type{Type::Tuple},
   m_ctrlFlow{ControlFlowModifier::None},
-  m_tuple_value(val)
+  m_val{val}
 {
 
 }
@@ -210,7 +103,7 @@ CtfeValue::CtfeValue(const CtfeValueTuple& val):
 CtfeValue::CtfeValue(const CtfeValueStringLiteral& str):
   m_type{Type::StringLiteral},
   m_ctrlFlow{ControlFlowModifier::None},
-  m_string_literal_value{str}
+  m_val{str}
 {
 
 }
@@ -218,129 +111,9 @@ CtfeValue::CtfeValue(const CtfeValueStringLiteral& str):
 
 CtfeValue& CtfeValue::operator=(const CtfeValue& val)
 {
-  switch(m_type)
-  {
-    case Type::Tuple:
-      m_tuple_value.~CtfeValueTuple();
-      break;
-    case Type::StringLiteral:
-      m_string_literal_value.~CtfeValueStringLiteral();
-      break;
-    default:
-      break;
-  }
-
-  switch(val.m_type)
-  {
-    case Type::Bool:
-      m_bool_value = val.m_bool_value;
-      break;
-    case Type::IntLiteral:
-      m_int_literal_value = val.m_int_literal_value;
-      break;
-    case Type::TypedIntI8:
-      m_i8_value = val.m_i8_value;
-      break;
-    case Type::TypedIntU8:
-      m_u8_value = val.m_u8_value;
-      break;
-    case Type::TypedIntI16:
-      m_i16_value = val.m_i16_value;
-      break;
-    case Type::TypedIntU16:
-      m_u16_value = val.m_u16_value;
-      break;
-    case Type::TypedIntI32:
-      m_i32_value = val.m_i32_value;
-      break;
-    case Type::TypedIntU32:
-      m_u32_value = val.m_u32_value;
-      break;
-    case Type::TypedIntI64:
-      m_i64_value = val.m_i64_value;
-      break;
-    case Type::TypedIntU64:
-      m_u64_value = val.m_u64_value;
-      break;
-    case Type::TypedIntILong:
-      if(m_long_size == 4)
-      {
-        m_i32_value = val.m_i32_value;
-      }
-      else if(m_long_size == 8)
-      {
-        m_i64_value = val.m_i64_value;
-      }
-      else
-      {
-        pony_assert(false);
-      }
-      break;
-    case Type::TypedIntULong:
-      if(m_long_size == 4)
-      {
-        m_u32_value = val.m_u32_value;
-      }
-      else if(m_long_size == 8)
-      {
-        m_u64_value = val.m_u64_value;
-      }
-      else
-      {
-        pony_assert(false);
-      }
-      break;
-    case Type::TypedIntISize:
-      if(m_size_size == 4)
-      {
-        m_i32_value = val.m_i32_value;
-      }
-      else if(m_size_size == 8)
-      {
-        m_i64_value = val.m_i64_value;
-      }
-      else
-      {
-        pony_assert(false);
-      }
-      break;
-    case Type::TypedIntUSize:
-      if(m_size_size == 4)
-      {
-        m_u32_value = val.m_u32_value;
-      }
-      else if(m_size_size == 8)
-      {
-        m_u64_value = val.m_u64_value;
-      }
-      else
-      {
-        pony_assert(false);
-      }
-      break;
-    case Type::StructRef:
-      m_struct_ref = val.m_struct_ref;
-      break;
-    case Type::Tuple:
-      if(m_type != Type::Tuple)
-      {
-        new(&m_tuple_value) CtfeValueTuple();
-      }
-      m_tuple_value = val.m_tuple_value;
-      break;
-    case Type::StringLiteral:
-      if(m_type != Type::StringLiteral)
-      {
-        new(&m_string_literal_value) string();
-      }
-      m_string_literal_value = val.m_string_literal_value;
-      break;
-    default:
-      break;
-  }
-
   m_type = val.m_type;
   m_ctrlFlow = val.m_ctrlFlow;
+  m_val = val.m_val;
 
   return *this;
 }
@@ -351,53 +124,53 @@ void CtfeValue::convert_from_int_literal_to_type(const CtfeValueIntLiteral& val,
 {
   if(pony_type == "I8")
   {
-    m_i8_value = CtfeValueTypedInt<int8_t>(val);
+    m_val = CtfeValueTypedInt<int8_t>(val);
     m_type = Type::TypedIntI8;
   }
   else if(pony_type == "U8")
   {
-    m_u8_value = CtfeValueTypedInt<uint8_t>(val);
+    m_val = CtfeValueTypedInt<uint8_t>(val);
     m_type = Type::TypedIntU8;
   }
   else if(pony_type == "I16")
   {
-    m_i16_value = CtfeValueTypedInt<int16_t>(val);
+    m_val = CtfeValueTypedInt<int16_t>(val);
     m_type = Type::TypedIntI16;
   }
   else if(pony_type == "U16")
   {
-    m_u16_value = CtfeValueTypedInt<uint16_t>(val);
+    m_val = CtfeValueTypedInt<uint16_t>(val);
     m_type = Type::TypedIntU16;
   }
   else if(pony_type == "I32")
   {
-    m_i32_value = CtfeValueTypedInt<int32_t>(val);
+    m_val = CtfeValueTypedInt<int32_t>(val);
     m_type = Type::TypedIntI32;
   }
   else if(pony_type == "U32")
   {
-    m_u32_value = CtfeValueTypedInt<uint32_t>(val);
+    m_val = CtfeValueTypedInt<uint32_t>(val);
     m_type = Type::TypedIntU32;
   }
   else if(pony_type == "I64")
   {
-    m_i64_value = CtfeValueTypedInt<int64_t>(val);
+    m_val = CtfeValueTypedInt<int64_t>(val);
     m_type = Type::TypedIntI64;
   }
   else if(pony_type == "U64")
   {
-    m_u64_value = CtfeValueTypedInt<uint64_t>(val);
+    m_val = CtfeValueTypedInt<uint64_t>(val);
     m_type = Type::TypedIntU64;
   }
   else if(pony_type == "ILong")
   {
     if(m_long_size == 4)
     {
-      m_i32_value = CtfeValueTypedInt<int32_t>(val);
+      m_val = CtfeValueTypedInt<int32_t>(val);
     }
     else if(m_long_size == 8)
     {
-      m_i64_value = CtfeValueTypedInt<int64_t>(val);
+      m_val = CtfeValueTypedInt<int64_t>(val);
     }
     else
     {
@@ -409,11 +182,11 @@ void CtfeValue::convert_from_int_literal_to_type(const CtfeValueIntLiteral& val,
   {
     if(m_long_size == 4)
     {
-      m_u32_value = CtfeValueTypedInt<uint32_t>(val);
+      m_val = CtfeValueTypedInt<uint32_t>(val);
     }
     else if(m_long_size == 8)
     {
-      m_u64_value = CtfeValueTypedInt<uint64_t>(val);
+      m_val = CtfeValueTypedInt<uint64_t>(val);
     }
     else
     {
@@ -425,11 +198,11 @@ void CtfeValue::convert_from_int_literal_to_type(const CtfeValueIntLiteral& val,
   {
     if(m_size_size == 4)
     {
-      m_i32_value = CtfeValueTypedInt<int32_t>(val);
+      m_val = CtfeValueTypedInt<int32_t>(val);
     }
     else if(m_size_size == 8)
     {
-      m_i64_value = CtfeValueTypedInt<int64_t>(val);
+      m_val = CtfeValueTypedInt<int64_t>(val);
     }
     else
     {
@@ -441,11 +214,11 @@ void CtfeValue::convert_from_int_literal_to_type(const CtfeValueIntLiteral& val,
   {
      if(m_size_size == 4)
     {
-      m_u32_value = CtfeValueTypedInt<uint32_t>(val);
+      m_val = CtfeValueTypedInt<uint32_t>(val);
     }
     else if(m_size_size == 8)
     {
-      m_u64_value = CtfeValueTypedInt<uint64_t>(val);
+      m_val = CtfeValueTypedInt<uint64_t>(val);
     }
     else
     {
@@ -464,41 +237,41 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
   switch(m_type)
   {
     case Type::Bool:
-      return m_bool_value.create_ast_literal_node(opt, from);
+      return get<CtfeValueBool>(m_val).create_ast_literal_node(opt, from);
     case Type::IntLiteral:
-      return m_int_literal_value.create_ast_literal_node();
+      return get<CtfeValueIntLiteral>(m_val).create_ast_literal_node();
     case Type::TypedIntI8:
-      new_node = m_i8_value.create_ast_literal_node();
+      new_node = get<CtfeValueTypedInt<int8_t>>(m_val).create_ast_literal_node();
       break;
     case Type::TypedIntU8:
-      new_node = m_u8_value.create_ast_literal_node();
+      new_node =  get<CtfeValueTypedInt<uint8_t>>(m_val).create_ast_literal_node();
       break;
     case Type::TypedIntI16:
-      new_node = m_i16_value.create_ast_literal_node();
+      new_node =  get<CtfeValueTypedInt<int16_t>>(m_val).create_ast_literal_node();
       break;
     case Type::TypedIntU16:
-      new_node = m_u16_value.create_ast_literal_node();
+      new_node =  get<CtfeValueTypedInt<uint16_t>>(m_val).create_ast_literal_node();
       break;
     case Type::TypedIntI32:
-      new_node = m_i32_value.create_ast_literal_node();
+      new_node =  get<CtfeValueTypedInt<int32_t>>(m_val).create_ast_literal_node();
       break;
     case Type::TypedIntU32:
-      new_node = m_u32_value.create_ast_literal_node();
+      new_node =  get<CtfeValueTypedInt<uint32_t>>(m_val).create_ast_literal_node();
       break;
     case Type::TypedIntI64:
-      new_node = m_i64_value.create_ast_literal_node();
+      new_node =  get<CtfeValueTypedInt<int64_t>>(m_val).create_ast_literal_node();
       break;
     case Type::TypedIntU64:
-      new_node = m_u64_value.create_ast_literal_node();
+      new_node =  get<CtfeValueTypedInt<uint64_t>>(m_val).create_ast_literal_node();
       break;
     case Type::TypedIntILong:
       if(m_long_size == 4)
       {
-        new_node = m_i32_value.create_ast_literal_node();
+        new_node = get<CtfeValueTypedInt<int32_t>>(m_val).create_ast_literal_node();
       }
       else if(m_long_size == 8)
       {
-        new_node = m_i64_value.create_ast_literal_node();
+        new_node = get<CtfeValueTypedInt<int64_t>>(m_val).create_ast_literal_node();
       }
       else
       {
@@ -508,11 +281,11 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
     case Type::TypedIntULong:
       if(m_long_size == 4)
       {
-        new_node = m_u32_value.create_ast_literal_node();
+        new_node = get<CtfeValueTypedInt<uint32_t>>(m_val).create_ast_literal_node();
       }
       else if(m_long_size == 8)
       {
-        new_node = m_u64_value.create_ast_literal_node();
+        new_node = get<CtfeValueTypedInt<uint64_t>>(m_val).create_ast_literal_node();
       }
       else
       {
@@ -522,11 +295,11 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
     case Type::TypedIntISize:
       if(m_size_size == 4)
       {
-        new_node = m_i32_value.create_ast_literal_node();
+        new_node = get<CtfeValueTypedInt<int32_t>>(m_val).create_ast_literal_node();
       }
       else if(m_size_size == 8)
       {
-        new_node = m_i64_value.create_ast_literal_node();
+        new_node = get<CtfeValueTypedInt<int64_t>>(m_val).create_ast_literal_node();
       }
       else
       {
@@ -536,11 +309,11 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
     case Type::TypedIntUSize:
       if(m_size_size == 4)
       {
-        new_node = m_u32_value.create_ast_literal_node();
+        new_node = get<CtfeValueTypedInt<uint32_t>>(m_val).create_ast_literal_node();
       }
       else if(m_size_size == 8)
       {
-        new_node = m_u64_value.create_ast_literal_node();
+        new_node = get<CtfeValueTypedInt<uint64_t>>(m_val).create_ast_literal_node();
       }
       else
       {
@@ -548,12 +321,13 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
       }
       break;
     case Type::StringLiteral:
-      new_node = m_string_literal_value.create_ast_literal_node(opt, from);
+      new_node = get<CtfeValueStringLiteral>(m_val).create_ast_literal_node(opt, from);
       break;
     case Type::StructRef:
       ast_error_frame(errors, from,
               "It is currently not possible to create a literal from "
               "a class or struct reference.");
+      return NULL;
     default:
       return NULL;
   }
@@ -669,61 +443,61 @@ uint64_t CtfeValue::to_uint64() const
   switch(m_type)
   {
     case Type::IntLiteral:
-      return m_int_literal_value.to_uint64();
+      return get<CtfeValueIntLiteral>(m_val).to_uint64();
     case Type::TypedIntI8:
-      return m_i8_value.to_uint64();
+      return get<CtfeValueTypedInt<int8_t>>(m_val).to_uint64();
     case Type::TypedIntU8:
-      return m_u8_value.to_uint64();
+      return get<CtfeValueTypedInt<uint8_t>>(m_val).to_uint64();
     case Type::TypedIntI16:
-      return m_i16_value.to_uint64();
+      return get<CtfeValueTypedInt<int16_t>>(m_val).to_uint64();
     case Type::TypedIntU16:
-      return m_u16_value.to_uint64();
+      return get<CtfeValueTypedInt<uint16_t>>(m_val).to_uint64();
     case Type::TypedIntI32:
-      return m_i32_value.to_uint64();
+      return get<CtfeValueTypedInt<int32_t>>(m_val).to_uint64();
     case Type::TypedIntU32:
-      return m_u32_value.to_uint64();
+      return get<CtfeValueTypedInt<uint32_t>>(m_val).to_uint64();
     case Type::TypedIntI64:
-      return m_i64_value.to_uint64();
+      return get<CtfeValueTypedInt<int64_t>>(m_val).to_uint64();
     case Type::TypedIntU64:
-      return m_u64_value.to_uint64();
+      return get<CtfeValueTypedInt<uint64_t>>(m_val).to_uint64();
    case Type::TypedIntILong:
       if(m_long_size == 4)
       {
-        return m_i32_value.to_uint64();
+        return get<CtfeValueTypedInt<int32_t>>(m_val).to_uint64();
       }
       else if(m_long_size == 8)
       {
-        return m_i64_value.to_uint64();
+        return get<CtfeValueTypedInt<int64_t>>(m_val).to_uint64();
       }
       break;
     case Type::TypedIntULong:
       if(m_long_size == 4)
       {
-        return m_u32_value.to_uint64();
+        return get<CtfeValueTypedInt<uint32_t>>(m_val).to_uint64();
       }
       else if(m_long_size == 8)
       {
-        return m_u64_value.to_uint64();
+        return get<CtfeValueTypedInt<uint64_t>>(m_val).to_uint64();
       }
       break;
     case Type::TypedIntISize:
       if(m_size_size == 4)
       {
-        return m_i32_value.to_uint64();
+        return get<CtfeValueTypedInt<int32_t>>(m_val).to_uint64();
       }
       else if(m_size_size == 8)
       {
-        return m_i64_value.to_uint64();
+        return get<CtfeValueTypedInt<int64_t>>(m_val).to_uint64();
       }
       break;
     case Type::TypedIntUSize:
       if(m_size_size == 4)
       {
-        return m_u32_value.to_uint64();
+        return get<CtfeValueTypedInt<uint32_t>>(m_val).to_uint64();
       }
       else if(m_size_size == 8)
       {
-        return m_u64_value.to_uint64();
+        return get<CtfeValueTypedInt<uint64_t>>(m_val).to_uint64();
       }
       break;
     default:
