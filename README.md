@@ -174,7 +174,7 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
   let sz_s_y_2_ = sizeof S.y // Also with the type directly as base
   ```
 
-* Keep in mind that both sizeof and offsetof are not compile time constants, meaning they do not behave like a literal and they can unfortunately not be used as type values in generics. sizeof/offsetof are created during the code generation step becoming a compile time constant in the LLVM code and not before that. The reason for this is the the SpacePony compiler use LLVM in order build target dependent aggregate types in the code generation pass which is one of the last passes. It is impossible to make sizeof and offsetof into a literal but that would require using LLVM to build up the types in earlier passes.
+* Keep in mind that both sizeof and offsetof are not compile time constants, meaning they do not behave like a literal and they can unfortunately not be used as type values in generics. sizeof/offsetof are created during the code generation step becoming a compile time constant in the LLVM code and not before that. The reason for this is the the SpacePony compiler use LLVM in order build target dependent aggregate types in the code generation pass which is one of the last passes. It is possible to make sizeof and offsetof into a literal but that would require using LLVM to build up the types in earlier passes.
 
 ### Added FFI pass by value parameters.
 
