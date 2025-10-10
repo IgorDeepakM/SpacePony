@@ -162,6 +162,16 @@ void CtfeValue::convert_from_int_literal_to_type(const CtfeValueIntLiteral& val,
     m_val = CtfeValueTypedInt<uint64_t>(val);
     m_type = Type::TypedIntU64;
   }
+   else if(pony_type == "I128")
+  {
+    m_val = CtfeValueTypedInt<CtfeI128Type>(val);
+    m_type = Type::TypedIntI128;
+  }
+  else if(pony_type == "U128")
+  {
+    m_val = CtfeValueTypedInt<CtfeU128Type>(val);
+    m_type = Type::TypedIntU128;
+  }
   else if(pony_type == "ILong")
   {
     if(m_long_size == 4)
@@ -263,6 +273,12 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
       break;
     case Type::TypedIntU64:
       new_node =  get<CtfeValueTypedInt<uint64_t>>(m_val).create_ast_literal_node();
+      break;
+    case Type::TypedIntI128:
+      new_node =  get<CtfeValueTypedInt<CtfeI128Type>>(m_val).create_ast_literal_node();
+      break;
+    case Type::TypedIntU128:
+      new_node =  get<CtfeValueTypedInt<CtfeU128Type>>(m_val).create_ast_literal_node();
       break;
     case Type::TypedIntILong:
       if(m_long_size == 4)
@@ -372,6 +388,10 @@ bool CtfeValue::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
       return CtfeValueTypedInt<int64_t>::run_method(opt, errors, ast, args, method_name, result);
     case Type::TypedIntU64:
       return CtfeValueTypedInt<uint64_t>::run_method(opt, errors, ast, args, method_name, result);
+    case Type::TypedIntI128:
+      return CtfeValueTypedInt<CtfeI128Type>::run_method(opt, errors, ast, args, method_name, result);
+    case Type::TypedIntU128:
+      return CtfeValueTypedInt<CtfeU128Type>::run_method(opt, errors, ast, args, method_name, result);
     case Type::TypedIntILong:
       if(m_long_size == 4)
       {
@@ -460,6 +480,10 @@ uint64_t CtfeValue::to_uint64() const
       return get<CtfeValueTypedInt<int64_t>>(m_val).to_uint64();
     case Type::TypedIntU64:
       return get<CtfeValueTypedInt<uint64_t>>(m_val).to_uint64();
+    case Type::TypedIntI128:
+      return get<CtfeValueTypedInt<CtfeI128Type>>(m_val).to_uint64();
+    case Type::TypedIntU128:
+      return get<CtfeValueTypedInt<CtfeU128Type>>(m_val).to_uint64();
    case Type::TypedIntILong:
       if(m_long_size == 4)
       {
@@ -522,6 +546,8 @@ bool CtfeValue::is_typed_int() const
     case Type::TypedIntU32:
     case Type::TypedIntI64:
     case Type::TypedIntU64:
+    case Type::TypedIntI128:
+    case Type::TypedIntU128:
     case Type::TypedIntILong:
     case Type::TypedIntULong:
     case Type::TypedIntISize:
@@ -594,6 +620,10 @@ string CtfeValue::get_pony_type_name() const
       return "I64";
     case Type::TypedIntU64:
       return "U64";
+    case Type::TypedIntI128:
+      return "I128";
+    case Type::TypedIntU128:
+      return "U128";
     case Type::TypedIntILong:
       return "ILong";
     case Type::TypedIntULong:

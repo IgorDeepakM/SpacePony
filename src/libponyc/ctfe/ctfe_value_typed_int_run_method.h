@@ -42,14 +42,14 @@ bool CtfeValueTypedInt<T>::run_method(pass_opt_t* opt, errorframe_t* errors, ast
     {
       if(first_arg.get_value() == 0)
       {
-        result = CtfeValue(CtfeValueTypedInt<T>(0), rec_type);
+        result = CtfeValue(CtfeValueTypedInt<T>(), rec_type);
         return true;
       }
       if constexpr (std::is_signed<T>::value)
       {
         if(rec_val.get_value() == std::numeric_limits<T>::min() && first_arg.get_value() == -1)
         {
-          result = CtfeValue(CtfeValueTypedInt<T>(0), rec_type);
+          result = CtfeValue(CtfeValueTypedInt<T>(), rec_type);
           return true;
         }
       }
@@ -61,14 +61,14 @@ bool CtfeValueTypedInt<T>::run_method(pass_opt_t* opt, errorframe_t* errors, ast
     {
       if(first_arg.get_value() == 0)
       {
-        result = CtfeValue(CtfeValueTypedInt<T>(0), rec_type);
+        result = CtfeValue(CtfeValueTypedInt<T>(), rec_type);
         return true;
       }
       if constexpr (std::is_signed<T>::value)
       {
         if(rec_val.get_value() == std::numeric_limits<T>::min() && first_arg.get_value() == -1)
         {
-          result = CtfeValue(CtfeValueTypedInt<T>(0), rec_type);
+          result = CtfeValue(CtfeValueTypedInt<T>(), rec_type);
           return true;
         }
       }

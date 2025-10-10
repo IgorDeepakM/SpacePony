@@ -6,14 +6,19 @@
 
 lexint_t lexint_zero()
 {
-  lexint_t ret;
-
-  ret.low = 0;
-  ret.high = 0;
-  ret.is_negative = 0;
+  lexint_t ret = { 0, 0, false };
 
   return ret;
 }
+
+
+lexint_t lexint_minusone()
+{
+  lexint_t ret = { UINT64_MAX, UINT64_MAX, true };
+
+  return ret;
+}
+
 
 int lexint_cmp(lexint_t const* a, lexint_t const* b)
 {

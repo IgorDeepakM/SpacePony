@@ -18,6 +18,8 @@ typedef struct lexint_t
 
 lexint_t lexint_zero();
 
+lexint_t lexint_minusone();
+
 int lexint_cmp(lexint_t const* a, lexint_t const* b);
 
 int lexint_cmp64(lexint_t const* a, uint64_t b);

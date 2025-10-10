@@ -8,6 +8,17 @@
 #include <string>
 
 
+#if defined(PLATFORM_IS_WINDOWS)
+  #include <__msvc_int128.hpp>
+  using CtfeI128Type = std::_Signed128;
+  using CtfeU128Type = std::_Unsigned128;
+#else
+  using CtfeI128Type = __int128;
+  using CtfeU128Type = unsigned __int128;
+#endif
+
+
+
 class CtfeValue;
 class CtfeValueBool;
 
@@ -70,41 +81,31 @@ public:
 template<typename T>
 CtfeValueIntLiteral::CtfeValueIntLiteral(T b)
 {
-  m_val = lexint_zero();
-
-  if constexpr (std::is_integral<T>::value)
+  if constexpr (std::is_same<T, CtfeI128Type>::value ||
+                std::is_same<T, CtfeU128Type>::value)
   {
-    if constexpr (std::is_signed<T>::value)
-    {
-      if constexpr (sizeof(T) <= 8)
-      {
-        m_val.low = static_cast<int64_t>(b);
-        if(b < 0)
-        {
-          m_val.high = 0xffffffffffffffff;
-        }
-      }
-      else
-      {
-        m_val.low = static_cast<int64_t>(b);
-        m_val.high = static_cast<int64_t>(b >> 64);
-      }
+    m_val.low = static_cast<uint64_t>(b);
+    m_val.high = static_cast<uint64_t>(b >> 64);
 
+    if constexpr (std::is_same<T, CtfeI128Type>::value)
+    {
       if(b < 0)
       {
         m_val.is_negative = true;
       }
     }
-    else
+  }
+  else if constexpr (std::is_integral<T>::value)
+  {
+    m_val.low = static_cast<uint64_t>(static_cast<int64_t>(b));
+    m_val.high = 0;
+
+    if constexpr (std::is_signed_v<T>)
     {
-      if constexpr (sizeof(T) <= 8)
+      if(b < 0)
       {
-        m_val.low = static_cast<uint64_t>(b);
-      }
-      else
-      {
-        m_val.low = static_cast<uint64_t>(b);
-        m_val.high = static_cast<uint64_t>(b >> 64);
+        m_val.high = std::numeric_limits<uint64_t>::max();
+        m_val.is_negative = true;
       }
     }
   }
