@@ -6,6 +6,8 @@
 
 #include <vector>
 #include <string>
+#include <limits>
+#include <type_traits>
 
 
 #if defined(PLATFORM_IS_WINDOWS)
