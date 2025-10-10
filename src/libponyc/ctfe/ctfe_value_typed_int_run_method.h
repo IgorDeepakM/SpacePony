@@ -249,13 +249,13 @@ bool CtfeValueTypedInt<T>::run_method(pass_opt_t* opt, errorframe_t* errors, ast
     }
     else if(method_name == "i128" || method_name == "i128_unsafe")
     {
-      CtfeValueTypedInt<int64_t> r = rec_val.cast_to<CtfeI128Type>();
+      CtfeValueTypedInt<CtfeI128Type> r = rec_val.cast_to<CtfeI128Type>();
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "u128" || method_name == "u128_unsafe")
     {
-      CtfeValueTypedInt<uint64_t> r = rec_val.cast_to<CtfeU128Type>();
+      CtfeValueTypedInt<CtfeU128Type> r = rec_val.cast_to<CtfeU128Type>();
       result = CtfeValue(r);
       return true;
     }
