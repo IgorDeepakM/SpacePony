@@ -32,6 +32,8 @@ public:
     TypedIntU32,
     TypedIntI64,
     TypedIntU64,
+    TypedIntI128,
+    TypedIntU128,
     TypedIntILong,
     TypedIntULong,
     TypedIntISize,
@@ -71,6 +73,8 @@ private:
     CtfeValueTypedInt<uint32_t>,
     CtfeValueTypedInt<int64_t>,
     CtfeValueTypedInt<uint64_t>,
+    CtfeValueTypedInt<CtfeI128Type>,
+    CtfeValueTypedInt<CtfeU128Type>,
     CtfeValueStruct*,
     CtfeValueTuple,
     CtfeValueStringLiteral> m_val;
@@ -163,7 +167,8 @@ CtfeValue::CtfeValue(const CtfeValueTypedInt<T>& val):
   }
   else if constexpr (std::is_same<T, uint32_t>::value)
   {
-    m_type = Type::TypedIntU32;  }
+    m_type = Type::TypedIntU32;
+  }
   else if constexpr (std::is_same<T, int64_t>::value)
   {
     m_type = Type::TypedIntI64;
@@ -171,6 +176,14 @@ CtfeValue::CtfeValue(const CtfeValueTypedInt<T>& val):
   else if constexpr (std::is_same<T, uint64_t>::value)
   {
     m_type = Type::TypedIntU64;
+  }
+  else if constexpr (std::is_same<T, CtfeI128Type>::value)
+  {
+    m_type = Type::TypedIntI128;
+  }
+  else if constexpr (std::is_same<T, CtfeU128Type>::value)
+  {
+    m_type = Type::TypedIntU128;
   }
   else
   {
@@ -218,6 +231,14 @@ CtfeValue::CtfeValue(const CtfeValueTypedInt<T>& val, Type type):
   else if constexpr (std::is_same<T, uint64_t>::value)
   {
     m_type = type;
+  }
+  else if constexpr (std::is_same<T, CtfeI128Type>::value)
+  {
+    m_type = Type::TypedIntI128;
+  }
+  else if constexpr (std::is_same<T, CtfeU128Type>::value)
+  {
+    m_type = Type::TypedIntU128;
   }
   else
   {

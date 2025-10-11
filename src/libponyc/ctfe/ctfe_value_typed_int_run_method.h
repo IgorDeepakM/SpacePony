@@ -42,14 +42,14 @@ bool CtfeValueTypedInt<T>::run_method(pass_opt_t* opt, errorframe_t* errors, ast
     {
       if(first_arg.get_value() == 0)
       {
-        result = CtfeValue(CtfeValueTypedInt<T>(0), rec_type);
+        result = CtfeValue(CtfeValueTypedInt<T>(), rec_type);
         return true;
       }
       if constexpr (std::is_signed<T>::value)
       {
         if(rec_val.get_value() == std::numeric_limits<T>::min() && first_arg.get_value() == -1)
         {
-          result = CtfeValue(CtfeValueTypedInt<T>(0), rec_type);
+          result = CtfeValue(CtfeValueTypedInt<T>(), rec_type);
           return true;
         }
       }
@@ -61,14 +61,14 @@ bool CtfeValueTypedInt<T>::run_method(pass_opt_t* opt, errorframe_t* errors, ast
     {
       if(first_arg.get_value() == 0)
       {
-        result = CtfeValue(CtfeValueTypedInt<T>(0), rec_type);
+        result = CtfeValue(CtfeValueTypedInt<T>(), rec_type);
         return true;
       }
       if constexpr (std::is_signed<T>::value)
       {
         if(rec_val.get_value() == std::numeric_limits<T>::min() && first_arg.get_value() == -1)
         {
-          result = CtfeValue(CtfeValueTypedInt<T>(0), rec_type);
+          result = CtfeValue(CtfeValueTypedInt<T>(), rec_type);
           return true;
         }
       }
@@ -199,55 +199,67 @@ bool CtfeValueTypedInt<T>::run_method(pass_opt_t* opt, errorframe_t* errors, ast
       result = CtfeValue(r, rec_type);
       return true;
     }
-    else if(method_name == "i8")
+    else if(method_name == "i8" || method_name == "i8_unsafe")
     {
       CtfeValueTypedInt<int8_t> r = rec_val.cast_to<int8_t>();
       result = CtfeValue(r);
       return true;
     }
-    else if(method_name == "u8")
+    else if(method_name == "u8" || method_name == "u8_unsafe")
     {
       CtfeValueTypedInt<uint8_t> r = rec_val.cast_to<uint8_t>();
       result = CtfeValue(r);
       return true;
     }
-    else if(method_name == "i16")
+    else if(method_name == "i16" || method_name == "i16_unsafe")
     {
       CtfeValueTypedInt<int16_t> r = rec_val.cast_to<int16_t>();
       result = CtfeValue(r);
       return true;
     }
-    else if(method_name == "u16")
+    else if(method_name == "u16" || method_name == "u16_unsafe")
     {
       CtfeValueTypedInt<uint16_t> r = rec_val.cast_to<uint16_t>();
       result = CtfeValue(r);
       return true;
     }
-    else if(method_name == "i32")
+    else if(method_name == "i32" || method_name == "i32_unsafe")
     {
       CtfeValueTypedInt<int32_t> r = rec_val.cast_to<int32_t>();
       result = CtfeValue(r);
       return true;
     }
-    else if(method_name == "u32")
+    else if(method_name == "u32" || method_name == "u32_unsafe")
     {
       CtfeValueTypedInt<uint32_t> r = rec_val.cast_to<uint32_t>();
       result = CtfeValue(r);
       return true;
     }
-    else if(method_name == "i64")
+    else if(method_name == "i64" || method_name == "i64_unsafe")
     {
       CtfeValueTypedInt<int64_t> r = rec_val.cast_to<int64_t>();
       result = CtfeValue(r);
       return true;
     }
-    else if(method_name == "u64")
+    else if(method_name == "u64" || method_name == "u64_unsafe")
     {
       CtfeValueTypedInt<uint64_t> r = rec_val.cast_to<uint64_t>();
       result = CtfeValue(r);
       return true;
     }
-    else if(method_name == "ilong")
+    else if(method_name == "i128" || method_name == "i128_unsafe")
+    {
+      CtfeValueTypedInt<CtfeI128Type> r = rec_val.cast_to<CtfeI128Type>();
+      result = CtfeValue(r);
+      return true;
+    }
+    else if(method_name == "u128" || method_name == "u128_unsafe")
+    {
+      CtfeValueTypedInt<CtfeU128Type> r = rec_val.cast_to<CtfeU128Type>();
+      result = CtfeValue(r);
+      return true;
+    }
+    else if(method_name == "ilong" || method_name == "ilong_unsafe")
     {
       uint8_t long_size = CtfeValue::get_long_size();
       if(long_size == 4)
@@ -266,7 +278,7 @@ bool CtfeValueTypedInt<T>::run_method(pass_opt_t* opt, errorframe_t* errors, ast
       }
       return true;
     }
-    else if(method_name == "ulong")
+    else if(method_name == "ulong" || method_name == "ulong_unsafe")
     {
       uint8_t long_size = CtfeValue::get_long_size();
       if(long_size == 4)
@@ -285,7 +297,7 @@ bool CtfeValueTypedInt<T>::run_method(pass_opt_t* opt, errorframe_t* errors, ast
       }
       return true;
     }
-    else if(method_name == "isize")
+    else if(method_name == "isize" || method_name == "isize_unsafe")
     {
       uint8_t size_size = CtfeValue::get_size_size();
       if(size_size == 4)
@@ -304,7 +316,7 @@ bool CtfeValueTypedInt<T>::run_method(pass_opt_t* opt, errorframe_t* errors, ast
       }
       return true;
     }
-    else if(method_name == "usize")
+    else if(method_name == "usize" || method_name == "usize_unsafe")
     {
       uint8_t size_size = CtfeValue::get_size_size();
       if(size_size == 4)

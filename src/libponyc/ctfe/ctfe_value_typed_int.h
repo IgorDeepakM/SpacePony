@@ -10,7 +10,8 @@
 #include <vector>
 #include <string>
 #include <limits>
-#include <type_traits>		
+#include <type_traits>
+
 
 
 class CtfeValue;
@@ -20,14 +21,16 @@ class CtfeValueInt;
 template <typename T>
 class CtfeValueTypedInt
 {
-  static_assert(std::is_integral<T>::value, "Only integer types are allowed");
+  static_assert(std::is_integral<T>::value ||
+                std::is_same<T, CtfeI128Type>::value ||
+                std::is_same<T, CtfeU128Type>::value, "Only integer types are allowed");
 
   T m_val;
 
 public:
-  CtfeValueTypedInt() { m_val = 0; }
+  CtfeValueTypedInt(): m_val{0} {}
   CtfeValueTypedInt(T val): m_val{val} {}
-  CtfeValueTypedInt(const CtfeValueTypedInt<T>& b) { m_val = b.m_val; }
+  CtfeValueTypedInt(const CtfeValueTypedInt<T>& b): m_val{b.m_val} {}
   CtfeValueTypedInt(const CtfeValueIntLiteral& b);
   CtfeValueTypedInt<T> shl(uint64_t b) const { return CtfeValueTypedInt<T>(m_val << b); }
   CtfeValueTypedInt<T> shr(uint64_t b) const { return CtfeValueTypedInt<T>(m_val >> b); }
@@ -71,34 +74,35 @@ CtfeValueTypedInt<T>::CtfeValueTypedInt(const CtfeValueIntLiteral& b)
 {
   lexint_t& val = const_cast<CtfeValueIntLiteral&>(b).get_lexint();
 
+  lexint_t lexint_min = lexint_zero();
+  lexint_t lexint_max = lexint_zero();
   T min_val = std::numeric_limits<T>::min();
   T max_val = std::numeric_limits<T>::max();
-
-  lexint_t lexint_min = lexint_zero();
-  if constexpr (sizeof(T) > 8)
+  if constexpr (std::is_same<T, CtfeI128Type>::value ||
+                std::is_same<T, CtfeU128Type>::value)
   {
-    lexint_min.high = min_val >> 64;
+    lexint_max.low = static_cast<uint64_t>(max_val);
+    lexint_max.high = static_cast<uint64_t>(max_val >> 64);
+
+    if constexpr (std::is_same<T, CtfeI128Type>::value)
+    {
+      lexint_min = lexint_minusone();
+    }
+
+    lexint_min.low = static_cast<uint64_t>(min_val);
+    lexint_min.high = static_cast<uint64_t>(min_val >> 64);
   }
   else
   {
-    lexint_min.high = 0;
-  }
-  lexint_min.low = min_val;
-  if constexpr (std::is_signed_v<T>)
-  {
-    lexint_min.is_negative = true;
-  }
+    lexint_max.low = max_val;
 
-  lexint_t lexint_max = lexint_zero();
-  if constexpr (sizeof(T) > 8)
-  {
-    lexint_max.high = max_val >> 64;
+    if constexpr (std::is_signed_v<T>)
+    {
+      lexint_min = lexint_minusone();
+    }
+
+    lexint_min.low = min_val;
   }
-  else
-  {
-    lexint_min.high = 0;
-  }
-  lexint_max.low = max_val;
 
   if(lexint_cmp(&val, &lexint_min) < 0)
   {
@@ -111,11 +115,13 @@ CtfeValueTypedInt<T>::CtfeValueTypedInt(const CtfeValueIntLiteral& b)
 
   m_val = val.low;
 
-  // we need int128_t for this one, or at least some library for 128 bit ints
-  /*if constexpr (sizeof(T) > 8)
+  if constexpr (std::is_same<T, CtfeI128Type>::value ||
+                std::is_same<T, CtfeU128Type>::value)
   {
-    m_val |= val.high << 64;
-  }*/
+    CtfeU128Type tmp = val.high;
+    tmp <<= 64;
+    m_val |= tmp;
+  }
 }
 
 
