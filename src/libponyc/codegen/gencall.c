@@ -1212,7 +1212,7 @@ static void declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* f_name,
 
   ffi_decl->ret_reach_type = reified_ret;
 
-  ffi_decl->return_by_value = ast_has_annotation(ast_child(ret_ast), "passbyvalue");
+  ffi_decl->return_by_value = ast_has_annotation(ast_child(ret_ast), "byval");
   if(ffi_decl->return_by_value)
   {
     ffi_decl->return_value_lowered = is_return_value_lowering_needed(c, reified_ret);
@@ -1266,7 +1266,7 @@ static void declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* f_name,
       p_type = deferred_reify(reify, p_type, c->opt);
       reach_type_t* pt = reach_type(c->reach, p_type);
       pony_assert(pt != NULL);
-      bool pass_by_value = ast_has_annotation(ast_childidx(arg, 1), "passbyvalue");
+      bool pass_by_value = ast_has_annotation(ast_childidx(arg, 1), "byval");
       ffi_decl->params[param_count].reach_type = pt;
       ffi_decl->params[param_count].pass_by_value = pass_by_value;
       if(pass_by_value)
@@ -1561,7 +1561,7 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
         real_type = ffi_decl->params[i].reach_type;
       }
 
-      if(param_decl != NULL && ast_has_annotation(ast_childidx(param_decl, 1), "passbyvalue"))
+      if(param_decl != NULL && ast_has_annotation(ast_childidx(param_decl, 1), "byval"))
       {
         f_args[i] = load_lowered_param_value_from_ptr(c, f_args[i], f_params[i], real_type);
       }

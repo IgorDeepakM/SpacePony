@@ -196,7 +196,7 @@ static void set_method_types(reach_t* r, reach_method_t* m,
       m->params[i].name = ast_name(ast_child(param));
       m->params[i].ast = p_type;
       m->params[i].type = add_type(r, p_type, opt);
-      m->params[i].pass_by_value = ast_has_annotation(p_type, "passbyvalue");
+      m->params[i].pass_by_value = ast_has_annotation(p_type, "byval");
 
       if((ast_id(p_type) != TK_NOMINAL) && (ast_id(p_type) != TK_TYPEPARAMREF))
         m->params[i].cap = TK_REF;
@@ -358,7 +358,7 @@ static reach_method_t* add_rmethod(reach_t* r, reach_type_t* t,
     pony_assert(fun != NULL);
 
     if(cap == TK_AT &&
-       ast_has_annotation(ast_childidx(fun->ast, 4), "passbyvalue"))
+       ast_has_annotation(ast_childidx(fun->ast, 4), "byval"))
     {
       m->return_by_value = true;
     }

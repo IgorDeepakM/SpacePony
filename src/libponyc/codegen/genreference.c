@@ -55,7 +55,7 @@ LLVMValueRef gen_param(compile_t* c, ast_t* ast)
 
   // Since parameter passed by value generation a heap allocated
   // shadow variable, it must be instead loaded.
-  if(ast_has_annotation(ast_childidx(def, 1), "passbyvalue"))
+  if(ast_has_annotation(ast_childidx(def, 1), "byval"))
   {
     return gen_localload(c, ast);
   }
@@ -73,7 +73,7 @@ LLVMValueRef gen_param(compile_t* c, ast_t* ast)
       // in the frame structure like bare_function.
       ast_t* ret_decl = ast_childidx(fun, 4);
       ast_t* reified_ret = deferred_reify(c->frame->reify, ret_decl, c->opt);
-      if(ast_has_annotation(reified_ret, "passbyvalue"))
+      if(ast_has_annotation(reified_ret, "byval"))
       {
         reach_type_t* t = reach_type(c->reach, reified_ret);
         if(!is_return_value_lowering_needed(c, t))

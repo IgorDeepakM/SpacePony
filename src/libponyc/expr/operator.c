@@ -270,7 +270,7 @@ static bool is_expr_ffi_return_by_value(ast_t* ast)
       if(ast_id(at) == TK_AT)
       {
         ast_t* ret_decl = ast_childidx(def, 3);
-        if(ast_has_annotation(ret_decl, "passbyvalue"))
+        if(ast_has_annotation(ret_decl, "byval"))
         {
           return true;
         }
@@ -282,7 +282,7 @@ static bool is_expr_ffi_return_by_value(ast_t* ast)
     {
       ast_t* def = (ast_t*)ast_data(ast);
       ast_t* ret_decl = ast_child(ast_childidx(def, 1));
-      if (ast_has_annotation(ret_decl, "passbyvalue"))
+      if (ast_has_annotation(ret_decl, "byval"))
       {
         return true;
       }

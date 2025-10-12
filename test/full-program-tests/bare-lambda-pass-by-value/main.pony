@@ -2,16 +2,16 @@ use "lib:bare-lambda-pass-by-value-additional"
 
 use @pony_exitcode[None](code: I32)
 
-use @call_via_C_clobber_small[None](lambda: @{(\passbyvalue\ S1Small, \passbyvalue\ S1Small)},
-  x: \passbyvalue\ S1Small, y: \passbyvalue\ S1Small)
-use @call_via_C_clobber_large[None](lambda: @{(\passbyvalue\ S1Large, \passbyvalue\ S1Large)},
-  x: \passbyvalue\ S1Large, y: \passbyvalue\ S1Large)
-use @call_via_C_add_small[\passbyvalue\ S1Small](
-  lambda: @{(\passbyvalue\ S1Small, \passbyvalue\ S1Small): \passbyvalue\ S1Small},
-  x: \passbyvalue\ S1Small, y: \passbyvalue\ S1Small)
-use @call_via_C_add_large[\passbyvalue\ S1Large](
-  lambda: @{(\passbyvalue\ S1Large, \passbyvalue\ S1Large): \passbyvalue\ S1Large},
-  x: \passbyvalue\ S1Large, y: \passbyvalue\ S1Large)
+use @call_via_C_clobber_small[None](lambda: @{(\byval\ S1Small, \byval\ S1Small)},
+  x: \byval\ S1Small, y: \byval\ S1Small)
+use @call_via_C_clobber_large[None](lambda: @{(\byval\ S1Large, \byval\ S1Large)},
+  x: \byval\ S1Large, y: \byval\ S1Large)
+use @call_via_C_add_small[\byval\ S1Small](
+  lambda: @{(\byval\ S1Small, \byval\ S1Small): \byval\ S1Small},
+  x: \byval\ S1Small, y: \byval\ S1Small)
+use @call_via_C_add_large[\byval\ S1Large](
+  lambda: @{(\byval\ S1Large, \byval\ S1Large): \byval\ S1Large},
+  x: \byval\ S1Large, y: \byval\ S1Large)
 
 struct S1Small
   embed ar: CFixedSizedArray[I32, 2]
@@ -40,8 +40,8 @@ actor Main
     end
 
   fun test_small_struct[ret_add: I32](): I32 =>
-    let lambda_clobber: @{(\passbyvalue\ S1Small, \passbyvalue\ S1Small)} =
-      @{(x: \passbyvalue\ S1Small, y: \passbyvalue\ S1Small) =>
+    let lambda_clobber: @{(\byval\ S1Small, \byval\ S1Small)} =
+      @{(x: \byval\ S1Small, y: \byval\ S1Small) =>
         for i in x.ar.keys() do
           try
             x.ar.update(i, 1234)?
@@ -50,8 +50,8 @@ actor Main
         end
       }
 
-    let lambda: @{(\passbyvalue\ S1Small, \passbyvalue\ S1Small): \passbyvalue\ S1Small} =
-      @{(x: \passbyvalue\ S1Small, y: \passbyvalue\ S1Small): \passbyvalue\ S1Small =>
+    let lambda: @{(\byval\ S1Small, \byval\ S1Small): \byval\ S1Small} =
+      @{(x: \byval\ S1Small, y: \byval\ S1Small): \byval\ S1Small =>
         var z = S1Small(0)
         for i in x.ar.keys() do
           try
@@ -107,8 +107,8 @@ actor Main
     0
 
   fun test_large_struct[ret_add: I32](): I32 =>
-    let lambda_clobber: @{(\passbyvalue\ S1Large, \passbyvalue\ S1Large)} =
-      @{(x: \passbyvalue\ S1Large, y: \passbyvalue\ S1Large) =>
+    let lambda_clobber: @{(\byval\ S1Large, \byval\ S1Large)} =
+      @{(x: \byval\ S1Large, y: \byval\ S1Large) =>
         for i in x.ar.keys() do
           try
             x.ar.update(i, 1234)?
@@ -117,8 +117,8 @@ actor Main
         end
       }
 
-    let lambda: @{(\passbyvalue\ S1Large, \passbyvalue\ S1Large): \passbyvalue\ S1Large} =
-      @{(x: \passbyvalue\ S1Large, y: \passbyvalue\ S1Large): \passbyvalue\ S1Large =>
+    let lambda: @{(\byval\ S1Large, \byval\ S1Large): \byval\ S1Large} =
+      @{(x: \byval\ S1Large, y: \byval\ S1Large): \byval\ S1Large =>
         var z = S1Large(0)
         for i in x.ar.keys() do
           try
