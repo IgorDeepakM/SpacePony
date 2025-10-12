@@ -110,6 +110,7 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
   ast_t* recv_type = NULL;
   const char* method_name = NULL;
   CtfeValue return_value;
+  ast_t* typeargs = NULL;
 
   switch(ast_id(receiver))
   {
@@ -124,7 +125,14 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
       break;
     }
     case TK_NEWREF:
+    case TK_NEWBEREF:
     {
+      if(ast_id(ast_childidx(receiver, 1)) == TK_TYPEARGS)
+      {
+        typeargs = ast_childidx(receiver, 1);
+        receiver = ast_child(receiver);
+      }
+
       AST_GET_CHILDREN(receiver, typeref, new_name);
       recv_type = ast_type(typeref);
       method_name = ast_name(new_name);
@@ -150,6 +158,12 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
     }
     case TK_FUNREF:
     {
+      if(ast_id(ast_childidx(receiver, 1)) == TK_TYPEARGS)
+      {
+        typeargs = ast_childidx(receiver, 1);
+        receiver = ast_child(receiver);
+      }
+
       AST_GET_CHILDREN(receiver, rec_type, pos_args);
       rec_val = evaluate(opt, errors, rec_type, depth + 1);
       method_name = ast_name(ast_sibling(rec_type));
@@ -158,7 +172,7 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
     }
     default:
       ast_error_frame(errors, ast,
-              "Unsupported function call receiver");
+              "Unsupported function call receiver, '%s'", ast_get_print(receiver));
       throw CtfeFailToEvaluateException();
   }
 
@@ -190,6 +204,28 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
       deferred_reification_t* looked_up = lookup(opt, ast, recv_type, method_name);
       if(looked_up != NULL)
       {
+        // we don't know if this method has been visited before.
+        if(!ast_passes_subtree(&looked_up->ast, opt, PASS_EXPR))
+        {
+          throw CtfeFailToEvaluateException();
+        }
+
+        ast_t* looked_up_ast = looked_up->ast;
+        ast_t* reified_lookedup_ast = NULL;
+
+        if(typeargs != NULL)
+        {
+          ast_t* typeparams = ast_childidx(looked_up_ast, 2);
+          deferred_reify_add_method_typeparams(looked_up, typeparams, typeargs, opt);
+        }
+
+        if(looked_up->method_typeargs != NULL || looked_up->type_typeargs != NULL ||
+           looked_up->thistype != NULL)
+        {
+          reified_lookedup_ast = deferred_reify(looked_up, looked_up_ast, opt);
+          looked_up_ast = reified_lookedup_ast;
+        }
+
         m_frames.push_frame();
 
         if(!rec_val.is_none())
@@ -197,7 +233,7 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
           m_frames.new_value("this", rec_val);
         }
 
-        ast_t* params = ast_childidx(looked_up->ast, 3);
+        ast_t* params = ast_childidx(looked_up_ast, 3);
         if(ast_id(params) != TK_NONE)
         {
           ast_t* curr_param = ast_child(params);
@@ -218,28 +254,28 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
           }
         }
 
-        // we don't know if this method has been visited before.
-        if(ast_passes_subtree(&looked_up->ast, opt, PASS_EXPR))
+        ast_t* seq = ast_childidx(looked_up_ast, 6);
+        if(ast_id(ast_child(seq)) != TK_COMPILE_INTRINSIC)
         {
-          ast_t* seq = ast_childidx(looked_up->ast, 6);
-          if(ast_id(ast_child(seq)) != TK_COMPILE_INTRINSIC)
+          return_value = evaluate(opt, errors, seq, depth + 1);
+          if(return_value.get_control_flow_modifier() == CtfeValue::ControlFlowModifier::Return)
           {
-            return_value = evaluate(opt, errors, seq, depth + 1);
-            if(return_value.get_control_flow_modifier() == CtfeValue::ControlFlowModifier::Return)
-            {
-              return_value.clear_control_flow_modifier();
-            }
+            return_value.clear_control_flow_modifier();
           }
-          else
-          {
-            ast_error_frame(errors, ast,
-              "Unsupported compiler intrinsic function");
-            throw CtfeFailToEvaluateException();
-          }
+        }
+        else
+        {
+          ast_error_frame(errors, ast,
+            "Unsupported compiler intrinsic function");
+          throw CtfeFailToEvaluateException();
         }
 
         m_frames.pop_frame();
 
+        if(reified_lookedup_ast != NULL)
+        {
+          ast_free_unattached(reified_lookedup_ast);
+        }
         deferred_reify_free(looked_up);
       }
     }
@@ -313,6 +349,9 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
 
       return var_ref;
     }
+
+    case TK_VALUEFORMALARG:
+      return evaluate(opt, errors, ast_child(expression), depth);
 
     case TK_CALL:
       return evaluate_method(opt, errors, expression, depth);
@@ -743,7 +782,14 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
   }
   catch(const CtfeException& ex)
   {
-    ast_settype(ast, ast_from(ast_type(expression), TK_ERRORTYPE));
+    if(ast_type(expression) != NULL)
+    {
+      ast_settype(ast, ast_from(ast_type(expression), TK_ERRORTYPE));
+    }
+    else
+    {
+      ast_settype(ast, ast_blank(TK_ERRORTYPE));
+    }
     errorframe_t frame = NULL;
     ast_error_frame(&frame, ast, "could not evaluate compile time expression");
     errorframe_append(&frame, &errors);
