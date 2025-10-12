@@ -178,7 +178,7 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
 
 ### Added FFI pass by value parameters.
 
-* Structs and classes can be passed as value to FFI functions. Add the annotation `\passbyvalue\` before the type in the parameter declaration. Annotation was used because it could be easily added without intruding too much on the existing Pony syntax. It also can coexists with other annotations disregarding the order. 
+* Structs and classes can be passed as value to FFI functions. Add the annotation `\byval\` before the type in the parameter declaration. Annotation was used because it could be easily added without intruding too much on the existing Pony syntax. It also can coexists with other annotations disregarding the order. 
 
 * Note that this needs to be manually added for each CPU and OS target as there is currently no functionality in LLVM that lowers the parameters. For more information read [this](https://yorickpeterse.com/articles/the-mess-that-is-handling-structure-arguments-and-returns-in-llvm/) article. There are currently discussions to add an ABI lowering library to LLVM, [[RFC] An ABI lowering library for LLVM](https://discourse.llvm.org/t/rfc-an-abi-lowering-library-for-llvm/84495/23). If successful and this library is mature, SpacePony will transition to this library because it makes sense. Until then expect bugs as the lowering is tricky and full of corner cases.
 
@@ -192,7 +192,7 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
   * x86-64 Macos, which should be System V ABI for x86-64 just as Linux.
 
   ```pony
-  use @FFI_Func[\passbyvalue\ S](x: \passbyvalue\ S, y: \passbyvalue\ S)
+  use @FFI_Func[\byval\ S](x: \byval\ S, y: \byval\ S)
 
   ...
 
@@ -204,8 +204,8 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
 * Bare lambdas also accepts pass by value parameters.
 
   ```pony
-  let my_lambda: @{(\passbyvalue\ S, \passbyvalue\ S): \passbyvalue\ S} =
-      @{(x: \passbyvalue\ S, y: \passbyvalue\ S): \passbyvalue\ S =>
+  let my_lambda: @{(\byval\ S, \byval\ S): \byval\ S} =
+      @{(x: \byval\ S, y: \byval\ S): \byval\ S =>
         var ret = S
         ret.x = x.x + y.x
         ret

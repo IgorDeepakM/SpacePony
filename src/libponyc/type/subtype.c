@@ -392,12 +392,12 @@ static bool is_reified_fun_sub_fun(ast_t* sub, ast_t* super,
         return false;
       }
 
-      // pass by value return types must have the same passbyvalue annotation
+      // pass by value return types must have the same byval annotation
       // otherwise it is not the same type
-      if(ast_has_annotation(sub_result, "passbyvalue") !=
-         ast_has_annotation(super_result, "passbyvalue"))
+      if(ast_has_annotation(sub_result, "byval") !=
+         ast_has_annotation(super_result, "byval"))
       {
-        ast_error_frame(errorf, sub, "%s and %s has different passbyvalue return type annotations",
+        ast_error_frame(errorf, sub, "%s and %s has different byval return type annotations",
             ast_print_type(sub), ast_print_type(super));
         return false;
       }
@@ -448,12 +448,12 @@ static bool is_reified_fun_sub_fun(ast_t* sub, ast_t* super,
       return false;
     }
 
-    // pass by value types must have the same passbyvalue annotation
+    // pass by value types must have the same byval annotation
     // otherwise it is not the same type
-    if(ast_has_annotation(sub_type, "passbyvalue") !=
-       ast_has_annotation(super_type, "passbyvalue"))
+    if(ast_has_annotation(sub_type, "byval") !=
+       ast_has_annotation(super_type, "byval"))
     {
-      ast_error_frame(errorf, sub, "%s and %s has different passbyvalue annotations",
+      ast_error_frame(errorf, sub, "%s and %s has different byval annotations",
           ast_print_type(sub), ast_print_type(super));
       return false;
     }

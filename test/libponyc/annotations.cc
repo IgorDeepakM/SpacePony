@@ -128,24 +128,24 @@ TEST_F(AnnotationsTest, StandardAnnotationLocationBad)
   DO(test_expected_errors(src, "syntax", errs));
 }
 
-TEST_F(AnnotationsTest, PassByValueWrongLocation)
+TEST_F(AnnotationsTest, ByValWrongLocation)
 {
   const char* src =
-    "class \\passbyvalue\\ A\n";
+    "class \\byval\\ A\n";
 
   TEST_ERROR(src);
 }
 
-TEST_F(AnnotationsTest, PassByValueCorrectLocationLambda)
+TEST_F(AnnotationsTest, ByValCorrectLocationLambda)
 {
   const char* src =
     "class S\n"
     "  var x: U32 = 0\n"
     "\n"
     "class T\n"
-    "  var lambda: @{(\\passbyvalue\\ S): \\passbyvalue\\ S}\n"
+    "  var lambda: @{(\\byval\\ S): \\byval\\ S}\n"
     "  new create() =>\n"
-    "    lambda = @{(s: \\passbyvalue\\ S): \\passbyvalue\\ S =>\n"
+    "    lambda = @{(s: \\byval\\ S): \\byval\\ S =>\n"
     "      s\n"
     "    }\n";
 
