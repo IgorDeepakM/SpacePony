@@ -44,7 +44,9 @@ bool CtfeValueStringLiteral::run_method(pass_opt_t* opt, errorframe_t* errors, a
   {
     if(method_name == "add")
     {
-      CtfeValueStringLiteral r = args[0].get_string_literal().add(args[1].get_string_literal());
+      const CtfeValueStringLiteral& rec_val = args[0].get_string_literal();
+      const CtfeValueStringLiteral& first_arg = args[1].get_string_literal();
+      CtfeValueStringLiteral r = rec_val.add(first_arg);
       result = CtfeValue(r);
       return true;
     }

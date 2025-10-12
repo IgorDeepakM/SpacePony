@@ -9,6 +9,17 @@ struct S1
   var y: U32 = 3030
   embed z: E1 = E1
 
+class G1[T1: (Int & Real[T1] val), T2: (Int & Real[T2] val)]
+  var g1: T1
+  var g2: T2
+
+  new create(a: T1, b: T2) =>
+    g1 = a
+    g2 = b
+
+  fun compute[c: T1](d: T2): T1 =>
+    g1 + T1.from[T2](g2) + c + T1.from[T2](d)
+
 actor Main
   new create(env: Env) =>
     test_literal_int(0)
@@ -19,6 +30,7 @@ actor Main
     test_member_access(100)
     test_tuple(120)
     test_string_literal(140)
+    test_generics(160)
 
 
   fun test_literal_int(exit_add: I32) =>
@@ -362,3 +374,35 @@ actor Main
 
   fun test_string_literal_add(s1: String, s2: String): String =>
     s1 + s2
+
+  fun test_generics(exit_add: I32) =>
+    let c1 = comptime test_method_typeargs[I32, U64](11, 22) end
+    let c2 = test_method_typeargs[I32, U64](11, 22)
+
+    if (c1 != 33) or (c2 != 33) then
+      @pony_exitcode(exit_add + 1)
+    end
+
+    let d1 = comptime test_method_value_typeargs[11, 22]() end
+    let d2 = test_method_value_typeargs[11, 22]()
+
+    if (d1 != 33) or (d2 != 33) then
+      @pony_exitcode(exit_add + 2)
+    end
+
+    let e1 = comptime test_generic_struct() end
+    let e2 = test_generic_struct()
+
+    if (e1 != 99) or (e2 != 99) then
+      @pony_exitcode(exit_add + 3)
+    end
+
+  fun test_method_typeargs[T: (Int & Real[T] val), U: (Int & Real[U] val)](v: T, u: U): T =>
+    v + T.from[U](u)
+
+  fun test_method_value_typeargs[a: I32, b: I32](): I32 =>
+    a + b
+
+  fun test_generic_struct(): I32 =>
+    var g1 = G1[I32, U8](11, 22)
+    g1.compute[33](33)

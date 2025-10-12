@@ -239,98 +239,124 @@ ast_t* CtfeValueIntLiteral::create_ast_literal_node()
 bool CtfeValueIntLiteral::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
   const std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result)
 {
-  CtfeValueIntLiteral rec_val = args[0].get_int_literal();
-
   if(args.size() == 2)
   {
-    CtfeValueIntLiteral first_arg = args[1].get_int_literal();
-
     if(method_name == "add")
     {
+      CtfeValueIntLiteral rec_val = args[0].get_int_literal();
+      CtfeValueIntLiteral first_arg = args[1].get_int_literal();
       CtfeValueIntLiteral r = rec_val.add(first_arg);
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "sub")
     {
+      CtfeValueIntLiteral rec_val = args[0].get_int_literal();
+      CtfeValueIntLiteral first_arg = args[1].get_int_literal();
       CtfeValueIntLiteral r = rec_val.sub(first_arg);
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "mul")
     {
+      CtfeValueIntLiteral rec_val = args[0].get_int_literal();
+      CtfeValueIntLiteral first_arg = args[1].get_int_literal();
       CtfeValueIntLiteral r = rec_val.mul(first_arg);
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "div")
     {
+      CtfeValueIntLiteral rec_val = args[0].get_int_literal();
+      CtfeValueIntLiteral first_arg = args[1].get_int_literal();
       CtfeValueIntLiteral r = rec_val.div(first_arg);
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "op_and")
     {
+      CtfeValueIntLiteral rec_val = args[0].get_int_literal();
+      CtfeValueIntLiteral first_arg = args[1].get_int_literal();
       CtfeValueIntLiteral r = rec_val.op_and(first_arg);
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "op_or")
     {
+      CtfeValueIntLiteral rec_val = args[0].get_int_literal();
+      CtfeValueIntLiteral first_arg = args[1].get_int_literal();
       CtfeValueIntLiteral r = rec_val.op_or(first_arg);
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "op_xor")
     {
+      CtfeValueIntLiteral rec_val = args[0].get_int_literal();
+      CtfeValueIntLiteral first_arg = args[1].get_int_literal();
       CtfeValueIntLiteral r = rec_val.op_xor(first_arg);
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "shl")
     {
+      CtfeValueIntLiteral rec_val = args[0].get_int_literal();
+      CtfeValueIntLiteral first_arg = args[1].get_int_literal();
       CtfeValueIntLiteral r = rec_val.shl(first_arg.m_val.low);
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "shr")
     {
+      CtfeValueIntLiteral rec_val = args[0].get_int_literal();
+      CtfeValueIntLiteral first_arg = args[1].get_int_literal();
       CtfeValueIntLiteral r = rec_val.shr(first_arg.m_val.low);
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "eq")
     {
+      CtfeValueIntLiteral rec_val = args[0].get_int_literal();
+      CtfeValueIntLiteral first_arg = args[1].get_int_literal();
       CtfeValueBool r = rec_val.eq(first_arg);
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "ne")
     {
+      CtfeValueIntLiteral rec_val = args[0].get_int_literal();
+      CtfeValueIntLiteral first_arg = args[1].get_int_literal();
       CtfeValueBool r = rec_val.ne(first_arg);
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "lt")
     {
+      CtfeValueIntLiteral rec_val = args[0].get_int_literal();
+      CtfeValueIntLiteral first_arg = args[1].get_int_literal();
       CtfeValueBool r = rec_val.lt(first_arg);
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "le")
     {
+      CtfeValueIntLiteral rec_val = args[0].get_int_literal();
+      CtfeValueIntLiteral first_arg = args[1].get_int_literal();
       CtfeValueBool r = rec_val.le(first_arg);
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "gt")
     {
+      CtfeValueIntLiteral rec_val = args[0].get_int_literal();
+      CtfeValueIntLiteral first_arg = args[1].get_int_literal();
       CtfeValueBool r = rec_val.gt(first_arg);
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "ge")
     {
+      CtfeValueIntLiteral rec_val = args[0].get_int_literal();
+      CtfeValueIntLiteral first_arg = args[1].get_int_literal();
       CtfeValueBool r = rec_val.ge(first_arg);
       result = CtfeValue(r);
       return true;
@@ -340,12 +366,14 @@ bool CtfeValueIntLiteral::run_method(pass_opt_t* opt, errorframe_t* errors, ast_
   {
     if(method_name == "op_not")
     {
+      CtfeValueIntLiteral rec_val = args[0].get_int_literal();
       CtfeValueIntLiteral r = rec_val.op_not();
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "neg")
     {
+      CtfeValueIntLiteral rec_val = args[0].get_int_literal();
       CtfeValueIntLiteral r = rec_val.negate();
       result = CtfeValue(r);
       return true;

@@ -56,19 +56,25 @@ bool CtfeValueBool::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast
   {
     if(method_name == "op_and")
     {
-      CtfeValueBool r = args[0].get_bool().op_and(args[1].get_bool());
+      const CtfeValueBool& rec_val = args[0].get_bool();
+      const CtfeValueBool& first_arg = args[1].get_bool();
+      CtfeValueBool r = rec_val.op_and(first_arg);
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "op_or")
     {
-      CtfeValueBool r = args[0].get_bool().op_or(args[1].get_bool());
+      const CtfeValueBool& rec_val = args[0].get_bool();
+      const CtfeValueBool& first_arg = args[1].get_bool();
+      CtfeValueBool r = rec_val.op_or(first_arg);
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "op_xor")
     {
-      CtfeValueBool r = args[0].get_bool().op_xor(args[1].get_bool());
+      const CtfeValueBool& rec_val = args[0].get_bool();
+      const CtfeValueBool& first_arg = args[1].get_bool();
+      CtfeValueBool r = rec_val.op_xor(first_arg);
       result = CtfeValue(r);
       return true;
     }
@@ -77,7 +83,8 @@ bool CtfeValueBool::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast
   {
     if(method_name == "op_not")
     {
-      CtfeValueBool r = args[0].get_bool().op_not();
+      const CtfeValueBool& rec_val = args[0].get_bool();
+      CtfeValueBool r = rec_val.op_not();
       result = CtfeValue(r);
       return true;
     }
