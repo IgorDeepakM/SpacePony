@@ -122,7 +122,7 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
   ```
   make sure to use **embed** in order to expand the array in the struct. Using `var buf: CFixedSizedArray[U8, 512]` would be the same `char (*buf)[512]` and Pony would allocate the fixed sized array on the heap.
 
-  It is possible to emulate a C flexible array member (https://en.wikipedia.org/wiki/Flexible_array_member) in Pony. The Array class can be loaded using the CFixedSizedArray.
+  It is possible to emulate a C flexible array member (https://en.wikipedia.org/wiki/Flexible_array_member) that is allocated in C. The Array class can be loaded using the CFixedSizedArray.
 
   ```pony
   struct S
@@ -131,7 +131,7 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
 
   ...
 
-  var s = S
+  var s = @get_struct()
 
   ...
 
