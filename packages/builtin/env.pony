@@ -81,7 +81,7 @@ class val Env
     var i: USize = 0
 
     while
-      let entry = data._apply(i)
+      let entry = data.apply(i)
       not entry.is_null()
     do
       i = i + 1
@@ -97,7 +97,7 @@ class val Env
     var i: USize = 0
 
     while i < len do
-      let entry = data._apply(i = i + 1)
+      let entry = data.apply(i = i + 1)
       array.push(recover String.copy_cstring(entry) end)
     end
 

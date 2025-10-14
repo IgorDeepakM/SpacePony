@@ -31,6 +31,7 @@ actor Main
     test_tuple(120)
     test_string_literal(140)
     test_generics(160)
+    test_pointer(180)
 
 
   fun test_literal_int(exit_add: I32) =>
@@ -406,3 +407,16 @@ actor Main
   fun test_generic_struct(): I32 =>
     var g1 = G1[I32, U8](11, 22)
     g1.compute[33](33)
+
+  fun test_pointer(exit_add: I32) =>
+    let c1 = comptime test_pointer_array() end
+    let c2 = test_pointer_array()
+
+    if (c1 != 44) or (c2 != 44) then
+      @pony_exitcode(exit_add + 1)
+    end
+
+  fun test_pointer_array(): U32 =>
+    var p = Pointer[U32].alloc(10)
+    p.update(9, 44)
+    p.apply(9)

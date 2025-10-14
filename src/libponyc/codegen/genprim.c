@@ -125,7 +125,7 @@ static void pointer_from_any(compile_t* c, reach_type_t* t, reach_method_t* m, v
 static void pointer_alloc(compile_t* c, reach_type_t* t,
   compile_type_t* t_elem)
 {
-  FIND_METHOD("_alloc", TK_NONE);
+  FIND_METHOD("alloc", TK_NONE);
 
   LLVMTypeRef params[2];
   params[0] = c_t->use_type;
@@ -157,7 +157,7 @@ static void pointer_alloc(compile_t* c, reach_type_t* t,
 static void pointer_realloc(compile_t* c, reach_type_t* t,
   compile_type_t* t_elem)
 {
-  FIND_METHOD("_realloc", TK_NONE);
+  FIND_METHOD("realloc", TK_NONE);
 
   LLVMTypeRef params[3];
   params[0] = c_t->use_type;
@@ -223,7 +223,7 @@ static void pointer_apply(compile_t* c, void* data, token_id cap)
   reach_type_t* t_elem = ((reach_type_t**)data)[1];
   compile_type_t* c_t_elem = (compile_type_t*)t_elem->c_type;
 
-  FIND_METHOD("_apply", cap);
+  FIND_METHOD("apply", cap);
 
   LLVMTypeRef params[2];
   params[0] = c_t->use_type;
@@ -253,7 +253,7 @@ static void pointer_update(compile_t* c, reach_type_t* t,
 {
   compile_type_t* c_t_elem = (compile_type_t*)t_elem->c_type;
 
-  FIND_METHOD("_update", TK_NONE);
+  FIND_METHOD("update", TK_NONE);
 
   LLVMTypeRef params[3];
   params[0] = c_t->use_type;

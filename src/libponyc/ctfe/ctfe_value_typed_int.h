@@ -12,6 +12,8 @@
 #include <limits>
 #include <type_traits>
 
+#include <string.h>
+
 
 
 class CtfeValue;
@@ -62,9 +64,12 @@ public:
   T get_value() const { return m_val; }
   uint64_t to_uint64() const { return static_cast<uint64_t>(m_val); }
 
+  void write_to_memory(uint8_t* ptr) const;
+  static CtfeValueTypedInt<T> read_from_memory(uint8_t* ptr);
+
   ast_t* create_ast_literal_node();
 
-  static bool run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
+  static bool run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, CtfeValue &recv,
     const std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result);
 };
 
@@ -133,4 +138,19 @@ ast_t* CtfeValueTypedInt<T>::create_ast_literal_node()
   ast_set_int(new_node, &lit.get_lexint());
 
   return new_node;
+}
+
+
+template <typename T>
+void CtfeValueTypedInt<T>::write_to_memory(uint8_t* ptr) const
+{
+  memcpy(ptr, &m_val, sizeof(T));
+}
+
+template <typename T>
+CtfeValueTypedInt<T> CtfeValueTypedInt<T>::read_from_memory(uint8_t* ptr)
+{
+  T r = 0;
+  memcpy(&r, ptr, sizeof(T));
+  return CtfeValueTypedInt<T>(r);
 }

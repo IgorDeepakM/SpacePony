@@ -38,14 +38,15 @@ ast_t* CtfeValueStringLiteral::create_ast_literal_node(pass_opt_t* opt, ast_t* f
 
 
 bool CtfeValueStringLiteral::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
-  const std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result)
+  CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
+  CtfeValue& result)
 {
-  if(args.size() == 2)
+  if(args.size() == 1)
   {
     if(method_name == "add")
     {
-      const CtfeValueStringLiteral& rec_val = args[0].get_string_literal();
-      const CtfeValueStringLiteral& first_arg = args[1].get_string_literal();
+      const CtfeValueStringLiteral& rec_val = recv.get_string_literal();
+      const CtfeValueStringLiteral& first_arg = args[0].get_string_literal();
       CtfeValueStringLiteral r = rec_val.add(first_arg);
       result = CtfeValue(r);
       return true;

@@ -94,7 +94,7 @@ class Array[A : AnyNoCheck] is Seq[A]
 
     if len > 0 then
       _alloc = len.next_pow2().max(len).max(8)
-      _ptr = Pointer[A]._alloc(_alloc)
+      _ptr = Pointer[A].alloc(_alloc)
     else
       _alloc = 0
       _ptr = Pointer[A]
@@ -108,12 +108,12 @@ class Array[A : AnyNoCheck] is Seq[A]
 
     if len > 0 then
       _alloc = len.next_pow2().max(len).max(8)
-      _ptr = Pointer[A]._alloc(_alloc)
+      _ptr = Pointer[A].alloc(_alloc)
 
       var i: USize = 0
 
       while i < len do
-        _ptr._update(i, from)
+        _ptr.update(i, from)
         i = i + 1
       end
     else
@@ -178,7 +178,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     if _alloc < len then
       _alloc = len.next_pow2().max(len).max(8)
-      _ptr = _ptr._realloc(_alloc, _size)
+      _ptr = _ptr.realloc(_alloc, _size)
     end
 
   fun _element_size(): USize =>
@@ -195,12 +195,12 @@ class Array[A : AnyNoCheck] is Seq[A]
     if _size <= (512 / _ptr._element_size()) then
       if _size.next_pow2() != _alloc.next_pow2() then
         _alloc = _size.next_pow2()
-        let old_ptr = _ptr = Pointer[A]._alloc(_alloc)
+        let old_ptr = _ptr = Pointer[A].alloc(_alloc)
         old_ptr._copy_to(_ptr.convert[A!](), _size)
       end
     elseif _size < _alloc then
       _alloc = _size
-      let old_ptr = _ptr = Pointer[A]._alloc(_alloc)
+      let old_ptr = _ptr = Pointer[A].alloc(_alloc)
       old_ptr._copy_to(_ptr.convert[A!](), _size)
     end
 
@@ -217,7 +217,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     Reads a U8 from offset. This is only allowed for an array of U8s.
     """
     if offset < _size then
-      _ptr.pointer_at_index(offset).convert[U8]()._apply(0)
+      _ptr.pointer_at_index(offset).convert[U8]().apply(0)
     else
       error
     end
@@ -228,7 +228,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u16_bytes = U16(0).bytewidth()
     if (offset + u16_bytes) <= _size then
-      _ptr.pointer_at_index(offset).convert[U16]()._apply(0)
+      _ptr.pointer_at_index(offset).convert[U16]().apply(0)
     else
       error
     end
@@ -239,7 +239,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u32_bytes = U32(0).bytewidth()
     if (offset + u32_bytes) <= _size then
-      _ptr.pointer_at_index(offset).convert[U32]()._apply(0)
+      _ptr.pointer_at_index(offset).convert[U32]().apply(0)
     else
       error
     end
@@ -250,7 +250,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u64_bytes = U64(0).bytewidth()
     if (offset + u64_bytes) <= _size then
-      _ptr.pointer_at_index(offset).convert[U64]()._apply(0)
+      _ptr.pointer_at_index(offset).convert[U64]().apply(0)
     else
       error
     end
@@ -261,7 +261,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u128_bytes = U128(0).bytewidth()
     if (offset + u128_bytes) <= _size then
-      _ptr.pointer_at_index(offset).convert[U128]()._apply(0)
+      _ptr.pointer_at_index(offset).convert[U128]().apply(0)
     else
       error
     end
@@ -271,7 +271,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     Get the i-th element, raising an error if the index is out of bounds.
     """
     if i < _size then
-      _ptr._apply(i)
+      _ptr.apply(i)
     else
       error
     end
@@ -281,7 +281,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     Write a U8 at offset. This is only allowed for an array of U8s.
     """
     if offset < _size then
-      _ptr.pointer_at_index(offset).convert[U8]()._update(0, value)
+      _ptr.pointer_at_index(offset).convert[U8]().update(0, value)
     else
       error
     end
@@ -292,7 +292,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u16_bytes = U16(0).bytewidth()
     if (offset + u16_bytes) <= _size then
-      _ptr.pointer_at_index(offset).convert[U16]()._update(0, value)
+      _ptr.pointer_at_index(offset).convert[U16]().update(0, value)
     else
       error
     end
@@ -303,7 +303,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u32_bytes = U32(0).bytewidth()
     if (offset + u32_bytes) <= _size then
-      _ptr.pointer_at_index(offset).convert[U32]()._update(0, value)
+      _ptr.pointer_at_index(offset).convert[U32]().update(0, value)
     else
       error
     end
@@ -314,7 +314,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u64_bytes = U64(0).bytewidth()
     if (offset + u64_bytes) <= _size then
-      _ptr.pointer_at_index(offset).convert[U64]()._update(0, value)
+      _ptr.pointer_at_index(offset).convert[U64]().update(0, value)
     else
       error
     end
@@ -325,7 +325,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u128_bytes = U128(0).bytewidth()
     if (offset + u128_bytes) <= _size then
-      _ptr.pointer_at_index(offset).convert[U128]()._update(0, value)
+      _ptr.pointer_at_index(offset).convert[U128]().update(0, value)
     else
       error
     end
@@ -335,7 +335,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     Change the i-th element, raising an error if the index is out of bounds.
     """
     if i < _size then
-      _ptr._update(i, consume value)
+      _ptr.update(i, consume value)
     else
       error
     end
@@ -361,7 +361,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     if i <= _size then
       reserve(_size + 1)
       _ptr.pointer_at_index(i)._insert(1, _size - i)
-      _ptr._update(i, consume value)
+      _ptr.update(i, consume value)
       _size = _size + 1
     else
       error
@@ -586,7 +586,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u8_bytes = U8(0).bytewidth()
     reserve(_size + u8_bytes)
-    _ptr.pointer_at_index(_size).convert[U8]()._update(0, value)
+    _ptr.pointer_at_index(_size).convert[U8]().update(0, value)
     _size = _size + u8_bytes
 
   fun ref push_u16[B: (A & Real[B] val & U8) = A](value: U16) =>
@@ -595,7 +595,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u16_bytes = U16(0).bytewidth()
     reserve(_size + u16_bytes)
-    _ptr.pointer_at_index(_size).convert[U16]()._update(0, value)
+    _ptr.pointer_at_index(_size).convert[U16]().update(0, value)
     _size = _size + u16_bytes
 
   fun ref push_u32[B: (A & Real[B] val & U8) = A](value: U32) =>
@@ -604,7 +604,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u32_bytes = U32(0).bytewidth()
     reserve(_size + u32_bytes)
-    _ptr.pointer_at_index(_size).convert[U32]()._update(0, value)
+    _ptr.pointer_at_index(_size).convert[U32]().update(0, value)
     _size = _size + u32_bytes
 
   fun ref push_u64[B: (A & Real[B] val & U8) = A](value: U64) =>
@@ -613,7 +613,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u64_bytes = U64(0).bytewidth()
     reserve(_size + u64_bytes)
-    _ptr.pointer_at_index(_size).convert[U64]()._update(0, value)
+    _ptr.pointer_at_index(_size).convert[U64]().update(0, value)
     _size = _size + u64_bytes
 
   fun ref push_u128[B: (A & Real[B] val & U8) = A](value: U128) =>
@@ -622,7 +622,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     let u128_bytes = U128(0).bytewidth()
     reserve(_size + u128_bytes)
-    _ptr.pointer_at_index(_size).convert[U128]()._update(0, value)
+    _ptr.pointer_at_index(_size).convert[U128]().update(0, value)
     _size = _size + u128_bytes
 
   fun ref push(value: A) =>
@@ -630,7 +630,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     Add an element to the end of the array.
     """
     reserve(_size + 1)
-    _ptr._update(_size, consume value)
+    _ptr.update(_size, consume value)
     _size = _size + 1
 
   fun ref pop(): A^ ? =>
@@ -674,7 +674,7 @@ class Array[A : AnyNoCheck] is Seq[A]
 
     try
       while n < copy_len do
-        _ptr._update(_size + n, seq(offset + n)?)
+        _ptr.update(_size + n, seq(offset + n)?)
 
         n = n + 1
       end
@@ -714,7 +714,7 @@ class Array[A : AnyNoCheck] is Seq[A]
       try
         while n < len do
           if iter.has_next() then
-            _ptr._update(_size + n, iter.next()?)
+            _ptr.update(_size + n, iter.next()?)
           else
             break
           end
@@ -759,7 +759,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     var n = USize(0)
 
     while i < _size do
-      if predicate(_ptr._apply(i), value) then
+      if predicate(_ptr.apply(i), value) then
         if n == nth then
           return i
         end
@@ -787,7 +787,7 @@ class Array[A : AnyNoCheck] is Seq[A]
     var i = USize(0)
 
     while i < _size do
-      if predicate(_ptr._apply(i), value) then
+      if predicate(_ptr.apply(i), value) then
         return true
       end
 
@@ -817,7 +817,7 @@ class Array[A : AnyNoCheck] is Seq[A]
       var n = USize(0)
 
       repeat
-        if predicate(_ptr._apply(i), value) then
+        if predicate(_ptr.apply(i), value) then
           if n == nth then
             return i
           end
@@ -907,9 +907,9 @@ class Array[A : AnyNoCheck] is Seq[A]
       var j = _size - 1
 
       while i < j do
-        let x = _ptr._apply(i)
-        _ptr._update(i, _ptr._apply(j))
-        _ptr._update(j, x)
+        let x = _ptr.apply(i)
+        _ptr.update(i, _ptr.apply(j))
+        _ptr.update(j, x)
         i = i + 1
         j = j - 1
       end
@@ -922,9 +922,9 @@ class Array[A : AnyNoCheck] is Seq[A]
     """
     if (i >= _size) or (j >= _size) then error end
 
-    let x = _ptr._apply(i)
-    _ptr._update(i, _ptr._apply(j))
-    _ptr._update(j, consume x)
+    let x = _ptr.apply(i)
+    _ptr.update(i, _ptr.apply(j))
+    _ptr.update(j, consume x)
 
   fun keys(): ArrayKeys[A, this->Array[A]]^ =>
     """

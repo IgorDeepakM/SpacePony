@@ -1,5 +1,6 @@
 #include "ctfe_runner.h"
 #include "ctfe_value_struct.h"
+
 #include "../ast/astbuild.h"
 #include "../type/subtype.h"
 #include "ponyassert.h"
@@ -10,18 +11,21 @@ using namespace std;
 
 CtfeRunner::CtfeRunner(pass_opt_t* opt)
 {
-  CtfeValue::initialize(opt);
+  CtfeValueTypeRef::initialize(opt);
 }
 
 
 CtfeRunner::~CtfeRunner()
 {
-  for (auto elem : m_allocated)
+  for (auto& elem : m_allocated)
   {
     switch(elem.get_type())
     {
       case CtfeValue::Type::StructRef:
         delete elem.get_struct_ref();
+        break;
+      case CtfeValue::Type::Pointer:
+        elem.get_pointer().delete_array_pointer();
         break;
       default:
         break;
@@ -29,7 +33,7 @@ CtfeRunner::~CtfeRunner()
   }
 }
 
-void CtfeRunner::add_allocated_reference(CtfeValue& ref)
+void CtfeRunner::add_allocated_reference(const CtfeValue& ref)
 {
   m_allocated.push_back(ref);
 }
@@ -141,17 +145,27 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
       if(ast_id(underlying_type) == TK_STRUCT ||
          ast_id(underlying_type) == TK_CLASS)
       {
-        CtfeValueStruct* s = new CtfeValueStruct;
-        rec_val = CtfeValue(s);
-        add_allocated_reference(rec_val);
-
-        ast_t* members = ast_childidx(underlying_type, 4);
-        bool r = populate_struct_members(opt, errors, s, members);
-        if(!r)
+        if(::is_pointer(recv_type))
         {
-          ast_error_frame(errors, ast,
-              "Failed to populate struct/class members");
-          throw CtfeFailToEvaluateException();
+          //Get the type for the pointer
+          ast_t* pointer_type = ast_child(ast_childidx(recv_type, 2));
+          CtfeValueTypeRef typeref = CtfeValueTypeRef(pointer_type);
+          rec_val = CtfeValuePointer(typeref);
+        }
+        else
+        {
+          CtfeValueStruct* s = new CtfeValueStruct;
+          rec_val = CtfeValue(s);
+          add_allocated_reference(rec_val);
+
+          ast_t* members = ast_childidx(underlying_type, 4);
+          bool r = populate_struct_members(opt, errors, s, members);
+          if(!r)
+          {
+            ast_error_frame(errors, ast,
+                "Failed to populate struct/class members");
+            throw CtfeFailToEvaluateException();
+          }
         }
       }
       break;
@@ -176,11 +190,6 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
       throw CtfeFailToEvaluateException();
   }
 
-  if(!rec_val.is_none())
-  {
-    args.push_back(rec_val);
-  }
-
   ast_t* argument = ast_child(positional_args);
   while(argument != NULL)
   {
@@ -193,7 +202,7 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
   if(method_name != NULL)
   {
     CtfeValue result;
-    bool ret = CtfeValue::run_method(opt, errors, ast, args, method_name, result);
+    bool ret = CtfeValue::run_method(opt, errors, ast, rec_val, args, method_name, result, *this);
     if(ret)
     {
       return result;
@@ -237,17 +246,8 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
         if(ast_id(params) != TK_NONE)
         {
           ast_t* curr_param = ast_child(params);
-
-          // We need to begin with the second arguement because the first is
-          // the "class" pointer. Only if there is a such pointer.
-          auto it = args.cbegin();
-          if(!rec_val.is_none())
+          for (const auto& arg: args)
           {
-            ++it;
-          }
-          for (;it != args.end(); ++it)
-          {
-            const CtfeValue arg = *it;
             const char* param_name = ast_name(ast_child(curr_param));
             m_frames.new_value(param_name, arg);
             curr_param = ast_sibling(curr_param);

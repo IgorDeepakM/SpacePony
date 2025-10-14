@@ -5,7 +5,6 @@
 
 #include "ponyassert.h"
 #include "../pass/pass.h"
-#include "../codegen/genopt.h"
 #include "../type/assemble.h"
 
 
@@ -109,6 +108,24 @@ CtfeValue::CtfeValue(const CtfeValueStringLiteral& str):
 }
 
 
+CtfeValue::CtfeValue(const CtfeValuePointer& p):
+  m_type{Type::Pointer},
+  m_ctrlFlow{ControlFlowModifier::None},
+  m_val{p}
+{
+
+}
+
+
+CtfeValue::CtfeValue(const CtfeValueTypeRef& t):
+  m_type{Type::Pointer},
+  m_ctrlFlow{ControlFlowModifier::None},
+  m_val{t}
+{
+
+}
+
+
 CtfeValue& CtfeValue::operator=(const CtfeValue& val)
 {
   m_type = val.m_type;
@@ -174,11 +191,11 @@ void CtfeValue::convert_from_int_literal_to_type(const CtfeValueIntLiteral& val,
   }
   else if(pony_type == "ILong")
   {
-    if(m_long_size == 4)
+    if(get_long_size() == 4)
     {
       m_val = CtfeValueTypedInt<int32_t>(val);
     }
-    else if(m_long_size == 8)
+    else if(get_long_size() == 8)
     {
       m_val = CtfeValueTypedInt<int64_t>(val);
     }
@@ -190,11 +207,11 @@ void CtfeValue::convert_from_int_literal_to_type(const CtfeValueIntLiteral& val,
   }
   else if(pony_type == "ULong")
   {
-    if(m_long_size == 4)
+    if(get_long_size() == 4)
     {
       m_val = CtfeValueTypedInt<uint32_t>(val);
     }
-    else if(m_long_size == 8)
+    else if(get_long_size() == 8)
     {
       m_val = CtfeValueTypedInt<uint64_t>(val);
     }
@@ -206,11 +223,11 @@ void CtfeValue::convert_from_int_literal_to_type(const CtfeValueIntLiteral& val,
   }
   else if(pony_type == "ISize")
   {
-    if(m_size_size == 4)
+    if(get_size_size() == 4)
     {
       m_val = CtfeValueTypedInt<int32_t>(val);
     }
-    else if(m_size_size == 8)
+    else if(get_size_size() == 8)
     {
       m_val = CtfeValueTypedInt<int64_t>(val);
     }
@@ -222,11 +239,11 @@ void CtfeValue::convert_from_int_literal_to_type(const CtfeValueIntLiteral& val,
   }
   else if(pony_type == "USize")
   {
-     if(m_size_size == 4)
+     if(get_size_size() == 4)
     {
       m_val = CtfeValueTypedInt<uint32_t>(val);
     }
-    else if(m_size_size == 8)
+    else if(get_size_size() == 8)
     {
       m_val = CtfeValueTypedInt<uint64_t>(val);
     }
@@ -281,11 +298,11 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
       new_node =  get<CtfeValueTypedInt<CtfeU128Type>>(m_val).create_ast_literal_node();
       break;
     case Type::TypedIntILong:
-      if(m_long_size == 4)
+      if(get_long_size() == 4)
       {
         new_node = get<CtfeValueTypedInt<int32_t>>(m_val).create_ast_literal_node();
       }
-      else if(m_long_size == 8)
+      else if(get_long_size() == 8)
       {
         new_node = get<CtfeValueTypedInt<int64_t>>(m_val).create_ast_literal_node();
       }
@@ -295,11 +312,11 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
       }
       break;
     case Type::TypedIntULong:
-      if(m_long_size == 4)
+      if(get_long_size() == 4)
       {
         new_node = get<CtfeValueTypedInt<uint32_t>>(m_val).create_ast_literal_node();
       }
-      else if(m_long_size == 8)
+      else if(get_long_size() == 8)
       {
         new_node = get<CtfeValueTypedInt<uint64_t>>(m_val).create_ast_literal_node();
       }
@@ -309,11 +326,11 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
       }
       break;
     case Type::TypedIntISize:
-      if(m_size_size == 4)
+      if(get_size_size() == 4)
       {
         new_node = get<CtfeValueTypedInt<int32_t>>(m_val).create_ast_literal_node();
       }
-      else if(m_size_size == 8)
+      else if(get_size_size() == 8)
       {
         new_node = get<CtfeValueTypedInt<int64_t>>(m_val).create_ast_literal_node();
       }
@@ -323,11 +340,11 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
       }
       break;
     case Type::TypedIntUSize:
-      if(m_size_size == 4)
+      if(get_size_size() == 4)
       {
         new_node = get<CtfeValueTypedInt<uint32_t>>(m_val).create_ast_literal_node();
       }
-      else if(m_size_size == 8)
+      else if(get_size_size() == 8)
       {
         new_node = get<CtfeValueTypedInt<uint64_t>>(m_val).create_ast_literal_node();
       }
@@ -359,47 +376,43 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
 
 
 bool CtfeValue::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
-  const std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result)
+  CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
+  CtfeValue& result, CtfeRunner &ctfeRunner)
 {
-  if(args.size() < 1)
-  {
-    return false;
-  }
-
-  switch(args[0].get_type())
+  switch(recv.get_type())
   {
     case CtfeValue::Type::Bool:
-      return CtfeValueBool::run_method(opt, errors, ast, args, method_name, result);
+      return CtfeValueBool::run_method(opt, errors, ast, recv, args, method_name, result);
     case CtfeValue::Type::IntLiteral:
-      return CtfeValueIntLiteral::run_method(opt, errors, ast, args, method_name, result);
+      return CtfeValueIntLiteral::run_method(opt, errors, ast, recv, args, method_name, result);
     case Type::TypedIntI8:
-      return CtfeValueTypedInt<int8_t>::run_method(opt, errors, ast, args, method_name, result);
+      return CtfeValueTypedInt<int8_t>::run_method(opt, errors, ast, recv, args, method_name, result);
     case Type::TypedIntU8:
-      return CtfeValueTypedInt<uint8_t>::run_method(opt, errors, ast, args, method_name, result);
+      return CtfeValueTypedInt<uint8_t>::run_method(opt, errors, ast, recv, args, method_name, result);
     case Type::TypedIntI16:
-      return CtfeValueTypedInt<int16_t>::run_method(opt, errors, ast, args, method_name, result);
+      return CtfeValueTypedInt<int16_t>::run_method(opt, errors, ast, recv, args, method_name, result);
     case Type::TypedIntU16:
-      return CtfeValueTypedInt<uint16_t>::run_method(opt, errors, ast, args, method_name, result);
+      return CtfeValueTypedInt<uint16_t>::run_method(opt, errors, ast, recv, args, method_name, result);
     case Type::TypedIntI32:
-      return CtfeValueTypedInt<int32_t>::run_method(opt, errors, ast, args, method_name, result);
+      return CtfeValueTypedInt<int32_t>::run_method(opt, errors, ast, recv, args, method_name, result);
     case Type::TypedIntU32:
-      return CtfeValueTypedInt<uint32_t>::run_method(opt, errors, ast, args, method_name, result);
+      return CtfeValueTypedInt<uint32_t>::run_method(opt, errors, ast, recv, args, method_name, result);
     case Type::TypedIntI64:
-      return CtfeValueTypedInt<int64_t>::run_method(opt, errors, ast, args, method_name, result);
+      return CtfeValueTypedInt<int64_t>::run_method(opt, errors, ast, recv, args, method_name, result);
     case Type::TypedIntU64:
-      return CtfeValueTypedInt<uint64_t>::run_method(opt, errors, ast, args, method_name, result);
+      return CtfeValueTypedInt<uint64_t>::run_method(opt, errors, ast, recv, args, method_name, result);
     case Type::TypedIntI128:
-      return CtfeValueTypedInt<CtfeI128Type>::run_method(opt, errors, ast, args, method_name, result);
+      return CtfeValueTypedInt<CtfeI128Type>::run_method(opt, errors, ast, recv, args, method_name, result);
     case Type::TypedIntU128:
-      return CtfeValueTypedInt<CtfeU128Type>::run_method(opt, errors, ast, args, method_name, result);
+      return CtfeValueTypedInt<CtfeU128Type>::run_method(opt, errors, ast, recv, args, method_name, result);
     case Type::TypedIntILong:
-      if(m_long_size == 4)
+      if(get_long_size() == 4)
       {
-        return CtfeValueTypedInt<int32_t>::run_method(opt, errors, ast, args, method_name, result);
+        return CtfeValueTypedInt<int32_t>::run_method(opt, errors, ast, recv, args, method_name, result);
       }
-      else if(m_long_size == 8)
+      else if(get_long_size() == 8)
       {
-        return CtfeValueTypedInt<int64_t>::run_method(opt, errors, ast, args, method_name, result);
+        return CtfeValueTypedInt<int64_t>::run_method(opt, errors, ast, recv, args, method_name, result);
       }
       else
       {
@@ -407,13 +420,13 @@ bool CtfeValue::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
       }
       break;
     case Type::TypedIntULong:
-      if(m_long_size == 4)
+      if(get_long_size() == 4)
       {
-        return CtfeValueTypedInt<uint32_t>::run_method(opt, errors, ast, args, method_name, result);
+        return CtfeValueTypedInt<uint32_t>::run_method(opt, errors, ast, recv, args, method_name, result);
       }
-      else if(m_long_size == 8)
+      else if(get_long_size() == 8)
       {
-        return CtfeValueTypedInt<uint64_t>::run_method(opt, errors, ast, args, method_name, result);
+        return CtfeValueTypedInt<uint64_t>::run_method(opt, errors, ast, recv, args, method_name, result);
       }
       else
       {
@@ -421,13 +434,13 @@ bool CtfeValue::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
       }
       break;
     case Type::TypedIntISize:
-      if(m_size_size == 4)
+      if(get_size_size() == 4)
       {
-        return CtfeValueTypedInt<int32_t>::run_method(opt, errors, ast, args, method_name, result);
+        return CtfeValueTypedInt<int32_t>::run_method(opt, errors, ast, recv, args, method_name, result);
       }
-      else if(m_size_size == 8)
+      else if(get_size_size() == 8)
       {
-        return CtfeValueTypedInt<int64_t>::run_method(opt, errors, ast, args, method_name, result);
+        return CtfeValueTypedInt<int64_t>::run_method(opt, errors, ast, recv, args, method_name, result);
       }
       else
       {
@@ -435,13 +448,13 @@ bool CtfeValue::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
       }
       break;
     case Type::TypedIntUSize:
-      if(m_size_size == 4)
+      if(get_size_size() == 4)
       {
-        return CtfeValueTypedInt<uint32_t>::run_method(opt, errors, ast, args, method_name, result);
+        return CtfeValueTypedInt<uint32_t>::run_method(opt, errors, ast, recv, args, method_name, result);
       }
-      else if(m_size_size == 8)
+      else if(get_size_size() == 8)
       {
-        return CtfeValueTypedInt<uint64_t>::run_method(opt, errors, ast, args, method_name, result);
+        return CtfeValueTypedInt<uint64_t>::run_method(opt, errors, ast, recv, args, method_name, result);
       }
       else
       {
@@ -449,7 +462,9 @@ bool CtfeValue::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
       }
       break;
     case Type::StringLiteral:
-      return CtfeValueStringLiteral::run_method(opt, errors, ast, args, method_name, result);
+      return CtfeValueStringLiteral::run_method(opt, errors, ast, recv, args, method_name, result);
+    case Type::Pointer:
+      return CtfeValuePointer::run_method(opt, errors, ast, recv, args, method_name, result, ctfeRunner);
     default:
       break;
   }
@@ -485,41 +500,41 @@ uint64_t CtfeValue::to_uint64() const
     case Type::TypedIntU128:
       return get<CtfeValueTypedInt<CtfeU128Type>>(m_val).to_uint64();
    case Type::TypedIntILong:
-      if(m_long_size == 4)
+      if(get_long_size() == 4)
       {
         return get<CtfeValueTypedInt<int32_t>>(m_val).to_uint64();
       }
-      else if(m_long_size == 8)
+      else if(get_long_size() == 8)
       {
         return get<CtfeValueTypedInt<int64_t>>(m_val).to_uint64();
       }
       break;
     case Type::TypedIntULong:
-      if(m_long_size == 4)
+      if(get_long_size() == 4)
       {
         return get<CtfeValueTypedInt<uint32_t>>(m_val).to_uint64();
       }
-      else if(m_long_size == 8)
+      else if(get_long_size() == 8)
       {
         return get<CtfeValueTypedInt<uint64_t>>(m_val).to_uint64();
       }
       break;
     case Type::TypedIntISize:
-      if(m_size_size == 4)
+      if(get_size_size() == 4)
       {
         return get<CtfeValueTypedInt<int32_t>>(m_val).to_uint64();
       }
-      else if(m_size_size == 8)
+      else if(get_size_size() == 8)
       {
         return get<CtfeValueTypedInt<int64_t>>(m_val).to_uint64();
       }
       break;
     case Type::TypedIntUSize:
-      if(m_size_size == 4)
+      if(get_size_size() == 4)
       {
         return get<CtfeValueTypedInt<uint32_t>>(m_val).to_uint64();
       }
-      else if(m_size_size == 8)
+      else if(get_size_size() == 8)
       {
         return get<CtfeValueTypedInt<uint64_t>>(m_val).to_uint64();
       }
@@ -561,80 +576,193 @@ bool CtfeValue::is_typed_int() const
 }
 
 
-bool CtfeValue::m_static_initialized = false;
-uint8_t CtfeValue::m_long_size = 0;
-uint8_t CtfeValue::m_size_size = 0;
-
-
-void CtfeValue::initialize(pass_opt_t* opt)
-{
-  if(!m_static_initialized)
-  {
-    char* triple = opt->triple;
-    bool ilp32 = target_is_ilp32(triple);
-    bool llp64 = target_is_llp64(triple);
-    bool lp64 = target_is_lp64(triple);
-
-    if(ilp32)
-    {
-      m_long_size = 4;
-      m_size_size = 4;
-    }
-    else if(lp64)
-    {
-      m_long_size = 8;
-      m_size_size = 8;
-    }
-    else if(llp64)
-    {
-      m_long_size = 4;
-      m_size_size = 8;
-    }
-
-    m_static_initialized = true;
-  }
-}
-
-
-string CtfeValue::get_pony_type_name() const
+void CtfeValue::write_to_memory(uint8_t* ptr) const
 {
   switch(m_type)
   {
     case Type::Bool:
-      return "Bool";
-    case Type::IntLiteral:
-      return "Literal";
+      get<CtfeValueBool>(m_val).write_to_memory(ptr);
+      break;
     case Type::TypedIntI8:
-      return "I8";
+      get<CtfeValueTypedInt<int8_t>>(m_val).write_to_memory(ptr);
+      break;
     case Type::TypedIntU8:
-      return "U8";
+      get<CtfeValueTypedInt<uint8_t>>(m_val).write_to_memory(ptr);
+      break;
     case Type::TypedIntI16:
-      return "U16";
+      get<CtfeValueTypedInt<int16_t>>(m_val).write_to_memory(ptr);
+      break;
     case Type::TypedIntU16:
-      return "U16";
+      get<CtfeValueTypedInt<uint16_t>>(m_val).write_to_memory(ptr);
+      break;
     case Type::TypedIntI32:
-      return "I32";
+      get<CtfeValueTypedInt<int32_t>>(m_val).write_to_memory(ptr);
+      break;
     case Type::TypedIntU32:
-      return "U32";
+      get<CtfeValueTypedInt<uint32_t>>(m_val).write_to_memory(ptr);
+      break;
     case Type::TypedIntI64:
-      return "I64";
+      get<CtfeValueTypedInt<int64_t>>(m_val).write_to_memory(ptr);
+      break;
     case Type::TypedIntU64:
-      return "U64";
+      get<CtfeValueTypedInt<uint64_t>>(m_val).write_to_memory(ptr);
+      break;
     case Type::TypedIntI128:
-      return "I128";
+      get<CtfeValueTypedInt<CtfeI128Type>>(m_val).write_to_memory(ptr);
+      break;
     case Type::TypedIntU128:
-      return "U128";
+      get<CtfeValueTypedInt<CtfeU128Type>>(m_val).write_to_memory(ptr);
+      break;
     case Type::TypedIntILong:
-      return "ILong";
+      if(get_long_size() == 4)
+      {
+        get<CtfeValueTypedInt<int32_t>>(m_val).write_to_memory(ptr);
+      }
+      else if(get_long_size() == 8)
+      {
+        get<CtfeValueTypedInt<int64_t>>(m_val).write_to_memory(ptr);
+      }
+      else
+      {
+        pony_assert(false);
+      }
+      break;
     case Type::TypedIntULong:
-      return "ULong";
+      if(get_long_size() == 4)
+      {
+        get<CtfeValueTypedInt<uint32_t>>(m_val).write_to_memory(ptr);
+      }
+      else if(get_long_size() == 8)
+      {
+        get<CtfeValueTypedInt<uint64_t>>(m_val).write_to_memory(ptr);
+      }
+      else
+      {
+        pony_assert(false);
+      }
+      break;
     case Type::TypedIntISize:
-      return "ISize";
+      if(get_size_size() == 4)
+      {
+        get<CtfeValueTypedInt<int32_t>>(m_val).write_to_memory(ptr);
+      }
+      else if(get_size_size() == 8)
+      {
+        get<CtfeValueTypedInt<int64_t>>(m_val).write_to_memory(ptr);
+      }
+      else
+      {
+        pony_assert(false);
+      }
+      break;
     case Type::TypedIntUSize:
-      return "USize";
-    case Type::StructRef:
-      return "Struct Reference";
+      if(get_size_size() == 4)
+      {
+        get<CtfeValueTypedInt<uint32_t>>(m_val).write_to_memory(ptr);
+      }
+      else if(get_size_size() == 8)
+      {
+        get<CtfeValueTypedInt<uint64_t>>(m_val).write_to_memory(ptr);
+      }
+      else
+      {
+        pony_assert(false);
+      }
+      break;
     default:
-      return "No type name found";
+      throw CtfeValueException();
+      break;
   }
+}
+
+
+CtfeValue CtfeValue::read_from_memory(Type type, uint8_t* ptr)
+{
+  switch(type)
+  {
+    case Type::Bool:
+      return CtfeValueBool::read_from_memory(ptr);
+    case Type::TypedIntI8:
+      return CtfeValueTypedInt<int8_t>::read_from_memory(ptr);
+    case Type::TypedIntU8:
+      return CtfeValueTypedInt<uint8_t>::read_from_memory(ptr);
+    case Type::TypedIntI16:
+      return CtfeValueTypedInt<int16_t>::read_from_memory(ptr);
+    case Type::TypedIntU16:
+      return CtfeValueTypedInt<uint16_t>::read_from_memory(ptr);
+    case Type::TypedIntI32:
+      return CtfeValueTypedInt<int32_t>::read_from_memory(ptr);
+    case Type::TypedIntU32:
+      return CtfeValueTypedInt<uint32_t>::read_from_memory(ptr);
+    case Type::TypedIntI64:
+      return CtfeValueTypedInt<int64_t>::read_from_memory(ptr);
+    case Type::TypedIntU64:
+      return CtfeValueTypedInt<uint64_t>::read_from_memory(ptr);
+    case Type::TypedIntI128:
+      return CtfeValueTypedInt<CtfeI128Type>::read_from_memory(ptr);
+    case Type::TypedIntU128:
+      return CtfeValueTypedInt<CtfeU128Type>::read_from_memory(ptr);
+      break;
+    case Type::TypedIntILong:
+      if(get_long_size() == 4)
+      {
+        return CtfeValueTypedInt<int32_t>::read_from_memory(ptr);
+      }
+      else if(get_long_size() == 8)
+      {
+        return CtfeValueTypedInt<int64_t>::read_from_memory(ptr);
+      }
+      else
+      {
+        pony_assert(false);
+      }
+      break;
+    case Type::TypedIntULong:
+      if(get_long_size() == 4)
+      {
+        return CtfeValueTypedInt<uint32_t>::read_from_memory(ptr);
+      }
+      else if(get_long_size() == 8)
+      {
+        return CtfeValueTypedInt<uint64_t>::read_from_memory(ptr);
+      }
+      else
+      {
+        pony_assert(false);
+      }
+      break;
+    case Type::TypedIntISize:
+      if(get_size_size() == 4)
+      {
+        return CtfeValueTypedInt<int32_t>::read_from_memory(ptr);
+      }
+      else if(get_size_size() == 8)
+      {
+        return CtfeValueTypedInt<int64_t>::read_from_memory(ptr);
+      }
+      else
+      {
+        pony_assert(false);
+      }
+      break;
+    case Type::TypedIntUSize:
+      if(get_size_size() == 4)
+      {
+        return CtfeValueTypedInt<uint32_t>::read_from_memory(ptr);
+      }
+      else if(get_size_size() == 8)
+      {
+        return CtfeValueTypedInt<uint64_t>::read_from_memory(ptr);
+      }
+      else
+      {
+        pony_assert(false);
+      }
+      break;
+    default:
+      throw CtfeValueException();
+      break;
+  }
+
+  return CtfeValue();
 }

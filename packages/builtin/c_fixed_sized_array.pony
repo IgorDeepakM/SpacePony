@@ -12,7 +12,7 @@ struct CFixedSizedArray[A: AnyNoCheck, _size: USize]
     let p = cpointer().convert[A]()
     var i: USize = 0
     while i < _size do
-        p._update(i = i + 1, fill_with)
+        p.update(i = i + 1, fill_with)
     end
 
   new init(from: Iterator[A^]) ? =>
@@ -22,7 +22,7 @@ struct CFixedSizedArray[A: AnyNoCheck, _size: USize]
     let p = cpointer().convert[A]()
     var i: USize = 0
     while i < _size do
-      p._update(i = i + 1, from.next()?)
+      p.update(i = i + 1, from.next()?)
     end
 
   new uninitialized() =>
@@ -43,7 +43,7 @@ struct CFixedSizedArray[A: AnyNoCheck, _size: USize]
     """
     if i < _size then
       let p = cpointer().convert[this->A]()
-      p._apply(i)
+      p.apply(i)
     else
       error
     end
@@ -54,7 +54,7 @@ struct CFixedSizedArray[A: AnyNoCheck, _size: USize]
     """
     if i < _size then
       let p = cpointer().convert[A]()
-      p._update(i, consume value)
+      p.update(i, consume value)
     else
       error
     end
