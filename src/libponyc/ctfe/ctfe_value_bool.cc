@@ -49,41 +49,41 @@ ast_t* CtfeValueBool::create_ast_literal_node(pass_opt_t* opt, ast_t* from)
 }
 
 
-bool CtfeValueBool::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
+bool CtfeValueBool::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, CtfeValue& recv,
   const std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result)
 {
-  if(args.size() == 2)
+  if(args.size() == 1)
   {
     if(method_name == "op_and")
     {
-      const CtfeValueBool& rec_val = args[0].get_bool();
-      const CtfeValueBool& first_arg = args[1].get_bool();
+      const CtfeValueBool& rec_val = recv.get_bool();
+      const CtfeValueBool& first_arg = args[0].get_bool();
       CtfeValueBool r = rec_val.op_and(first_arg);
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "op_or")
     {
-      const CtfeValueBool& rec_val = args[0].get_bool();
-      const CtfeValueBool& first_arg = args[1].get_bool();
+      const CtfeValueBool& rec_val = recv.get_bool();
+      const CtfeValueBool& first_arg = args[0].get_bool();
       CtfeValueBool r = rec_val.op_or(first_arg);
       result = CtfeValue(r);
       return true;
     }
     else if(method_name == "op_xor")
     {
-      const CtfeValueBool& rec_val = args[0].get_bool();
-      const CtfeValueBool& first_arg = args[1].get_bool();
+      const CtfeValueBool& rec_val = recv.get_bool();
+      const CtfeValueBool& first_arg = args[0].get_bool();
       CtfeValueBool r = rec_val.op_xor(first_arg);
       result = CtfeValue(r);
       return true;
     }
   }
-  else if(args.size() == 1)
+  else if(args.size() == 0)
   {
     if(method_name == "op_not")
     {
-      const CtfeValueBool& rec_val = args[0].get_bool();
+      const CtfeValueBool& rec_val = recv.get_bool();
       CtfeValueBool r = rec_val.op_not();
       result = CtfeValue(r);
       return true;
@@ -92,3 +92,17 @@ bool CtfeValueBool::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast
 
   return false;
 }
+
+
+ void CtfeValueBool::write_to_memory(uint8_t* ptr) const
+ {
+   uint8_t b = static_cast<uint8_t>(m_val);
+   *ptr = b;
+ }
+
+
+ CtfeValueBool CtfeValueBool::read_from_memory(uint8_t* ptr)
+ {
+   uint8_t b = *ptr;
+   return CtfeValueBool(static_cast<bool>(b));
+ }

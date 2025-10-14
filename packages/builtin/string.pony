@@ -57,7 +57,7 @@ actor Main
     """
     _size = 0
     _alloc = len.min(len.max_value() - 1) + 1
-    _ptr = Pointer[U8]._alloc(_alloc)
+    _ptr = Pointer[U8].alloc(_alloc)
     _set(0, 0)
 
   new val from_array(data: Array[U8] val) =>
@@ -89,7 +89,7 @@ actor Main
     if str.is_null() then
       _size = 0
       _alloc = 1
-      _ptr = Pointer[U8]._alloc(_alloc)
+      _ptr = Pointer[U8].alloc(_alloc)
       _set(0, 0)
     else
       _size = len
@@ -111,12 +111,12 @@ actor Main
     if str.is_null() then
       _size = 0
       _alloc = 1
-      _ptr = Pointer[U8]._alloc(_alloc)
+      _ptr = Pointer[U8].alloc(_alloc)
       _set(0, 0)
     else
       var i: USize = 0
 
-      while str._apply(i) != 0 do
+      while str.apply(i) != 0 do
         i = i + 1
       end
 
@@ -132,12 +132,12 @@ actor Main
     if str.is_null() then
       _size = 0
       _alloc = 1
-      _ptr = Pointer[U8]._alloc(_alloc)
+      _ptr = Pointer[U8].alloc(_alloc)
       _set(0, 0)
     else
       _size = len
       _alloc = _size + 1
-      _ptr = Pointer[U8]._alloc(_alloc)
+      _ptr = Pointer[U8].alloc(_alloc)
       str._copy_to(_ptr, _alloc)
     end
 
@@ -151,18 +151,18 @@ actor Main
     if str.is_null() then
       _size = 0
       _alloc = 1
-      _ptr = Pointer[U8]._alloc(_alloc)
+      _ptr = Pointer[U8].alloc(_alloc)
       _set(0, 0)
     else
       var i: USize = 0
 
-      while str._apply(i) != 0 do
+      while str.apply(i) != 0 do
         i = i + 1
       end
 
       _size = i
       _alloc = i + 1
-      _ptr = Pointer[U8]._alloc(_alloc)
+      _ptr = Pointer[U8].alloc(_alloc)
       str._copy_to(_ptr, _alloc)
     end
 
@@ -173,7 +173,7 @@ actor Main
     let encoded = _UTF32Encoder.encode(value)
     _size = encoded._1
     _alloc = _size + 1
-    _ptr = Pointer[U8]._alloc(_alloc)
+    _ptr = Pointer[U8].alloc(_alloc)
     _set(0, encoded._2)
     if encoded._1 > 1 then
       _set(1, encoded._3)
@@ -231,9 +231,9 @@ actor Main
       return _ptr
     end
 
-    let ptr = Pointer[U8]._alloc(_size + 1)
+    let ptr = Pointer[U8].alloc(_size + 1)
     _ptr._copy_to(ptr._unsafe(), _size)
-    ptr._update(_size, 0)
+    ptr.update(_size, 0)
     ptr
 
   fun val array(): Array[U8] val =>
@@ -272,7 +272,7 @@ actor Main
     var n = USize(0)
 
     while i < j do
-      if (_ptr._apply(i) and 0xC0) != 0x80 then
+      if (_ptr.apply(i) and 0xC0) != 0x80 then
         n = n + 1
       end
 
@@ -300,7 +300,7 @@ actor Main
       else
         _alloc = min_alloc.min(max)
       end
-      _ptr = _ptr._realloc(_alloc, _size)
+      _ptr = _ptr.realloc(_alloc, _size)
     end
 
   fun ref compact() =>
@@ -311,13 +311,13 @@ actor Main
     if (_size + 1) <= 512 then
       if (_size + 1).next_pow2() != _alloc.next_pow2() then
         _alloc = (_size + 1).next_pow2()
-        let old_ptr = _ptr = Pointer[U8]._alloc(_alloc)
+        let old_ptr = _ptr = Pointer[U8].alloc(_alloc)
         old_ptr._copy_to(_ptr, _size)
         _set(_size, 0)
       end
     elseif (_size + 1) < _alloc then
       _alloc = (_size + 1)
-      let old_ptr = _ptr = Pointer[U8]._alloc(_alloc)
+      let old_ptr = _ptr = Pointer[U8].alloc(_alloc)
       old_ptr._copy_to(_ptr, _size)
       _set(_size, 0)
     end
@@ -330,7 +330,7 @@ actor Main
     """
     var s: USize = 0
 
-    while (s < _alloc) and (_ptr._apply(s) > 0) do
+    while (s < _alloc) and (_ptr.apply(s) > 0) do
       s = s + 1
     end
 
@@ -483,7 +483,7 @@ actor Main
     which may be present earlier in the content of the string.
     If you need a null-terminated copy of this string, use the clone method.
     """
-    (_alloc > 0) and (_alloc != _size) and (_ptr._apply(_size) == 0)
+    (_alloc > 0) and (_alloc != _size) and (_ptr.apply(_size) == 0)
 
   fun utf32(offset: ISize): (U32, U8) ? =>
     """
@@ -497,7 +497,7 @@ actor Main
     let err: (U32, U8) = (0xFFFD, 1)
 
     if i >= _size then error end
-    let c = _ptr._apply(i)
+    let c = _ptr.apply(i)
 
     if c < 0x80 then
       // 1-byte
@@ -511,7 +511,7 @@ actor Main
         // Not enough bytes.
         err
       else
-        let c2 = _ptr._apply(i + 1)
+        let c2 = _ptr.apply(i + 1)
         if (c2 and 0xC0) != 0x80 then
           // Not a continuation byte.
           err
@@ -525,8 +525,8 @@ actor Main
         // Not enough bytes.
         err
       else
-        let c2 = _ptr._apply(i + 1)
-        let c3 = _ptr._apply(i + 2)
+        let c2 = _ptr.apply(i + 1)
+        let c3 = _ptr.apply(i + 2)
         if
           // Not continuation bytes.
           ((c2 and 0xC0) != 0x80) or
@@ -545,9 +545,9 @@ actor Main
         // Not enough bytes.
         err
       else
-        let c2 = _ptr._apply(i + 1)
-        let c3 = _ptr._apply(i + 2)
-        let c4 = _ptr._apply(i + 3)
+        let c2 = _ptr.apply(i + 1)
+        let c3 = _ptr.apply(i + 2)
+        let c4 = _ptr.apply(i + 3)
         if
           // Not continuation bytes.
           ((c2 and 0xC0) != 0x80) or
@@ -575,7 +575,7 @@ actor Main
     """
     Returns the i-th byte. Raise an error if the index is out of bounds.
     """
-    if i < _size then _ptr._apply(i) else error end
+    if i < _size then _ptr.apply(i) else error end
 
   fun ref update(i: USize, value: U8): U8 ? =>
     """
@@ -649,7 +649,7 @@ actor Main
       var j: USize = 0
 
       let same = while j < s._size do
-        if _ptr._apply(i + j) != s._ptr._apply(j) then
+        if _ptr.apply(i + j) != s._ptr.apply(j) then
           break false
         end
         j = j + 1
@@ -680,7 +680,7 @@ actor Main
       var j: USize = 0
 
       let same = while j < s._size do
-        if _ptr._apply(i + j) != s._ptr._apply(j) then
+        if _ptr.apply(i + j) != s._ptr.apply(j) then
           break false
         end
         j = j + 1
@@ -708,7 +708,7 @@ actor Main
       var j: USize = 0
 
       let same = while j < s._size do
-        if _ptr._apply(i + j) != s._ptr._apply(j) then
+        if _ptr.apply(i + j) != s._ptr.apply(j) then
           break false
         end
         j = j + 1
@@ -811,7 +811,7 @@ actor Main
     var i: USize = 0
 
     while i < _size do
-      let c = _ptr._apply(i)
+      let c = _ptr.apply(i)
 
       if (c >= 0x41) and (c <= 0x5A) then
         _set(i, c + 0x20)
@@ -836,7 +836,7 @@ actor Main
     var i: USize = 0
 
     while i < _size do
-      let c = _ptr._apply(i)
+      let c = _ptr.apply(i)
 
       if (c >= 0x61) and (c <= 0x7A) then
         _set(i, c - 0x20)
@@ -863,8 +863,8 @@ actor Main
       var j = _size - 1
 
       while i < j do
-        let x = _ptr._apply(i)
-        _set(i, _ptr._apply(j))
+        let x = _ptr.apply(i)
+        _set(i, _ptr.apply(j))
         _set(j, x)
         i = i + 1
         j = j - 1
@@ -910,7 +910,7 @@ actor Main
     Removes a byte from the beginning of the string.
     """
     if _size > 0 then
-      let value = _ptr._apply(0)
+      let value = _ptr.apply(0)
       @memmove(_ptr.usize(), _ptr.usize() + 1, _size)
       _size = _size - 1
       value
@@ -1041,7 +1041,7 @@ actor Main
       var i = start
 
       while i < new_size do
-        _set(i, _ptr._apply(i + fragment_len))
+        _set(i, _ptr.apply(i + fragment_len))
         i = i + 1
       end
 
@@ -1202,7 +1202,7 @@ actor Main
             var j = U8(0)
 
             while j < len do
-              cur.push(_ptr._apply(i + j.usize()))
+              cur.push(_ptr.apply(i + j.usize()))
               j = j + 1
             end
           end
@@ -1213,7 +1213,7 @@ actor Main
 
       // Add all remaining bytes to the current string.
       while i < _size do
-        cur.push(_ptr._apply(i))
+        cur.push(_ptr.apply(i))
         i = i + 1
       end
 
@@ -1372,8 +1372,8 @@ actor Main
         return Greater
       end
 
-      let c1 = _ptr._apply(j)
-      let c2 = that._ptr._apply(k)
+      let c1 = _ptr.apply(j)
+      let c2 = that._ptr.apply(k)
       if
         not ((c1 == c2) or
           (ignore_case and ((c1 or 0x20) == (c2 or 0x20)) and
@@ -1408,9 +1408,9 @@ actor Main
     var i: USize = 0
 
     while i < len do
-      if _ptr._apply(i) < that._ptr._apply(i) then
+      if _ptr.apply(i) < that._ptr.apply(i) then
         return true
-      elseif _ptr._apply(i) > that._ptr._apply(i) then
+      elseif _ptr.apply(i) > that._ptr.apply(i) then
         return false
       end
       i = i + 1
@@ -1426,9 +1426,9 @@ actor Main
     var i: USize = 0
 
     while i < len do
-      if _ptr._apply(i) < that._ptr._apply(i) then
+      if _ptr.apply(i) < that._ptr.apply(i) then
         return true
-      elseif _ptr._apply(i) > that._ptr._apply(i) then
+      elseif _ptr.apply(i) > that._ptr.apply(i) then
         return false
       end
       i = i + 1
@@ -1494,7 +1494,7 @@ actor Main
     var had_digit = false
 
     // Check for leading minus
-    let minus = (index < _size) and (_ptr._apply(index) == '-')
+    let minus = (index < _size) and (_ptr.apply(index) == '-')
     if minus then
       if A(-1) > A(0) then
         // We're reading an unsigned type, negative not allowed, int not found
@@ -1509,7 +1509,7 @@ actor Main
 
     // Process characters
     while index < _size do
-      let char: A = A(0).from[U8](_ptr._apply(index))
+      let char: A = A(0).from[U8](_ptr.apply(index))
       if char == '_' then
         index = index + 1
         continue
@@ -1573,8 +1573,8 @@ actor Main
       return (10, 0)
     end
 
-    let lead_char = _ptr._apply(index)
-    let base_char = _ptr._apply(index + 1) and not 0x20
+    let lead_char = _ptr.apply(index)
+    let base_char = _ptr.apply(index + 1) and not 0x20
 
     if (lead_char == '0') and (base_char == 'B') then
       return (2, 2)
@@ -1680,7 +1680,7 @@ actor Main
     """
     Unsafe update, used internally.
     """
-    _ptr._update(i, value)
+    _ptr.update(i, value)
 
 class StringBytes is Iterator[U8]
   let _string: String box

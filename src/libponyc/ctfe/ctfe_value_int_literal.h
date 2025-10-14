@@ -10,17 +10,6 @@
 #include <type_traits>
 
 
-#if defined(PLATFORM_IS_WINDOWS)
-  #include <__msvc_int128.hpp>
-  using CtfeI128Type = std::_Signed128;
-  using CtfeU128Type = std::_Unsigned128;
-#else
-  using CtfeI128Type = __int128;
-  using CtfeU128Type = unsigned __int128;
-#endif
-
-
-
 class CtfeValue;
 class CtfeValueBool;
 
@@ -75,7 +64,7 @@ public:
 
   ast_t* create_ast_literal_node();
 
-  static bool run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
+  static bool run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, CtfeValue& recv,
     const std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result);
 };
 

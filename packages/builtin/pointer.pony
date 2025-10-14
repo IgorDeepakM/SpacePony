@@ -23,13 +23,13 @@ struct Pointer[A: AnyNoCheck]
     """
     compile_intrinsic
 
-  new _alloc(len: USize) =>
+  new alloc(len: USize) =>
     """
     Space for len instances of A.
     """
     compile_intrinsic
 
-  fun ref _realloc(len: USize, copy: USize): Pointer[A] =>
+  fun ref realloc(len: USize, copy: USize): Pointer[A] =>
     """
     Keep the contents, but reserve space for len instances of A.
     """
@@ -47,13 +47,13 @@ struct Pointer[A: AnyNoCheck]
     """
     compile_intrinsic
 
-  fun _apply(i: USize): this->A =>
+  fun apply(i: USize): this->A =>
     """
     Retrieve index i.
     """
     compile_intrinsic
 
-  fun ref _update(i: USize, value: A!): A^ =>
+  fun ref update(i: USize, value: A!): A^ =>
     """
     Set index i and return the previous value.
     """

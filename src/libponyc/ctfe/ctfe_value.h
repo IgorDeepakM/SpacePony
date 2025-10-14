@@ -1,10 +1,13 @@
 #pragma once
 
+#include "ctfe_types.h"
 #include "ctfe_value_int_literal.h"
 #include "ctfe_value_typed_int.h"
 #include "ctfe_value_bool.h"
 #include "ctfe_value_tuple.h"
 #include "ctfe_value_string_literal.h"
+#include "ctfe_value_pointer.h"
+#include "ctfe_value_type_ref.h"
 
 #include "../ast/ast.h"
 
@@ -19,31 +22,7 @@ class CtfeValueStruct;
 class CtfeValue
 {
 public:
-  enum class Type
-  {
-    None,
-    Bool,
-    IntLiteral,
-    TypedIntI8,
-    TypedIntU8,
-    TypedIntI16,
-    TypedIntU16,
-    TypedIntI32,
-    TypedIntU32,
-    TypedIntI64,
-    TypedIntU64,
-    TypedIntI128,
-    TypedIntU128,
-    TypedIntILong,
-    TypedIntULong,
-    TypedIntISize,
-    TypedIntUSize,
-    RealLiteral,
-    String,
-    StructRef,
-    Tuple,
-    StringLiteral
-  };
+  using Type = CtfeValueType;
 
   enum class ControlFlowModifier
   {
@@ -55,10 +34,6 @@ public:
   };
 
 private:
-  static bool m_static_initialized;
-  static uint8_t m_long_size;
-  static uint8_t m_size_size;
-
   Type m_type;
   ControlFlowModifier m_ctrlFlow;
 
@@ -77,7 +52,9 @@ private:
     CtfeValueTypedInt<CtfeU128Type>,
     CtfeValueStruct*,
     CtfeValueTuple,
-    CtfeValueStringLiteral> m_val;
+    CtfeValueStringLiteral,
+    CtfeValuePointer,
+    CtfeValueTypeRef> m_val;
 
   void convert_from_int_literal_to_type(const CtfeValueIntLiteral& val,
     const std::string& pony_type);
@@ -98,6 +75,8 @@ public:
   CtfeValue(CtfeValueStruct* ref);
   CtfeValue(const CtfeValueTuple& val);
   CtfeValue(const CtfeValueStringLiteral& str);
+  CtfeValue(const CtfeValuePointer& p);
+  CtfeValue(const CtfeValueTypeRef& t);
 
   CtfeValue& operator=(const CtfeValue& val);
 
@@ -111,31 +90,39 @@ public:
   CtfeValueBool& get_bool() { return std::get<CtfeValueBool>(m_val); }
   CtfeValueStringLiteral& get_string_literal() { return std::get<CtfeValueStringLiteral>(m_val); }
   CtfeValueTuple& get_tuple() { return std::get<CtfeValueTuple>(m_val); }
+  CtfeValuePointer& get_pointer() { return std::get<CtfeValuePointer>(m_val); }
+  CtfeValueTypeRef& get_type_ref() { return std::get<CtfeValueTypeRef>(m_val); }
 
   const CtfeValueIntLiteral& get_int_literal() const { return std::get<CtfeValueIntLiteral>(m_val); };
   template <typename T> const CtfeValueTypedInt<T>& get_typed_int() const;
   const CtfeValueBool& get_bool() const { return std::get<CtfeValueBool>(m_val); }
   const CtfeValueStringLiteral& get_string_literal() const { return std::get<CtfeValueStringLiteral>(m_val); }
   const CtfeValueTuple& get_tuple() const { return std::get<CtfeValueTuple>(m_val); }
+  const CtfeValuePointer& get_pointer() const { return std::get<CtfeValuePointer>(m_val); }
+  const CtfeValueTypeRef& get_type_ref() const { return std::get<CtfeValueTypeRef>(m_val); }
 
   uint64_t to_uint64() const;
+  void write_to_memory(uint8_t* ptr) const;
+  static CtfeValue read_from_memory(Type type, uint8_t* ptr);
 
   CtfeValueStruct* get_struct_ref() const { return std::get<CtfeValueStruct*>(m_val); }
 
   ast_t* create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors, ast_t* from);
 
-  std::string get_pony_type_name() const;
+  std::string get_pony_type_name() const { return CtfeValueTypeRef::get_pony_type_name(m_type); }
 
   static bool run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
-    const std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result);
+    CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
+    CtfeValue& result, CtfeRunner &ctfeRunner);
 
   ControlFlowModifier get_control_flow_modifier() const { return m_ctrlFlow; }
   void set_control_flow_modifier(ControlFlowModifier val) { m_ctrlFlow = val; }
   void clear_control_flow_modifier() { m_ctrlFlow = ControlFlowModifier::None; }
 
-  static void initialize(pass_opt_t* opt);
-  static uint8_t get_long_size() { return m_long_size; }
-  static uint8_t get_size_size() { return m_size_size; }
+  static uint8_t get_long_size() { return CtfeValueTypeRef::get_long_size(); }
+  static uint8_t get_size_size() { return CtfeValueTypeRef::get_size_size(); }
+
+  size_t get_size_of_type(Type type) { return CtfeValueTypeRef::get_size_of_type(m_type); }
 };
 
 
