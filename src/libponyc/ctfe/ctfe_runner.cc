@@ -33,7 +33,7 @@ CtfeRunner::~CtfeRunner()
   }
 }
 
-void CtfeRunner::add_allocated_reference(CtfeValue& ref)
+void CtfeRunner::add_allocated_reference(const CtfeValue& ref)
 {
   m_allocated.push_back(ref);
 }

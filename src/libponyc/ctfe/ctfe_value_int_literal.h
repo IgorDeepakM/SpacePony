@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ctfe_types.h"
+
 #include "../ast/lexint.h"
 #include "../ast/ast.h"
 #include "../pass/pass.h"

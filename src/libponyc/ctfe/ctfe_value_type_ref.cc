@@ -1,7 +1,7 @@
 #include "ctfe_value_type_ref.h"
 #include "ctfe_exception.h"
 
-#include "..\type\subtype.h"
+#include "../type/subtype.h"
 #include "../codegen/genopt.h"
 
 #include <string>

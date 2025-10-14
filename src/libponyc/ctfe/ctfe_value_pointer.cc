@@ -2,6 +2,7 @@
 #include "ctfe_value.h"
 #include "ctfe_runner.h"
 #include "ctfe_exception.h"
+#include "ctfe_types.h"
 
 #include <algorithm>
 

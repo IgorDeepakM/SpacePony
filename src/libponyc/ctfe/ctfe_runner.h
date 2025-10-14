@@ -25,5 +25,5 @@ public:
   CtfeRunner(pass_opt_t* opt);
   ~CtfeRunner();
   bool run(pass_opt_t* opt, ast_t** astp);
-  void add_allocated_reference(CtfeValue& ref);
+  void add_allocated_reference(const CtfeValue& ref);
 };
