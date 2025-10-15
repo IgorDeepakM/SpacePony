@@ -14,7 +14,7 @@ extern "C" bool expr_comptime(pass_opt_t* opt, ast_t** astp)
   // We set this here as we may not yet be able to evaluate the expressions
   // due to references, but we need to know for assignment what we believe
   // to be a compile tim expression.
-  assert(ast_id(ast) == TK_COMPTIME);
+  pony_assert(ast_id(ast) == TK_COMPTIME);
 
   ast_t* expression = ast_child(ast);
   ast_t* expr_type = ast_type(expression);
