@@ -10,7 +10,7 @@
 #include "../type/subtype.h"
 #include "../../libponyrt/gc/serialise.h"
 #include "../../libponyrt/mem/pool.h"
-#include "../ctfe/ctfe_runner.h"
+#include "../ctfe/ctfe_reach.h"
 #include "ponyassert.h"
 #include <stdio.h>
 #include <string.h>
@@ -1393,12 +1393,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
 
     case TK_COMPTIME:
     {
-      ast_t** astp = &ast;
-      ast_unfreeze(ast_parent(ast));
-      CtfeRunner ctfeRunner(opt);
-      ctfeRunner.run(opt, astp);
-      ast = *astp;
-      ast_freeze(ast_parent(ast));
+      reach_comptime(opt, &ast);
       return;
     }
 
