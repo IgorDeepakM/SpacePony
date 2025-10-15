@@ -1,3 +1,5 @@
+use "collections"
+
 use @pony_exitcode[None](code: I32)
 use @printf[I32](fmt: Pointer[U8] tag, ...)
 
@@ -141,6 +143,13 @@ actor Main
       @pony_exitcode(exit_add + 3)
     end
 
+    x1 = comptime while_but_as_for_loop(10) end
+    x2 = while_but_as_for_loop(10)
+
+    if (x1 != 9) or (x2 != 9) then
+      @pony_exitcode(exit_add + 3)
+    end
+
   fun standard_while(r: ILong): ILong =>
     var tt: ILong = 0
 
@@ -167,6 +176,15 @@ actor Main
       if tt >= (r / 2) then
         break tt
       end
+    end
+
+    tt
+
+  fun while_but_as_for_loop(r: ILong): ILong =>
+    var tt: ILong = 0
+
+    for i in Range[ILong](1, r) do
+      tt = tt + 1
     end
 
     tt
@@ -412,11 +430,21 @@ actor Main
     let c1 = comptime test_pointer_array() end
     let c2 = test_pointer_array()
 
-    if (c1 != 44) or (c2 != 44) then
+    if (c1 != 45) or (c2 != 45) then
       @pony_exitcode(exit_add + 1)
     end
 
   fun test_pointer_array(): U32 =>
     var p = Pointer[U32].alloc(10)
-    p.update(9, 44)
-    p.apply(9)
+
+    for i in Range(0, 10) do
+      p.update(i, i.u32())
+    end
+
+    var sum: U32 = 0
+
+    for i in Range(0, 10) do
+      sum = sum + p.apply(i)
+    end
+
+    sum

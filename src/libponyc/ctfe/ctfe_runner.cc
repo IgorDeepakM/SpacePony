@@ -1,5 +1,6 @@
 #include "ctfe_runner.h"
 #include "ctfe_value_struct.h"
+#include "ctfe_exception.h"
 
 #include "../ast/astbuild.h"
 #include "../type/subtype.h"
@@ -199,86 +200,135 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
     argument = ast_sibling(argument);
   }
 
-  if(method_name != NULL)
+  pony_assert(method_name != NULL);
+
+  CtfeValue result;
+  bool ret = CtfeValue::run_method(opt, errors, ast, rec_val, args, method_name, result, *this);
+  if(ret)
   {
-    CtfeValue result;
-    bool ret = CtfeValue::run_method(opt, errors, ast, rec_val, args, method_name, result, *this);
-    if(ret)
+    return result;
+  }
+
+  pony_assert(recv_type != NULL);
+
+  deferred_reification_t* looked_up = lookup(opt, ast, recv_type, method_name);
+  if(looked_up == NULL)
+  {
+    ast_error_frame(errors, ast,
+      "CTFE: could not find the method '%s'", method_name);
+    throw CtfeFailToEvaluateException();
+  }
+
+  ast_t* looked_up_ast = looked_up->ast;
+  ast_t* reified_lookedup_ast = NULL;
+  bool pass_frame_pop = false;
+  bool ctfe_frame_pop = false;
+  bool failed = false;
+
+  typecheck_t* t = &opt->check;
+  ast_t* module = ast_nearest(looked_up_ast, TK_MODULE);
+  ast_t* package = ast_parent(module);
+  pony_assert(module != NULL);
+  pony_assert(package != NULL);
+
+  pass_frame_pop = true;
+  frame_push(t, (ast_t*)ast_data(recv_type));
+  frame_push(t, package);
+  frame_push(t, module);
+
+  // we don't know if this method has been visited before.
+  if(!ast_passes_subtree(&looked_up_ast, opt, PASS_EXPR))
+  {
+    failed = true;
+    goto cleanup;
+  }
+
+  frame_pop(t);
+  frame_pop(t);
+  frame_pop(t);
+  pass_frame_pop = false;
+
+  if(typeargs != NULL)
+  {
+    ast_t* typeparams = ast_childidx(looked_up_ast, 2);
+    deferred_reify_add_method_typeparams(looked_up, typeparams, typeargs, opt);
+  }
+
+  if(looked_up->method_typeargs != NULL || looked_up->type_typeargs != NULL ||
+      looked_up->thistype != NULL)
+  {
+    reified_lookedup_ast = deferred_reify(looked_up, looked_up_ast, opt);
+    looked_up_ast = reified_lookedup_ast;
+  }
+
+  ctfe_frame_pop = true;
+  m_frames.push_frame();
+
+  if(!rec_val.is_none())
+  {
+    m_frames.new_value("this", rec_val);
+  }
+
+  ast_t* params = ast_childidx(looked_up_ast, 3);
+  if(ast_id(params) != TK_NONE)
+  {
+    ast_t* curr_param = ast_child(params);
+    for (const auto& arg: args)
     {
-      return result;
+      const char* param_name = ast_name(ast_child(curr_param));
+      m_frames.new_value(param_name, arg);
+      curr_param = ast_sibling(curr_param);
     }
+  }
 
-    if(recv_type != NULL)
+  ast_t* seq = ast_childidx(looked_up_ast, 6);
+  if(ast_id(ast_child(seq)) != TK_COMPILE_INTRINSIC)
+  {
+    try
     {
-      deferred_reification_t* looked_up = lookup(opt, ast, recv_type, method_name);
-      if(looked_up != NULL)
-      {
-        // we don't know if this method has been visited before.
-        if(!ast_passes_subtree(&looked_up->ast, opt, PASS_EXPR))
-        {
-          throw CtfeFailToEvaluateException();
-        }
-
-        ast_t* looked_up_ast = looked_up->ast;
-        ast_t* reified_lookedup_ast = NULL;
-
-        if(typeargs != NULL)
-        {
-          ast_t* typeparams = ast_childidx(looked_up_ast, 2);
-          deferred_reify_add_method_typeparams(looked_up, typeparams, typeargs, opt);
-        }
-
-        if(looked_up->method_typeargs != NULL || looked_up->type_typeargs != NULL ||
-           looked_up->thistype != NULL)
-        {
-          reified_lookedup_ast = deferred_reify(looked_up, looked_up_ast, opt);
-          looked_up_ast = reified_lookedup_ast;
-        }
-
-        m_frames.push_frame();
-
-        if(!rec_val.is_none())
-        {
-          m_frames.new_value("this", rec_val);
-        }
-
-        ast_t* params = ast_childidx(looked_up_ast, 3);
-        if(ast_id(params) != TK_NONE)
-        {
-          ast_t* curr_param = ast_child(params);
-          for (const auto& arg: args)
-          {
-            const char* param_name = ast_name(ast_child(curr_param));
-            m_frames.new_value(param_name, arg);
-            curr_param = ast_sibling(curr_param);
-          }
-        }
-
-        ast_t* seq = ast_childidx(looked_up_ast, 6);
-        if(ast_id(ast_child(seq)) != TK_COMPILE_INTRINSIC)
-        {
-          return_value = evaluate(opt, errors, seq, depth + 1);
-          if(return_value.get_control_flow_modifier() == CtfeValue::ControlFlowModifier::Return)
-          {
-            return_value.clear_control_flow_modifier();
-          }
-        }
-        else
-        {
-          ast_error_frame(errors, ast,
-            "Unsupported compiler intrinsic function");
-          throw CtfeFailToEvaluateException();
-        }
-
-        m_frames.pop_frame();
-
-        if(reified_lookedup_ast != NULL)
-        {
-          ast_free_unattached(reified_lookedup_ast);
-        }
-        deferred_reify_free(looked_up);
-      }
+      return_value = evaluate(opt, errors, seq, depth + 1);
     }
+    catch(const CtfeException& e)
+    {
+      failed = true;
+      goto cleanup;
+    }
+    if(return_value.get_control_flow_modifier() == CtfeValue::ControlFlowModifier::Return)
+    {
+      return_value.clear_control_flow_modifier();
+    }
+  }
+  else
+  {
+    ast_error_frame(errors, ast,
+      "Unsupported compiler intrinsic function");
+    failed = true;
+    goto cleanup;
+  }
+
+cleanup:
+ if(pass_frame_pop)
+  {
+    frame_pop(t);
+    frame_pop(t);
+    frame_pop(t);
+  }
+
+  if(ctfe_frame_pop)
+  {
+    m_frames.pop_frame();
+  }
+
+  if(reified_lookedup_ast != NULL)
+  {
+    ast_free_unattached(reified_lookedup_ast);
+  }
+
+  deferred_reify_free(looked_up);
+
+  if(failed)
+  {
+    throw CtfeFailToEvaluateException();
   }
 
   switch(ast_id(receiver))
@@ -378,9 +428,13 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
 
       pony_assert(condition_evaluated.get_type() == CtfeValue::Type::Bool);
 
-      return condition_evaluated.get_bool().get_value() ?
+      m_frames.push_frame();
+      CtfeValue ret =  condition_evaluated.get_bool().get_value() ?
             evaluate(opt, errors, then_branch, depth + 1):
             evaluate(opt, errors, else_branch, depth + 1);
+      m_frames.pop_frame();
+
+      return ret;
     }
 
     case TK_RETURN:
@@ -491,7 +545,9 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       CtfeValue evaluated_while;
       while(evaluated_cond.get_bool().get_value() == true)
       {
+        m_frames.push_frame();
         evaluated_while = evaluate(opt, errors, thenbody, depth + 1);
+        m_frames.pop_frame();
 
         CtfeValue::ControlFlowModifier modifier = evaluated_while.get_control_flow_modifier();
         if(modifier == CtfeValue::ControlFlowModifier::Return ||
@@ -538,6 +594,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     }
 
     case TK_TRY:
+    case TK_TRY_NO_CHECK:
     {
       AST_GET_CHILDREN(expression, trybody, elsebody);
       CtfeValue evaluated_try = evaluate(opt, errors, trybody, depth + 1);
@@ -552,13 +609,16 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     case TK_REPEAT:
     {
       AST_GET_CHILDREN(expression, repeat_body, cond, elsebody);
+
       CtfeValue evaluated_cond = evaluate(opt, errors, cond, depth + 1);
 
       CtfeValue repeat_value;
 
       do
       {
+        m_frames.push_frame();
         repeat_value = evaluate(opt, errors, repeat_body, depth + 1);
+        m_frames.pop_frame();
 
         CtfeValue::ControlFlowModifier modifier = repeat_value.get_control_flow_modifier();
         if(modifier == CtfeValue::ControlFlowModifier::Return ||
@@ -578,8 +638,9 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
 
       if(repeat_value.get_control_flow_modifier() == CtfeValue::ControlFlowModifier::Continue)
       {
-
+        m_frames.push_frame();
         repeat_value = evaluate(opt, errors, elsebody, depth + 1);
+        m_frames.pop_frame();
       }
 
       return repeat_value;
@@ -639,6 +700,46 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
         throw CtfeFailToEvaluateException();
       }
 
+
+      return ret;
+    }
+
+    case TK_IFTYPE_SET:
+    {
+      AST_GET_CHILDREN(expression, ifresult, else_clause);
+      CtfeValue ret = evaluate(opt, errors, ifresult, depth + 1);
+      if(ret.get_type() == CtfeValue::Type::Bool)
+      {
+        if(!ret.get_bool().get_value())
+        {
+          m_frames.push_frame();
+          ret = evaluate(opt, errors, else_clause, depth + 1);
+          m_frames.pop_frame();
+        }
+        else
+        {
+          pony_assert(false);
+        }
+      }
+
+      return ret;
+    }
+
+    case TK_IFTYPE:
+    {
+      AST_GET_CHILDREN(expression, left, right, then);
+
+      CtfeValue ret;
+      if(is_subtype(left, right, errors, opt))
+      {
+        m_frames.push_frame();
+        ret = evaluate(opt, errors, then, depth + 1);
+        m_frames.pop_frame();
+      }
+      else
+      {
+        ret = CtfeValue(CtfeValueBool(false));
+      }
 
       return ret;
     }
