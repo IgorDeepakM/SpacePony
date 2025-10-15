@@ -174,7 +174,7 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
   let sz_s_y_2_ = sizeof S.y // Also with the type directly as base
   ```
 
-* Keep in mind that both sizeof and offsetof are not compile time constants, meaning they do not behave like a literal and they can unfortunately not be used as type values in generics. sizeof/offsetof are created during the code generation step becoming a compile time constant in the LLVM code and not before that. The reason for this is the the SpacePony compiler use LLVM in order build target dependent aggregate types in the code generation pass which is one of the last passes. It is possible to make sizeof and offsetof into a literal but that would require using LLVM to build up the types in earlier passes.
+* Keep in mind that both sizeof and offsetof are not compile time constants, meaning they do not behave like a literal and they can unfortunately not be used as type values in generics. sizeof/offsetof are created during the code generation step becoming a compile time constant in the LLVM code and not before that. The reason for this is the the SpacePony compiler uses LLVM in order build target dependent aggregate types in the code generation pass which is one of the last passes. It is possible to make sizeof and offsetof into a literal but that would require using LLVM to build up the types in earlier passes.
 
 ### Added FFI pass by value parameters.
 
@@ -240,6 +240,19 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
   ```
 
 * Multiple return values can be achieved by making the return type a tuple.
+
+  ```pony
+  (quot, rem) = asm
+    "mov x9, $2\n
+     mov x10, $3\n
+     udiv x11, x9, x10\n
+     mov $0, x11\n
+     msub x12, x11, x10, x9\n
+     mov $1, x12\n",
+     "=r,=r,r,r,~{x9},~{x10},~{x11},~{x12}",
+     [(U32, U32)](y1, y2)
+  end
+  ```
 
 ### Atomics
 
