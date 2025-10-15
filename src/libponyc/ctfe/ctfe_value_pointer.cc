@@ -82,7 +82,7 @@ CtfeValue CtfeValuePointer::apply(size_t i) const
 {
   if(i < m_size)
   {
-    return CtfeValue::read_from_memory(m_typeref.get_type(), &m_array[i]);
+    return CtfeValue::read_from_memory(m_typeref.get_type(), &m_array[i * m_elem_size]);
   }
   else
   {
@@ -97,8 +97,8 @@ CtfeValue CtfeValuePointer::update(size_t i, const CtfeValue& val)
 
   if(i < m_size)
   {
-    ret = CtfeValue::read_from_memory(m_typeref.get_type(), &m_array[i]);
-    val.write_to_memory(&m_array[i]);
+    ret = CtfeValue::read_from_memory(m_typeref.get_type(), &m_array[i * m_elem_size]);
+    val.write_to_memory(&m_array[i * m_elem_size]);
   }
   else
   {
