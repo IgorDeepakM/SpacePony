@@ -1723,6 +1723,23 @@ void ast_freeze(ast_t* ast)
 #endif
 }
 
+void ast_unfreeze(ast_t* ast)
+{
+  (void)ast;
+#ifndef PONY_NDEBUG
+  if((ast == NULL) || !ast->frozen)
+    return;
+
+  ast->frozen = false;
+  token_unfreeze(ast->t);
+
+  for(ast_t* child = ast->child; child != NULL; child = ast_sibling(child))
+    ast_unfreeze(child);
+
+  ast_unfreeze(ast->annotation_type);
+#endif
+}
+
 void ast_print(ast_t* ast, size_t width)
 {
   ast_fprint(stdout, ast, width);

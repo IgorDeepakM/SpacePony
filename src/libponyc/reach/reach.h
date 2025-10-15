@@ -135,7 +135,7 @@ void reach_free(reach_t* r);
  * The type should be a nominal, including any typeargs. The supplied method
  * typeargs can be NULL if there are none.
  */
-void reach(reach_t* r, ast_t* type, const char* name, ast_t* typeargs,
+bool reach(reach_t* r, ast_t* type, const char* name, ast_t* typeargs,
   pass_opt_t* opt);
 
 reach_type_t* reach_type(reach_t* r, ast_t* type);

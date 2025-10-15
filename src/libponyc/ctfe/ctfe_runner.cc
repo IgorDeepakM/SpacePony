@@ -121,6 +121,8 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
   {
     case TK_DOT:
     {
+      // Dot support was mostly when running the CTFE runner in the expr pass
+      // where the literals yet haven't been coerced.
       ast_t* lh = ast_child(receiver);
       rec_val = evaluate(opt, errors, lh, depth + 1);
       ast_t* rh = ast_childidx(receiver, 1);
@@ -221,90 +223,63 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
 
   ast_t* looked_up_ast = looked_up->ast;
   ast_t* reified_lookedup_ast = NULL;
-  bool pass_frame_pop = true;
   bool ctfe_frame_pop = false;
   bool failed = false;
 
-  typecheck_t* t = &opt->check;
-  ast_t* module = ast_nearest(looked_up_ast, TK_MODULE);
-  ast_t* package = ast_parent(module);
-  pony_assert(module != NULL);
-  pony_assert(package != NULL);
-
-  frame_push(t, (ast_t*)ast_data(recv_type));
-  frame_push(t, package);
-  frame_push(t, module);
-
-  // we don't know if this method has been visited before.
-  if(ast_passes_subtree(&looked_up_ast, opt, PASS_EXPR))
+  if(typeargs != NULL)
   {
-    frame_pop(t);
-    frame_pop(t);
-    frame_pop(t);
-    pass_frame_pop = false;
+    ast_t* typeparams = ast_childidx(looked_up_ast, 2);
+    deferred_reify_add_method_typeparams(looked_up, typeparams, typeargs, opt);
+  }
 
-    if(typeargs != NULL)
-    {
-      ast_t* typeparams = ast_childidx(looked_up_ast, 2);
-      deferred_reify_add_method_typeparams(looked_up, typeparams, typeargs, opt);
-    }
+  if(looked_up->method_typeargs != NULL || looked_up->type_typeargs != NULL ||
+      looked_up->thistype != NULL)
+  {
+    reified_lookedup_ast = deferred_reify(looked_up, looked_up_ast, opt);
+    looked_up_ast = reified_lookedup_ast;
+  }
 
-    if(looked_up->method_typeargs != NULL || looked_up->type_typeargs != NULL ||
-        looked_up->thistype != NULL)
-    {
-      reified_lookedup_ast = deferred_reify(looked_up, looked_up_ast, opt);
-      looked_up_ast = reified_lookedup_ast;
-    }
+  ctfe_frame_pop = true;
+  m_frames.push_frame();
 
-    ctfe_frame_pop = true;
-    m_frames.push_frame();
+  if(!rec_val.is_none())
+  {
+    m_frames.new_value("this", rec_val);
+  }
 
-    if(!rec_val.is_none())
+  ast_t* params = ast_childidx(looked_up_ast, 3);
+  if(ast_id(params) != TK_NONE)
+  {
+    ast_t* curr_param = ast_child(params);
+    for (const auto& arg: args)
     {
-      m_frames.new_value("this", rec_val);
-    }
-
-    ast_t* params = ast_childidx(looked_up_ast, 3);
-    if(ast_id(params) != TK_NONE)
-    {
-      ast_t* curr_param = ast_child(params);
-      for (const auto& arg: args)
-      {
-        const char* param_name = ast_name(ast_child(curr_param));
-        m_frames.new_value(param_name, arg);
-        curr_param = ast_sibling(curr_param);
-      }
-    }
-
-    ast_t* seq = ast_childidx(looked_up_ast, 6);
-    if(ast_id(ast_child(seq)) != TK_COMPILE_INTRINSIC)
-    {
-      try
-      {
-        return_value = evaluate(opt, errors, seq, depth + 1);
-        if(return_value.get_control_flow_modifier() == CtfeValue::ControlFlowModifier::Return)
-        {
-          return_value.clear_control_flow_modifier();
-        }
-      }
-      catch(const CtfeException& e)
-      {
-        failed = true;
-      }
-    }
-    else
-    {
-      ast_error_frame(errors, ast,
-        "Unsupported compiler intrinsic function");
-      failed = true;
+      const char* param_name = ast_name(ast_child(curr_param));
+      m_frames.new_value(param_name, arg);
+      curr_param = ast_sibling(curr_param);
     }
   }
 
-  if(pass_frame_pop)
+  ast_t* seq = ast_childidx(looked_up_ast, 6);
+  if(ast_id(ast_child(seq)) != TK_COMPILE_INTRINSIC)
   {
-    frame_pop(t);
-    frame_pop(t);
-    frame_pop(t);
+    try
+    {
+      return_value = evaluate(opt, errors, seq, depth + 1);
+      if(return_value.get_control_flow_modifier() == CtfeValue::ControlFlowModifier::Return)
+      {
+        return_value.clear_control_flow_modifier();
+      }
+    }
+    catch(const CtfeException& e)
+    {
+      failed = true;
+    }
+  }
+  else
+  {
+    ast_error_frame(errors, ast,
+      "Unsupported compiler intrinsic function");
+    failed = true;
   }
 
   if(ctfe_frame_pop)
@@ -888,6 +863,7 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
     ast_error_frame(&frame, ast, "could not evaluate compile time expression");
     errorframe_append(&frame, &errors);
     errorframe_report(&frame, opt->check.errors);
+    opt->check.evaluation_error = true;
   }
 
   // TK_ERROR means we encountered some error expression and it hasn't been

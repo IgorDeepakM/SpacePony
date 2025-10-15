@@ -10,6 +10,7 @@
 #include "../type/subtype.h"
 #include "../../libponyrt/gc/serialise.h"
 #include "../../libponyrt/mem/pool.h"
+#include "../ctfe/ctfe_runner.h"
 #include "ponyassert.h"
 #include <stdio.h>
 #include <string.h>
@@ -1390,6 +1391,16 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
       break;
     }
 
+    case TK_COMPTIME:
+    {
+      ast_t** astp = &ast;
+      ast_unfreeze(ast_parent(ast));
+      CtfeRunner ctfeRunner(opt);
+      ctfeRunner.run(opt, astp);
+      ast = *astp;
+      ast_freeze(ast_parent(ast));
+    }
+
     default: {}
   }
 
@@ -1500,11 +1511,12 @@ void reach_free(reach_t* r)
   POOL_FREE(reach_t, r);
 }
 
-void reach(reach_t* r, ast_t* type, const char* name, ast_t* typeargs,
+bool reach(reach_t* r, ast_t* type, const char* name, ast_t* typeargs,
   pass_opt_t* opt)
 {
   reachable_method(r, NULL, type, name, typeargs, opt);
   handle_method_stack(r, opt);
+  return !opt->check.evaluation_error;
 }
 
 reach_type_t* reach_type(reach_t* r, ast_t* type)

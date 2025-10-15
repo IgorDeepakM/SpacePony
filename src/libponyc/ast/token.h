@@ -305,6 +305,9 @@ void token_free(token_t* token);
 /// Set the token as read-only.
 void token_freeze(token_t* token);
 
+/// Unfreeze the token
+void token_unfreeze(token_t* token);
+
 /// Get a pony_type_t for token_t. Should only be used for signature computation.
 pony_type_t* token_signature_pony_type();
 

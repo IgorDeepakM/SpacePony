@@ -104,6 +104,16 @@ void token_freeze(token_t* token)
 }
 
 
+void token_unfreeze(token_t* token)
+{
+  (void)token;
+#ifndef PONY_NDEBUG
+  pony_assert(token != NULL);
+  token->frozen = false;
+#endif
+}
+
+
 // Read accessors
 
 token_id token_get_id(token_t* token)
