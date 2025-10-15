@@ -239,7 +239,6 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
     looked_up_ast = reified_lookedup_ast;
   }
 
-  ctfe_frame_pop = true;
   m_frames.push_frame();
 
   if(!rec_val.is_none())
@@ -272,7 +271,13 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
     }
     catch(const CtfeException& e)
     {
-      failed = true;
+      m_frames.pop_frame();
+      if(reified_lookedup_ast != NULL)
+      {
+        ast_free_unattached(reified_lookedup_ast);
+      }
+      deferred_reify_free(looked_up);
+      throw;
     }
   }
   else
@@ -282,10 +287,7 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
     failed = true;
   }
 
-  if(ctfe_frame_pop)
-  {
-    m_frames.pop_frame();
-  }
+  m_frames.pop_frame();
 
   if(reified_lookedup_ast != NULL)
   {
@@ -449,7 +451,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       if(evaluated_receiver.is_none())
       {
         ast_error_frame(errors, expression,
-          "Cannot access variables in 'this' the comptime expression frame.");
+          "Cannot access variables in 'this' outside the comptime expression scope.");
         throw CtfeFailToEvaluateException();
       }
 
@@ -674,8 +676,8 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
 
     case TK_IFTYPE_SET:
     {
-      AST_GET_CHILDREN(expression, ifresult, else_clause);
-      CtfeValue ret = evaluate(opt, errors, ifresult, depth + 1);
+      AST_GET_CHILDREN(expression, iftype, else_clause);
+      CtfeValue ret = evaluate(opt, errors, iftype, depth + 1);
       if(ret.get_type() == CtfeValue::Type::Bool)
       {
         if(!ret.get_bool().get_value())
@@ -698,7 +700,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       AST_GET_CHILDREN(expression, left, right, then);
 
       CtfeValue ret;
-      if(is_subtype(left, right, errors, opt))
+      if(is_subtype(left, right, NULL, opt))
       {
         m_frames.push_frame();
         ret = evaluate(opt, errors, then, depth + 1);

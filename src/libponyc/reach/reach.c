@@ -1399,6 +1399,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
       ctfeRunner.run(opt, astp);
       ast = *astp;
       ast_freeze(ast_parent(ast));
+      return;
     }
 
     default: {}

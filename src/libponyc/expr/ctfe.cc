@@ -1,8 +1,8 @@
 #include "ctfe.h"
-#include "../ctfe/ctfe_runner.h"
 #include "literal.h"
 #include "../pass/expr.h"
 #include "../type/alias.h"
+#include "ponyassert.h"
 
 
 extern "C" bool expr_comptime(pass_opt_t* opt, ast_t** astp)
