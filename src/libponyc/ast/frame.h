@@ -51,6 +51,7 @@ typedef struct typecheck_t
   typecheck_frame_t* frame;
   typecheck_stats_t stats;
   errors_t* errors;
+  bool evaluation_error;
 } typecheck_t;
 
 bool frame_push(typecheck_t* t, ast_t* ast);

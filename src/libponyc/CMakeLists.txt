@@ -45,6 +45,7 @@ add_library(libponyc STATIC
     codegen/genopt.cc
     codegen/host.cc
     ctfe/ctfe_frames.cc
+    ctfe/ctfe_reach.cc
     ctfe/ctfe_runner.cc
     ctfe/ctfe_value.cc
     ctfe/ctfe_value_bool.cc

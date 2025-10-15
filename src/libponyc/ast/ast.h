@@ -148,6 +148,7 @@ void ast_free_unattached(ast_t* ast);
 
 bool ast_is_frozen(ast_t* ast);
 void ast_freeze(ast_t* ast);
+void ast_unfreeze(ast_t* ast);
 
 void ast_print(ast_t* ast, size_t width);
 void ast_printverbose(ast_t* ast);

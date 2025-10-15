@@ -959,8 +959,11 @@ bool codegen_gen_test(compile_t* c, ast_t* program, pass_opt_t* opt,
       return false;
     }
 
-    reach(c->reach, main_ast, c->str_create, NULL, opt);
-    reach(c->reach, env_ast, c->str__create, NULL, opt);
+    if(!reach(c->reach, main_ast, c->str_create, NULL, opt) ||
+       !reach(c->reach, env_ast, c->str__create, NULL, opt))
+    {
+      return false;
+    }
 
     ast_free(main_ast);
     ast_free(env_ast);
