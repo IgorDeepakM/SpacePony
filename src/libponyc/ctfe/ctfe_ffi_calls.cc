@@ -79,7 +79,7 @@ CtfeValue CtfeRunner::handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast
   }
 
   ast_error_frame(errors, ast,
-        "CTFE unsupported FFI call calling %s", name);
+        "CTFE unsupported FFI call calling %s", ffi_name.c_str());
   throw CtfeFailToEvaluateException();
 }
 
