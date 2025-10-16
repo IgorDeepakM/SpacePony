@@ -3,12 +3,12 @@
 
 #include "../type/subtype.h"
 #include "../codegen/genopt.h"
+#include "../type/assemble.h"
 
 #include <string>
 
 
 using namespace std;
-
 
 
 CtfeValueTypeRef::CtfeValueTypeRef(ast_t* type):
@@ -19,6 +19,10 @@ CtfeValueTypeRef::CtfeValueTypeRef(ast_t* type):
   {
     string type_name = ast_name(ast_childidx(type, 1));
 
+    if(type_name == "None")
+    {
+      m_type = CtfeValueType::None;
+    }
     if(type_name == "I8")
     {
       m_type = CtfeValueType::TypedIntI8;
@@ -146,6 +150,8 @@ size_t CtfeValueTypeRef::get_size_of_type(CtfeValueType type)
 {
   switch(type)
   {
+    case CtfeValueType::None:
+      return 1;
     case CtfeValueType::Bool:
       return sizeof(uint8_t);
     case CtfeValueType::TypedIntI8:
@@ -190,6 +196,8 @@ string CtfeValueTypeRef::get_pony_type_name(CtfeValueType type)
 {
   switch(type)
   {
+    case CtfeValueType::None:
+      return "None";
     case CtfeValueType::Bool:
       return "Bool";
     case CtfeValueType::IntLiteral:

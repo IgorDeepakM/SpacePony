@@ -50,6 +50,16 @@ CtfeValuePointer::CtfeValuePointer(uint8_t *array, size_t size, const CtfeValueT
 }
 
 
+CtfeValuePointer::CtfeValuePointer(void *ptr, const CtfeValueTypeRef& typeref):
+  m_array{reinterpret_cast<uint8_t*>(ptr)},
+  m_size{0},
+  m_elem_size{0},
+  m_typeref{typeref}
+{
+  m_elem_size = typeref.get_size_of_type();
+}
+
+
 CtfeValuePointer CtfeValuePointer::realloc(size_t size, CtfeRunner &ctfeRunner)
 {
   if(size > 0)

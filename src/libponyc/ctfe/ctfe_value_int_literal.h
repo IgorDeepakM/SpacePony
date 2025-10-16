@@ -72,7 +72,8 @@ public:
 
 
 template<typename T>
-CtfeValueIntLiteral::CtfeValueIntLiteral(T b)
+CtfeValueIntLiteral::CtfeValueIntLiteral(T b):
+  m_val{ 0, 0, false }
 {
   if constexpr (std::is_same<T, CtfeI128Type>::value ||
                 std::is_same<T, CtfeU128Type>::value)

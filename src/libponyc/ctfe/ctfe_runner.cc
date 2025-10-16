@@ -714,6 +714,9 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       return ret;
     }
 
+    case TK_FFICALL:
+      return handle_ffi_call(opt, errors, expression, depth + 1);
+
     default:
       ast_error_frame(errors, expression,
         "The CTFE runner does not support the '%s' expression",

@@ -3,6 +3,11 @@ use "collections"
 use @pony_exitcode[None](code: I32)
 use @printf[I32](fmt: Pointer[U8] tag, ...)
 
+use @memcmp[I32](dst: Pointer[None] tag, src: Pointer[None] tag, len: USize)
+use @memset[Pointer[None]](dst: Pointer[None], set: U32, len: USize)
+use @memmove[Pointer[None]](dst: Pointer[None], src: Pointer[None], len: USize)
+use @memcpy[Pointer[None]](dst: Pointer[None], src: Pointer[None], len: USize)
+
 struct E1
   var em: ILong = 1010
 
@@ -34,7 +39,7 @@ actor Main
     test_string_literal(140)
     test_generics(160)
     test_pointer(180)
-
+    test_ffi_calls(200)
 
   fun test_literal_int(exit_add: I32) =>
     // Test shift with negative numbers
@@ -448,3 +453,29 @@ actor Main
     end
 
     sum
+
+  fun test_ffi_calls(exit_add: I32) =>
+    let c1 = comptime test_memory_ffi_calls() end
+    let c2 = test_memory_ffi_calls()
+
+    if (c1 != 0) or (c2 != 0) then
+      @pony_exitcode(exit_add + 1)
+    end
+
+  fun test_memory_ffi_calls(): I32 =>
+    var p1 = Pointer[U8].alloc(10)
+    var p2 = Pointer[U8].alloc(10)
+    var p3 = Pointer[U8].alloc(10)
+    var p4 = Pointer[U8].alloc(10)
+
+    for i in Range(0, 10) do
+      p1.update(i, 3)
+    end
+
+    @memset(p2, 3, 10)
+
+    @memmove(p3, p2, 10)
+
+    @memcpy(p4, p3, 10)
+
+    @memcmp(p1, p4, 10)
