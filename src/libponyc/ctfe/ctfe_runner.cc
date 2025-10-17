@@ -67,7 +67,7 @@ bool CtfeRunner::populate_struct_members(pass_opt_t* opt, errorframe_t* errors,
         if(ast_id(underlying_type) == TK_STRUCT ||
            ast_id(underlying_type) == TK_CLASS)
         {
-          CtfeValueStruct* embed_s = new CtfeValueStruct;
+          CtfeValueStruct* embed_s = new CtfeValueStruct(CtfeValueTypeRef(embed_type));
           embed_val = CtfeValue(embed_s);
           add_allocated_reference(embed_val);
 
@@ -157,7 +157,7 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
         }
         else
         {
-          CtfeValueStruct* s = new CtfeValueStruct;
+          CtfeValueStruct* s = new CtfeValueStruct(CtfeValueTypeRef(recv_type));
           rec_val = CtfeValue(s);
           add_allocated_reference(rec_val);
 
@@ -343,7 +343,29 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       return val;
     }
     case TK_STRING:
-      return CtfeValue(CtfeValueStringLiteral(ast_name(expression)));
+    {
+      ast_t* string_type = ast_type(expression);
+      ast_t* underlying_string_type = (ast_t*)ast_data(string_type);
+      ast_t* underlying_members = ast_childidx(underlying_string_type, 4);
+      ast_t* ptr_member = ast_childidx(underlying_members, 2);
+      ast_t* ptr_type = ast_childidx(ptr_member, 1);
+      ast_t* pointer_typeargs = ast_childidx(ptr_type, 2);
+      ast_t* pointer_type = ast_child(pointer_typeargs);
+      CtfeValueStruct* s = new CtfeValueStruct(CtfeValueTypeRef(string_type));
+
+      size_t len = ast_name_len(expression);
+      s->new_value("_size", CtfeValue(CtfeValueIntLiteral(len), "USize"));
+      s->new_value("_alloc", CtfeValue(CtfeValueIntLiteral(len + 1), "USize"));
+      s->new_value("_ptr", CtfeValue(CtfeValuePointer(
+        reinterpret_cast<uint8_t*>(const_cast<char*>(ast_name(expression))), len + 1,
+        CtfeValueTypeRef(pointer_type))));
+
+      CtfeValue ret = CtfeValue(s);
+      add_allocated_reference(ret);
+
+      return ret;
+    }
+
     case TK_THIS:
     {
       CtfeValue this_ref;
@@ -717,6 +739,12 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     case TK_FFICALL:
       return handle_ffi_call(opt, errors, expression, depth + 1);
 
+    case TK_RECOVER:
+      // recover doesn't do anything to the actual expression other than
+      // changing the capbility which is only affects the Pony type system,
+      // so this is just a pass through.
+      return evaluate(opt, errors, ast_childidx(expression, 1), depth + 1);
+
     default:
       ast_error_frame(errors, expression,
         "The CTFE runner does not support the '%s' expression",
@@ -843,6 +871,7 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
   // evaluate the expression passing NULL as 'this' as we aren't
   // evaluating a method on an object
   errorframe_t errors = NULL;
+  bool failed = false;
 
   try
   {
@@ -853,8 +882,17 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
       ast_replace(astp, new_literal);
       return true;
     }
+    else
+    {
+      failed = true;
+    }
   }
   catch(const CtfeException& ex)
+  {
+    failed = true;
+  }
+
+  if(failed)
   {
     if(ast_type(expression) != NULL)
     {

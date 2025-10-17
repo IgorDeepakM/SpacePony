@@ -22,6 +22,7 @@ public:
 
   CtfeValueType get_type() const { return m_type; }
   size_t get_size_of_type() const;
+  const std::string get_type_name() const;
 
   static void initialize(pass_opt_t* opt);
   static uint8_t get_long_size() { return m_long_size; }
