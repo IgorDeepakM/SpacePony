@@ -4,6 +4,7 @@
 #include "../type/subtype.h"
 #include "../codegen/genopt.h"
 #include "../type/assemble.h"
+#include "ponyassert.h"
 
 #include <string>
 
@@ -19,10 +20,6 @@ CtfeValueTypeRef::CtfeValueTypeRef(ast_t* type):
   {
     string type_name = ast_name(ast_childidx(type, 1));
 
-    if(type_name == "None")
-    {
-      m_type = CtfeValueType::None;
-    }
     if(type_name == "I8")
     {
       m_type = CtfeValueType::TypedIntI8;
@@ -65,47 +62,40 @@ CtfeValueTypeRef::CtfeValueTypeRef(ast_t* type):
     }
     else if(type_name == "ILong")
     {
-      if(m_long_size == 4)
-      {
-        m_type = CtfeValueType::TypedIntI32;
-      }
-      else if(m_long_size == 8)
-      {
-        m_type = CtfeValueType::TypedIntI64;
-      }
+      m_type = CtfeValueType::TypedIntILong;
     }
     else if(type_name == "ULong")
     {
-      if(m_long_size == 4)
-      {
-        m_type = CtfeValueType::TypedIntU32;
-      }
-      else if(m_long_size == 8)
-      {
-        m_type = CtfeValueType::TypedIntU64;
-      }
+      m_type = CtfeValueType::TypedIntULong;
     }
     else if(type_name == "ISize")
     {
-      if(m_size_size == 4)
-      {
-        m_type = CtfeValueType::TypedIntI32;
-      }
-      else if(m_size_size == 8)
-      {
-        m_type = CtfeValueType::TypedIntI64;
-      }
+      m_type = CtfeValueType::TypedIntISize;
     }
     else if(type_name == "USize")
     {
-      if(m_size_size == 4)
-      {
-        m_type = CtfeValueType::TypedIntU32;
-      }
-      else if(m_size_size == 8)
-      {
-        m_type = CtfeValueType::TypedIntU64;
-      }
+      m_type = CtfeValueType::TypedIntUSize;
+    }
+    else
+    {
+      pony_assert(false);
+    }
+  }
+  else if(is_none(type))
+  {
+    m_type = CtfeValueType::None;
+  }
+  else
+  {
+    ast_t* underlying_type = (ast_t*)ast_data(type);
+    if(ast_id(underlying_type) == TK_STRUCT ||
+       ast_id(underlying_type) == TK_CLASS)
+    {
+      m_type = CtfeValueType::StructRef;
+    }
+    else
+    {
+      pony_assert(false);
     }
   }
 }
@@ -180,6 +170,8 @@ size_t CtfeValueTypeRef::get_size_of_type(CtfeValueType type)
     case CtfeValueType::TypedIntISize:
     case CtfeValueType::TypedIntUSize:
       return m_size_size;
+    case CtfeValueType::StructRef:
+      return sizeof(void*);
     default:
       throw CtfeValueException();
   }
@@ -189,6 +181,12 @@ size_t CtfeValueTypeRef::get_size_of_type(CtfeValueType type)
 size_t CtfeValueTypeRef::get_size_of_type() const
 {
   return CtfeValueTypeRef::get_size_of_type(m_type);
+}
+
+
+const string CtfeValueTypeRef::get_type_name() const
+{
+  return ast_name(ast_childidx(m_type_ast, 1));
 }
 
 

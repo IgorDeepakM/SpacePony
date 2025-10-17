@@ -5,7 +5,6 @@
 #include "ctfe_value_typed_int.h"
 #include "ctfe_value_bool.h"
 #include "ctfe_value_tuple.h"
-#include "ctfe_value_string_literal.h"
 #include "ctfe_value_pointer.h"
 #include "ctfe_value_type_ref.h"
 
@@ -52,7 +51,6 @@ private:
     CtfeValueTypedInt<CtfeU128Type>,
     CtfeValueStruct*,
     CtfeValueTuple,
-    CtfeValueStringLiteral,
     CtfeValuePointer,
     CtfeValueTypeRef> m_val;
 
@@ -74,7 +72,6 @@ public:
   CtfeValue(const CtfeValueBool& val);
   CtfeValue(CtfeValueStruct* ref);
   CtfeValue(const CtfeValueTuple& val);
-  CtfeValue(const CtfeValueStringLiteral& str);
   CtfeValue(const CtfeValuePointer& p);
   CtfeValue(const CtfeValueTypeRef& t);
 
@@ -88,7 +85,6 @@ public:
   CtfeValueIntLiteral& get_int_literal() { return std::get<CtfeValueIntLiteral>(m_val); };
   template <typename T> CtfeValueTypedInt<T>& get_typed_int();
   CtfeValueBool& get_bool() { return std::get<CtfeValueBool>(m_val); }
-  CtfeValueStringLiteral& get_string_literal() { return std::get<CtfeValueStringLiteral>(m_val); }
   CtfeValueTuple& get_tuple() { return std::get<CtfeValueTuple>(m_val); }
   CtfeValuePointer& get_pointer() { return std::get<CtfeValuePointer>(m_val); }
   CtfeValueTypeRef& get_type_ref() { return std::get<CtfeValueTypeRef>(m_val); }
@@ -96,7 +92,6 @@ public:
   const CtfeValueIntLiteral& get_int_literal() const { return std::get<CtfeValueIntLiteral>(m_val); };
   template <typename T> const CtfeValueTypedInt<T>& get_typed_int() const;
   const CtfeValueBool& get_bool() const { return std::get<CtfeValueBool>(m_val); }
-  const CtfeValueStringLiteral& get_string_literal() const { return std::get<CtfeValueStringLiteral>(m_val); }
   const CtfeValueTuple& get_tuple() const { return std::get<CtfeValueTuple>(m_val); }
   const CtfeValuePointer& get_pointer() const { return std::get<CtfeValuePointer>(m_val); }
   const CtfeValueTypeRef& get_type_ref() const { return std::get<CtfeValueTypeRef>(m_val); }

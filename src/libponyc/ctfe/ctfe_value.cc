@@ -99,15 +99,6 @@ CtfeValue::CtfeValue(const CtfeValueTuple& val):
 }
 
 
-CtfeValue::CtfeValue(const CtfeValueStringLiteral& str):
-  m_type{Type::StringLiteral},
-  m_ctrlFlow{ControlFlowModifier::None},
-  m_val{str}
-{
-
-}
-
-
 CtfeValue::CtfeValue(const CtfeValuePointer& p):
   m_type{Type::Pointer},
   m_ctrlFlow{ControlFlowModifier::None},
@@ -353,14 +344,28 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
         pony_assert(false);
       }
       break;
-    case Type::StringLiteral:
-      new_node = get<CtfeValueStringLiteral>(m_val).create_ast_literal_node(opt, from);
-      break;
     case Type::StructRef:
-      ast_error_frame(errors, from,
-              "It is currently not possible to create a literal from "
-              "a class or struct reference.");
+    {
+      CtfeValueStruct* s = get_struct_ref();
+      if(s->get_struct_type_name() == "String")
+      {
+        ast_t* new_node = ast_blank(TK_STRING);
+        CtfeValue string;
+        s->get_value("_ptr", string);
+        ast_set_name(new_node, reinterpret_cast<const char*>(string.get_pointer().get_cpointer()));
+        ast_t* type = type_builtin(opt, from, "String");
+        ast_settype(new_node, type);
+
+        return new_node;
+      }
+      else
+      {
+        ast_error_frame(errors, from,
+                "It is currently not possible to create a literal from "
+                "a class or struct reference.");
+      }
       return NULL;
+    }
     default:
       return NULL;
   }
@@ -461,8 +466,6 @@ bool CtfeValue::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
         pony_assert(false);
       }
       break;
-    case Type::StringLiteral:
-      return CtfeValueStringLiteral::run_method(opt, errors, ast, recv, args, method_name, result);
     case Type::Pointer:
       return CtfeValuePointer::run_method(opt, errors, ast, recv, args, method_name, result, ctfeRunner);
     default:

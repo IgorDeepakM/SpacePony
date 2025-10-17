@@ -3,6 +3,13 @@
 
 using namespace std;
 
+CtfeValueStruct::CtfeValueStruct(const CtfeValueTypeRef& typeref):
+  m_type_ref(typeref)
+{
+
+}
+
+
 bool CtfeValueStruct::new_value(const string& name, const CtfeValue& value)
 {
   const auto [it, success] = m_vars.insert({name, value});

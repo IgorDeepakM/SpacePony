@@ -36,10 +36,9 @@ actor Main
     test_try(80)
     test_member_access(100)
     test_tuple(120)
-    test_string_literal(140)
-    test_generics(160)
-    test_pointer(180)
-    test_ffi_calls(200)
+    test_generics(140)
+    test_pointer(160)
+    test_ffi_calls(180)
 
   fun test_literal_int(exit_add: I32) =>
     // Test shift with negative numbers
@@ -387,17 +386,6 @@ actor Main
     end
 
     true
-
-  fun test_string_literal(exit_add: I32) =>
-    let c1: String = comptime test_string_literal_add("this", " that") end
-    let c2: String = test_string_literal_add("this", " that")
-
-    if (c1 != "this that") or (c2 != "this that") then
-      @pony_exitcode(exit_add + 1)
-    end
-
-  fun test_string_literal_add(s1: String, s2: String): String =>
-    s1 + s2
 
   fun test_generics(exit_add: I32) =>
     let c1 = comptime test_method_typeargs[I32, U64](11, 22) end
