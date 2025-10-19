@@ -10,9 +10,12 @@ using namespace std;
 CtfeValue CtfeRunner::handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
     int depth)
 {
-  AST_GET_CHILDREN(ast, name, return_typeargs, args, namedargs, question);
+  AST_GET_CHILDREN(ast, name, return_typeargs, args);
 
   vector<CtfeValue> evaluated_args;
+  ast_t* ffi_decl = (ast_t*)ast_data(ast);
+  ast_t* ffi_decl_return_typargs = ast_childidx(ffi_decl, 1);
+  ast_t* return_type = ast_child(ffi_decl_return_typargs);
 
   ast_t* argument = ast_child(args);
   while(argument != NULL)
@@ -26,7 +29,7 @@ CtfeValue CtfeRunner::handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast
   string ffi_name = ast_name(name);
   if(ffi_name == "@memcmp" || ffi_name == "@memmove"|| ffi_name == "@memcpy")
   {
-    return handle_ffi_ptr_ptr_size(opt, errors, ast, ffi_name, evaluated_args);
+    return handle_ffi_ptr_ptr_size(opt, errors, ast, return_type, ffi_name, evaluated_args);
   }
   else if(string(ast_name(name)) == "@memset")
   {
@@ -74,8 +77,7 @@ CtfeValue CtfeRunner::handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast
     }
 
     void* ret = memset(ptr, ch, size);
-    ast_t* ret_type = ast_type(ast);
-    return CtfeValue(CtfeValuePointer(ret, ret_type), ret_type);
+    return CtfeValue(CtfeValuePointer(ret, return_type), return_type);
   }
 
   ast_error_frame(errors, ast,
@@ -85,7 +87,7 @@ CtfeValue CtfeRunner::handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast
 
 
 CtfeValue CtfeRunner::handle_ffi_ptr_ptr_size(pass_opt_t* opt, errorframe_t* errors,
-  ast_t* ast, const string& ffi_name, const vector<CtfeValue>& evaluated_args)
+  ast_t* ast, ast_t* return_type, const string& ffi_name, const vector<CtfeValue>& evaluated_args)
 {
   void* ptr1 = NULL;
   void* ptr2 = NULL;
@@ -134,20 +136,17 @@ CtfeValue CtfeRunner::handle_ffi_ptr_ptr_size(pass_opt_t* opt, errorframe_t* err
   {
     int ret = memcmp(ptr1, ptr2, size);
     const string ret_type_name = ast_name(ast_childidx(ast_type(ast), 1));
-    ast_t* ret_type = ast_type(ast);
-    return CtfeValue(CtfeValueIntLiteral(ret), ret_type);
+    return CtfeValue(CtfeValueIntLiteral(ret), return_type);
   }
   else if(ffi_name == "@memmove")
   {
     void* ret = memmove(ptr1, ptr2, size);
-    ast_t* ret_type = ast_type(ast);
-    return CtfeValue(CtfeValuePointer(ret, ret_type), ret_type);
+    return CtfeValue(CtfeValuePointer(ret, return_type), return_type);
   }
   else if(ffi_name == "@memcpy")
   {
     void* ret = memcpy(ptr1, ptr2, size);
-    ast_t* ret_type = ast_type(ast);
-    return CtfeValue(CtfeValuePointer(ret, ret_type), ret_type);
+    return CtfeValue(CtfeValuePointer(ret, return_type), return_type);
   }
 
 

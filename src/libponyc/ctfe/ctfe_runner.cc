@@ -335,8 +335,6 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
         return return_value;
     }
   }
-
-  return return_value;
 }
 
 CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* expression, int depth)

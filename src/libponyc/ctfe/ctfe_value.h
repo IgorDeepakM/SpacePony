@@ -63,8 +63,6 @@ public:
   CtfeValue(CtfeValue&& val) noexcept;
   CtfeValue(const CtfeValueIntLiteral& val, ast_t* ast_type);
   template <typename T>
-  CtfeValue(const CtfeValueTypedInt<T>& val);
-  template <typename T>
   CtfeValue(const CtfeValueTypedInt<T>& val, ast_t* ast_type);
   CtfeValue(const CtfeValueBool& val, ast_t* ast_type);
   CtfeValue(CtfeValueStruct* ref, ast_t* ast_type);
@@ -118,59 +116,6 @@ public:
 
   size_t get_size_of_type() { return CtfeAstType::get_size_of_type(m_type); }
 };
-
-
-template <typename T>
-CtfeValue::CtfeValue(const CtfeValueTypedInt<T>& val):
-  m_type{Type::None},
-  m_ctrlFlow{ControlFlowModifier::None},
-  m_val{val}
-{
-  if constexpr (std::is_same<T, int8_t>::value)
-  {
-    m_type = Type::TypedIntI8;
-  }
-  else if constexpr (std::is_same<T, uint8_t>::value)
-  {
-    m_type = Type::TypedIntU8;
-  }
-  else if constexpr (std::is_same<T, int16_t>::value)
-  {
-    m_type = Type::TypedIntI16;
-  }
-  else if constexpr (std::is_same<T, uint16_t>::value)
-  {
-    m_type = Type::TypedIntU16;
-  }
-  else if constexpr (std::is_same<T, int32_t>::value)
-  {
-    m_type = Type::TypedIntI32;
-  }
-  else if constexpr (std::is_same<T, uint32_t>::value)
-  {
-    m_type = Type::TypedIntU32;
-  }
-  else if constexpr (std::is_same<T, int64_t>::value)
-  {
-    m_type = Type::TypedIntI64;
-  }
-  else if constexpr (std::is_same<T, uint64_t>::value)
-  {
-    m_type = Type::TypedIntU64;
-  }
-  else if constexpr (std::is_same<T, CtfeI128Type>::value)
-  {
-    m_type = Type::TypedIntI128;
-  }
-  else if constexpr (std::is_same<T, CtfeU128Type>::value)
-  {
-    m_type = Type::TypedIntU128;
-  }
-  else
-  {
-    static_assert(false);
-  }
-}
 
 
 template <typename T>

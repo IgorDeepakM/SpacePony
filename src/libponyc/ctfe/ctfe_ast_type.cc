@@ -117,6 +117,10 @@ size_t CtfeAstType::get_size_of_type(ast_t* type)
       pony_assert(false);
     }
   }
+  else if(is_none(type))
+  {
+    return 0;
+  }
   else
   {
     ast_t* underlying_type = (ast_t*)ast_data(type);
