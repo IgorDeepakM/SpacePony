@@ -72,11 +72,13 @@ public:
   CtfeValue& operator=(CtfeValue val);
 
   ast_t* get_type_ast() const { return m_type; }
+  void set_type_ast(ast_t* new_type);
 
   bool is_empty() const { return m_type == nullptr; }
   bool is_none() const { return CtfeAstType::is_none(m_type); }
   bool is_bool() const { return CtfeAstType::is_bool(m_type); }
   bool is_typed_int() const { return CtfeAstType::is_typed_int(m_type); }
+  bool is_machine_word() const { return CtfeAstType::is_machine_word(m_type); }
   bool is_pointer() const { return CtfeAstType::is_pointer(m_type); }
   bool is_struct() const { return CtfeAstType::is_struct(m_type); }
   bool is_tuple() const { return CtfeAstType::is_tuple(m_type); }

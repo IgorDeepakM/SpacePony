@@ -2,6 +2,7 @@
 
 #include <cstddef>
 
+#include "../pass/pass.h"
 
 class CtfeValue;
 
@@ -23,4 +24,7 @@ public:
   CtfeValueTuple& operator=(CtfeValueTuple val);
   bool update_value(size_t pos, const CtfeValue& value);
   bool get_value(size_t pos, CtfeValue& value) const;
+  size_t size() const { return m_size; }
+
+  bool is_subtype(ast_t* pattern_type, pass_opt_t* opt);
 };
