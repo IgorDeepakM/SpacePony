@@ -6,7 +6,7 @@
 #include "ctfe_value_bool.h"
 #include "ctfe_value_tuple.h"
 #include "ctfe_value_pointer.h"
-#include "ctfe_value_type_ref.h"
+#include "ctfe_ast_type.h"
 
 #include "../ast/ast.h"
 
@@ -21,8 +21,6 @@ class CtfeValueStruct;
 class CtfeValue
 {
 public:
-  using Type = CtfeValueType;
-
   enum class ControlFlowModifier
   {
     None,
@@ -33,7 +31,7 @@ public:
   };
 
 private:
-  Type m_type;
+  ast_t* m_type;
   ControlFlowModifier m_ctrlFlow;
 
   std::variant<
@@ -51,62 +49,63 @@ private:
     CtfeValueTypedInt<CtfeU128Type>,
     CtfeValueStruct*,
     CtfeValueTuple,
-    CtfeValuePointer,
-    CtfeValueTypeRef> m_val;
+    CtfeValuePointer> m_val;
 
-  void convert_from_int_literal_to_type(const CtfeValueIntLiteral& val,
-    const std::string& pony_type);
+  void convert_from_int_literal_to_type(const CtfeValueIntLiteral& val, ast_t* type);
+
+  friend void swap(CtfeValue& a, CtfeValue& b);
 
 public:
   CtfeValue();
   ~CtfeValue();
-  CtfeValue(Type type);
+  CtfeValue(ast_t* type);
   CtfeValue(const CtfeValue& val);
-  CtfeValue(const CtfeValueIntLiteral& val);
-  CtfeValue(const CtfeValueIntLiteral& val, const std::string& pony_type);
+  CtfeValue(CtfeValue&& val) noexcept;
+  CtfeValue(const CtfeValueIntLiteral& val, ast_t* ast_type);
   template <typename T>
   CtfeValue(const CtfeValueTypedInt<T>& val);
   template <typename T>
-  CtfeValue(const CtfeValueTypedInt<T>& val, Type type);
-  CtfeValue(const CtfeValue& val, const std::string& pony_type);
-  CtfeValue(const CtfeValueBool& val);
-  CtfeValue(CtfeValueStruct* ref);
-  CtfeValue(const CtfeValueTuple& val);
-  CtfeValue(const CtfeValuePointer& p);
-  CtfeValue(const CtfeValueTypeRef& t);
+  CtfeValue(const CtfeValueTypedInt<T>& val, ast_t* ast_type);
+  CtfeValue(const CtfeValueBool& val, ast_t* ast_type);
+  CtfeValue(CtfeValueStruct* ref, ast_t* ast_type);
+  CtfeValue(const CtfeValueTuple& val, ast_t* ast_type);
+  CtfeValue(const CtfeValuePointer& p, ast_t* ast_type);
 
-  CtfeValue& operator=(const CtfeValue& val);
+  CtfeValue& operator=(CtfeValue val);
 
-  Type get_type() const { return m_type; }
-  bool is_none() const { return m_type == Type::None; }
+  ast_t* get_type_ast() const { return m_type; }
 
-  bool is_typed_int() const;
+  bool is_empty() const { return m_type == nullptr; }
+  bool is_none() const { return CtfeAstType::is_none(m_type); }
+  bool is_bool() const { return CtfeAstType::is_bool(m_type); }
+  bool is_typed_int() const { return CtfeAstType::is_typed_int(m_type); }
+  bool is_pointer() const { return CtfeAstType::is_pointer(m_type); }
+  bool is_struct() const { return CtfeAstType::is_struct(m_type); }
+  bool is_tuple() const { return CtfeAstType::is_tuple(m_type); }
 
   CtfeValueIntLiteral& get_int_literal() { return std::get<CtfeValueIntLiteral>(m_val); };
   template <typename T> CtfeValueTypedInt<T>& get_typed_int();
   CtfeValueBool& get_bool() { return std::get<CtfeValueBool>(m_val); }
   CtfeValueTuple& get_tuple() { return std::get<CtfeValueTuple>(m_val); }
   CtfeValuePointer& get_pointer() { return std::get<CtfeValuePointer>(m_val); }
-  CtfeValueTypeRef& get_type_ref() { return std::get<CtfeValueTypeRef>(m_val); }
 
   const CtfeValueIntLiteral& get_int_literal() const { return std::get<CtfeValueIntLiteral>(m_val); };
   template <typename T> const CtfeValueTypedInt<T>& get_typed_int() const;
   const CtfeValueBool& get_bool() const { return std::get<CtfeValueBool>(m_val); }
   const CtfeValueTuple& get_tuple() const { return std::get<CtfeValueTuple>(m_val); }
   const CtfeValuePointer& get_pointer() const { return std::get<CtfeValuePointer>(m_val); }
-  const CtfeValueTypeRef& get_type_ref() const { return std::get<CtfeValueTypeRef>(m_val); }
 
   uint64_t to_uint64() const;
   void write_to_memory(uint8_t* ptr) const;
-  static CtfeValue read_from_memory(Type type, uint8_t* ptr);
+  static CtfeValue read_from_memory(ast_t* type, uint8_t* ptr);
 
   CtfeValueStruct* get_struct_ref() const { return std::get<CtfeValueStruct*>(m_val); }
 
   ast_t* create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors, ast_t* from);
 
-  std::string get_pony_type_name() const { return CtfeValueTypeRef::get_pony_type_name(m_type); }
+  std::string get_type_name() const { return CtfeAstType::get_type_name(m_type); }
 
-  static bool run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
+  static bool run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
     CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
     CtfeValue& result, CtfeRunner &ctfeRunner);
 
@@ -114,10 +113,10 @@ public:
   void set_control_flow_modifier(ControlFlowModifier val) { m_ctrlFlow = val; }
   void clear_control_flow_modifier() { m_ctrlFlow = ControlFlowModifier::None; }
 
-  static uint8_t get_long_size() { return CtfeValueTypeRef::get_long_size(); }
-  static uint8_t get_size_size() { return CtfeValueTypeRef::get_size_size(); }
+  static uint8_t get_long_size() { return CtfeAstType::get_long_size(); }
+  static uint8_t get_size_size() { return CtfeAstType::get_size_size(); }
 
-  size_t get_size_of_type(Type type) { return CtfeValueTypeRef::get_size_of_type(m_type); }
+  size_t get_size_of_type() { return CtfeAstType::get_size_of_type(m_type); }
 };
 
 
@@ -175,57 +174,12 @@ CtfeValue::CtfeValue(const CtfeValueTypedInt<T>& val):
 
 
 template <typename T>
-CtfeValue::CtfeValue(const CtfeValueTypedInt<T>& val, Type type):
-  m_type{Type::None},
+CtfeValue::CtfeValue(const CtfeValueTypedInt<T>& val, ast_t* type):
+  m_type{ast_dup(type)},
   m_ctrlFlow{ControlFlowModifier::None},
   m_val{val}
 {
-  m_val = val;
 
-  if constexpr (std::is_same<T, int8_t>::value)
-  {
-    m_type = Type::TypedIntI8;
-  }
-  else if constexpr (std::is_same<T, uint8_t>::value)
-  {
-    m_type = Type::TypedIntU8;
-  }
-  else if constexpr (std::is_same<T, int16_t>::value)
-  {
-    m_type = Type::TypedIntI16;
-  }
-  else if constexpr (std::is_same<T, uint16_t>::value)
-  {
-    m_type = Type::TypedIntU16;
-  }
-  else if constexpr (std::is_same<T, int32_t>::value)
-  {
-    m_type = type;
-  }
-  else if constexpr (std::is_same<T, uint32_t>::value)
-  {
-    m_type = type;
-  }
-  else if constexpr (std::is_same<T, int64_t>::value)
-  {
-    m_type = type;
-  }
-  else if constexpr (std::is_same<T, uint64_t>::value)
-  {
-    m_type = type;
-  }
-  else if constexpr (std::is_same<T, CtfeI128Type>::value)
-  {
-    m_type = Type::TypedIntI128;
-  }
-  else if constexpr (std::is_same<T, CtfeU128Type>::value)
-  {
-    m_type = Type::TypedIntU128;
-  }
-  else
-  {
-    static_assert(false);
-  }
 }
 
 

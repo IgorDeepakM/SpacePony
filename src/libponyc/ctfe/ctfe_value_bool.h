@@ -27,8 +27,9 @@ public:
   void write_to_memory(uint8_t* ptr) const;
   static CtfeValueBool read_from_memory(uint8_t* ptr);
 
-  ast_t* create_ast_literal_node(pass_opt_t* opt, ast_t* from);
+  ast_t* create_ast_literal_node();
 
-  static bool run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, CtfeValue& recv,
-    const std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result);
+  static bool run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
+    CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
+    CtfeValue& result);
 };

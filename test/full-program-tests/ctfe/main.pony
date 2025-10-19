@@ -39,6 +39,7 @@ actor Main
     test_generics(140)
     test_pointer(160)
     test_ffi_calls(180)
+    test_match(200)
 
   fun test_literal_int(exit_add: I32) =>
     // Test shift with negative numbers
@@ -467,3 +468,56 @@ actor Main
     @memcpy(p4, p3, 10)
 
     @memcmp(p1, p4, 10)
+
+  fun test_match(exit_add: I32) =>
+    let c1 = comptime simple_match("T1000") end
+    let c2 = simple_match("T1000")
+
+    if (c1 != 2) or (c2 != 2) then
+      @pony_exitcode(exit_add + 1)
+    end
+
+    let d1 = comptime union_match(None) end
+    let d2 = union_match(None)
+
+    if (d1 != "none") or (d2 != "none") then
+      @pony_exitcode(exit_add + 2)
+    end
+
+    let e1 = comptime union_match(3) end
+    let e2 = union_match(3)
+
+    if (e1 != "three") or (e2 != "three") then
+      @pony_exitcode(exit_add + 3)
+    end
+
+    let f1 = comptime union_match(4) end
+    let f2 = union_match(4)
+
+    if (f1 != "other integer") or (f2 != "other integer") then
+      @pony_exitcode(exit_add + 4)
+    end
+
+    let g1 = comptime union_match("passthrough") end
+    let g2 = union_match("passthrough")
+
+    if (g1 != "passthrough") or (g2 != "passthrough") then
+      @pony_exitcode(exit_add + 5)
+    end
+
+  fun simple_match(x: String): U32 =>
+    match x
+    | "T800" => 1
+    | "T1000" => 2
+    else
+      99
+    end
+
+  fun union_match(x: (U32 | String | None)): String =>
+    match x
+      | None => "none"
+      | 2 => "two"
+      | 3 => "three"
+      | let u: U32 => "other integer"
+      | let s: String => s
+    end

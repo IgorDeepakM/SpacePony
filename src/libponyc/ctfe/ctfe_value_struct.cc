@@ -3,8 +3,7 @@
 
 using namespace std;
 
-CtfeValueStruct::CtfeValueStruct(const CtfeValueTypeRef& typeref):
-  m_type_ref(typeref)
+CtfeValueStruct::CtfeValueStruct()
 {
 
 }

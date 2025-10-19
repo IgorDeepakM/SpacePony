@@ -14,12 +14,15 @@ class CtfeRunner
   CtfeFrames m_frames;
   std::vector<CtfeValue> m_allocated;
 
+  CtfeValue call_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast_pos, ast_t* res_type,
+    const char* method_name, ast_t* recv_type, CtfeValue& recv_val,
+  const std::vector<CtfeValue>& args, ast_t* typeargs, int depth);
   CtfeValue evaluate_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, int depth);
   CtfeValue evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* expression, int depth);
   bool populate_struct_members(pass_opt_t* opt, errorframe_t* errors, CtfeValueStruct* s,
     ast_t* members);
-  CtfeValue left_side_assign(pass_opt_t* opt, errorframe_t* errors,
-    ast_t* left, CtfeValue& right_val, int depth);
+  void left_side_assign(pass_opt_t* opt, errorframe_t* errors, ast_t* left,
+    CtfeValue& right_val, int depth);
 
   CtfeValue handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, int depth);
   CtfeValue handle_ffi_ptr_ptr_size(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,

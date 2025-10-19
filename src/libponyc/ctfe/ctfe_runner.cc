@@ -2,17 +2,18 @@
 #include "ctfe_value_struct.h"
 #include "ctfe_exception.h"
 
-#include "../ast/astbuild.h"
+#include "../ast/ast.h"
 #include "../type/subtype.h"
 #include "ponyassert.h"
 #include "../type/lookup.h"
+#include "../type/assemble.h"
 
 
 using namespace std;
 
 CtfeRunner::CtfeRunner(pass_opt_t* opt)
 {
-  CtfeValueTypeRef::initialize(opt);
+  CtfeAstType::initialize(opt);
 }
 
 
@@ -20,16 +21,16 @@ CtfeRunner::~CtfeRunner()
 {
   for (auto& elem : m_allocated)
   {
-    switch(elem.get_type())
+    if(elem.is_struct())
     {
-      case CtfeValue::Type::StructRef:
-        delete elem.get_struct_ref();
-        break;
-      case CtfeValue::Type::Pointer:
+      if(elem.is_pointer())
+      {
         elem.get_pointer().delete_array_pointer();
-        break;
-      default:
-        break;
+      }
+      else
+      {
+        delete elem.get_struct_ref();
+      }
     }
   }
 }
@@ -67,8 +68,8 @@ bool CtfeRunner::populate_struct_members(pass_opt_t* opt, errorframe_t* errors,
         if(ast_id(underlying_type) == TK_STRUCT ||
            ast_id(underlying_type) == TK_CLASS)
         {
-          CtfeValueStruct* embed_s = new CtfeValueStruct(CtfeValueTypeRef(embed_type));
-          embed_val = CtfeValue(embed_s);
+          CtfeValueStruct* embed_s = new CtfeValueStruct();
+          embed_val = CtfeValue(embed_s, embed_type);
           add_allocated_reference(embed_val);
 
           ast_t* embed_members = ast_childidx(underlying_type, 4);
@@ -101,6 +102,115 @@ bool CtfeRunner::populate_struct_members(pass_opt_t* opt, errorframe_t* errors,
 
   return true;
 }
+
+
+CtfeValue CtfeRunner::call_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast_pos,
+  ast_t* res_type, const char* method_name, ast_t* recv_type, CtfeValue& recv_val,
+  const vector<CtfeValue>& args, ast_t* typeargs, int depth)
+{
+  CtfeValue result;
+  bool ret = CtfeValue::run_method(opt, errors, ast_pos, res_type, recv_val, args,
+    method_name, result, *this);
+  if(ret)
+  {
+    return result;
+  }
+
+  pony_assert(recv_type != NULL);
+
+  deferred_reification_t* looked_up = lookup(opt, ast_pos, recv_type, method_name);
+  if(looked_up == NULL)
+  {
+    ast_error_frame(errors, ast_pos,
+      "CTFE: could not find the method '%s'", method_name);
+    throw CtfeFailToEvaluateException();
+  }
+
+  ast_t* looked_up_ast = looked_up->ast;
+  ast_t* reified_lookedup_ast = NULL;
+  bool ctfe_frame_pop = false;
+  bool failed = false;
+
+  if(typeargs != NULL)
+  {
+    ast_t* typeparams = ast_childidx(looked_up_ast, 2);
+    deferred_reify_add_method_typeparams(looked_up, typeparams, typeargs, opt);
+  }
+
+  if(looked_up->method_typeargs != NULL || looked_up->type_typeargs != NULL ||
+      looked_up->thistype != NULL)
+  {
+    reified_lookedup_ast = deferred_reify(looked_up, looked_up_ast, opt);
+    looked_up_ast = reified_lookedup_ast;
+  }
+
+  m_frames.push_frame();
+
+  if(!recv_val.is_empty())
+  {
+    m_frames.new_value("this", recv_val);
+  }
+
+  ast_t* params = ast_childidx(looked_up_ast, 3);
+  if(ast_id(params) != TK_NONE)
+  {
+    ast_t* curr_param = ast_child(params);
+    for (const auto& arg: args)
+    {
+      const char* param_name = ast_name(ast_child(curr_param));
+      m_frames.new_value(param_name, arg);
+      curr_param = ast_sibling(curr_param);
+    }
+  }
+
+  CtfeValue return_value;
+
+  ast_t* seq = ast_childidx(looked_up_ast, 6);
+  if(ast_id(ast_child(seq)) != TK_COMPILE_INTRINSIC)
+  {
+    try
+    {
+      return_value = evaluate(opt, errors, seq, depth + 1);
+      if(return_value.get_control_flow_modifier() == CtfeValue::ControlFlowModifier::Return)
+      {
+        return_value.clear_control_flow_modifier();
+      }
+    }
+    catch(const CtfeException& e)
+    {
+      m_frames.pop_frame();
+      if(reified_lookedup_ast != NULL)
+      {
+        ast_free_unattached(reified_lookedup_ast);
+      }
+      deferred_reify_free(looked_up);
+      throw;
+    }
+  }
+  else
+  {
+    ast_error_frame(errors, ast_pos,
+      "Unsupported compiler intrinsic function");
+    failed = true;
+  }
+
+  m_frames.pop_frame();
+
+  if(reified_lookedup_ast != NULL)
+  {
+    ast_free_unattached(reified_lookedup_ast);
+  }
+
+  deferred_reify_free(looked_up);
+
+  if(failed)
+  {
+    throw CtfeFailToEvaluateException();
+  }
+
+  return return_value;
+}
+
 
 CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
   ast_t* ast, int depth)
@@ -151,14 +261,12 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
         if(::is_pointer(recv_type))
         {
           //Get the type for the pointer
-          ast_t* pointer_type = ast_child(ast_childidx(recv_type, 2));
-          CtfeValueTypeRef typeref = CtfeValueTypeRef(pointer_type);
-          rec_val = CtfeValuePointer(typeref);
+          rec_val = CtfeValue(CtfeValuePointer(recv_type), recv_type);
         }
         else
         {
-          CtfeValueStruct* s = new CtfeValueStruct(CtfeValueTypeRef(recv_type));
-          rec_val = CtfeValue(s);
+          CtfeValueStruct* s = new CtfeValueStruct();
+          rec_val = CtfeValue(s, recv_type);
           add_allocated_reference(rec_val);
 
           ast_t* members = ast_childidx(underlying_type, 4);
@@ -170,6 +278,10 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
             throw CtfeFailToEvaluateException();
           }
         }
+      }
+      else if(ast_id(underlying_type) == TK_PRIMITIVE)
+      {
+        rec_val = CtfeValue(recv_type);
       }
       break;
     }
@@ -204,110 +316,27 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
 
   pony_assert(method_name != NULL);
 
-  CtfeValue result;
-  bool ret = CtfeValue::run_method(opt, errors, ast, rec_val, args, method_name, result, *this);
-  if(ret)
+  ast_t* result_type = ast_type(ast);
+  return_value = call_method(opt, errors, ast, result_type, method_name, recv_type, rec_val, args,
+    typeargs, depth);
+
+  if(is_machine_word(result_type) || ::is_pointer(result_type))
   {
-    return result;
-  }
-
-  pony_assert(recv_type != NULL);
-
-  deferred_reification_t* looked_up = lookup(opt, ast, recv_type, method_name);
-  if(looked_up == NULL)
-  {
-    ast_error_frame(errors, ast,
-      "CTFE: could not find the method '%s'", method_name);
-    throw CtfeFailToEvaluateException();
-  }
-
-  ast_t* looked_up_ast = looked_up->ast;
-  ast_t* reified_lookedup_ast = NULL;
-  bool ctfe_frame_pop = false;
-  bool failed = false;
-
-  if(typeargs != NULL)
-  {
-    ast_t* typeparams = ast_childidx(looked_up_ast, 2);
-    deferred_reify_add_method_typeparams(looked_up, typeparams, typeargs, opt);
-  }
-
-  if(looked_up->method_typeargs != NULL || looked_up->type_typeargs != NULL ||
-      looked_up->thistype != NULL)
-  {
-    reified_lookedup_ast = deferred_reify(looked_up, looked_up_ast, opt);
-    looked_up_ast = reified_lookedup_ast;
-  }
-
-  m_frames.push_frame();
-
-  if(!rec_val.is_none())
-  {
-    m_frames.new_value("this", rec_val);
-  }
-
-  ast_t* params = ast_childidx(looked_up_ast, 3);
-  if(ast_id(params) != TK_NONE)
-  {
-    ast_t* curr_param = ast_child(params);
-    for (const auto& arg: args)
-    {
-      const char* param_name = ast_name(ast_child(curr_param));
-      m_frames.new_value(param_name, arg);
-      curr_param = ast_sibling(curr_param);
-    }
-  }
-
-  ast_t* seq = ast_childidx(looked_up_ast, 6);
-  if(ast_id(ast_child(seq)) != TK_COMPILE_INTRINSIC)
-  {
-    try
-    {
-      return_value = evaluate(opt, errors, seq, depth + 1);
-      if(return_value.get_control_flow_modifier() == CtfeValue::ControlFlowModifier::Return)
-      {
-        return_value.clear_control_flow_modifier();
-      }
-    }
-    catch(const CtfeException& e)
-    {
-      m_frames.pop_frame();
-      if(reified_lookedup_ast != NULL)
-      {
-        ast_free_unattached(reified_lookedup_ast);
-      }
-      deferred_reify_free(looked_up);
-      throw;
-    }
+    return return_value;
   }
   else
   {
-    ast_error_frame(errors, ast,
-      "Unsupported compiler intrinsic function");
-    failed = true;
+    switch(ast_id(receiver))
+    {
+      case TK_NEWREF:
+      case TK_NEWBEREF:
+        return rec_val;
+      default:
+        return return_value;
+    }
   }
 
-  m_frames.pop_frame();
-
-  if(reified_lookedup_ast != NULL)
-  {
-    ast_free_unattached(reified_lookedup_ast);
-  }
-
-  deferred_reify_free(looked_up);
-
-  if(failed)
-  {
-    throw CtfeFailToEvaluateException();
-  }
-
-  switch(ast_id(receiver))
-  {
-    case TK_NEWREF:
-      return rec_val;
-    default:
-      return return_value;
-  }
+  return return_value;
 }
 
 CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* expression, int depth)
@@ -325,45 +354,41 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     case TK_NONE:
     case TK_DONTCARE:
     case TK_DONTCAREREF:
-      return CtfeValue();
+      return CtfeValue(ast_type(expression));
     case TK_TRUE:
-      return CtfeValue(CtfeValueBool(true));
+      return CtfeValue(CtfeValueBool(true), ast_type(expression));
     case TK_FALSE:
-      return CtfeValue(CtfeValueBool(false));
+      return CtfeValue(CtfeValueBool(false), ast_type(expression));
     // Literal cases where we can return the value
     case TK_INT:
-    {
-      CtfeValue val = CtfeValue(CtfeValueIntLiteral(*ast_int(expression)));
-      ast_t* val_type = ast_type(expression);
-      if(ast_id(val_type) != TK_LITERAL)
-      {
-        val = CtfeValue(val.get_int_literal(), ast_name(ast_childidx(val_type, 1)));
-      }
-
-      return val;
-    }
+      return CtfeValue(CtfeValueIntLiteral(*ast_int(expression)), ast_type(expression));
     case TK_STRING:
     {
       ast_t* string_type = ast_type(expression);
       ast_t* underlying_string_type = (ast_t*)ast_data(string_type);
       ast_t* underlying_members = ast_childidx(underlying_string_type, 4);
-      ast_t* ptr_member = ast_childidx(underlying_members, 2);
-      ast_t* ptr_type = ast_childidx(ptr_member, 1);
-      ast_t* pointer_typeargs = ast_childidx(ptr_type, 2);
-      ast_t* pointer_type = ast_child(pointer_typeargs);
-      CtfeValueStruct* s = new CtfeValueStruct(CtfeValueTypeRef(string_type));
+      ast_t* size_var = ast_child(underlying_members);
+      ast_t* size_var_type = ast_childidx(size_var, 1);
+      ast_t* alloc_var = ast_sibling(size_var);
+      ast_t* alloc_var_type = ast_childidx(alloc_var, 1);
+      ast_t* ptr_var = ast_sibling(alloc_var);
+      ast_t* ptr_var_type = ast_childidx(ptr_var, 1);
+      CtfeValueStruct* s = new CtfeValueStruct();
 
       size_t len = ast_name_len(expression);
-      s->new_value("_size", CtfeValue(CtfeValueIntLiteral(len), "USize"));
-      s->new_value("_alloc", CtfeValue(CtfeValueIntLiteral(len + 1), "USize"));
+      s->new_value("_size", CtfeValue(CtfeValueIntLiteral(len), size_var_type));
+      s->new_value("_alloc", CtfeValue(CtfeValueIntLiteral(len + 1), alloc_var_type));
       s->new_value("_ptr", CtfeValue(CtfeValuePointer(
-        reinterpret_cast<uint8_t*>(const_cast<char*>(ast_name(expression))), len + 1,
-        CtfeValueTypeRef(pointer_type))));
+          reinterpret_cast<uint8_t*>(const_cast<char*>(ast_name(expression))),
+          len + 1,
+          ptr_var_type),
+        ptr_var_type));
 
-      CtfeValue ret = CtfeValue(s);
+      CtfeValue ret = CtfeValue(s, string_type);
       add_allocated_reference(ret);
 
       return ret;
+      break;
     }
 
     case TK_THIS:
@@ -418,7 +443,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       AST_GET_CHILDREN(expression, condition, then_branch, else_branch);
       CtfeValue condition_evaluated = evaluate(opt, errors, condition, depth + 1);
 
-      pony_assert(condition_evaluated.get_type() == CtfeValue::Type::Bool);
+      pony_assert(condition_evaluated.is_bool());
 
       m_frames.push_frame();
       CtfeValue ret =  condition_evaluated.get_bool().get_value() ?
@@ -480,23 +505,21 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       const char* var_name = ast_name(id);
 
       CtfeValue found_value;
-      switch(evaluated_receiver.get_type())
+      if(evaluated_receiver.is_struct())
       {
-        case CtfeValue::Type::StructRef:
+        CtfeValueStruct* s = evaluated_receiver.get_struct_ref();
+        if (!s->get_value(var_name, found_value))
         {
-          CtfeValueStruct* s = evaluated_receiver.get_struct_ref();
-          if (!s->get_value(var_name, found_value))
-          {
-            ast_error_frame(errors, expression,
-              "Symbol '%s' was not found in struct, this should not happen", var_name);
-            throw CtfeFailToEvaluateException();
-          }
-          break;
-        }
-        default:
           ast_error_frame(errors, expression,
-            "Unsupported field variable type");
+            "Symbol '%s' was not found in struct, this should not happen", var_name);
           throw CtfeFailToEvaluateException();
+        }
+      }
+      else
+      {
+        ast_error_frame(errors, expression,
+          "Unsupported field variable type");
+        throw CtfeFailToEvaluateException();
       }
 
       return found_value;
@@ -512,7 +535,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       CtfeValue left_value = evaluate(opt, errors, left, depth + 1);
       CtfeValue right_value = evaluate(opt, errors, right, depth + 1);
 
-      CtfeValue ret = left_side_assign(opt, errors, left, right_value, depth + 1);
+      left_side_assign(opt, errors, left, right_value, depth + 1);
 
       return left_value;
     }
@@ -523,7 +546,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
 
       CtfeValue evaluated_cond = evaluate(opt, errors, cond, depth + 1);
 
-      pony_assert(evaluated_cond.get_type() == CtfeValue::Type::Bool);
+      pony_assert(evaluated_cond.is_bool());
 
       // the condition didn't hold on the first iteration so we evaluate the
       // else
@@ -669,7 +692,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
         elem = ast_sibling(elem);
       }
 
-      return CtfeValue(tuple);
+      return CtfeValue(tuple, ast_type(expression));
     }
 
     case TK_TUPLEELEMREF:
@@ -678,7 +701,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
 
       CtfeValue evaluated_rec = evaluate(opt, errors, receiver, depth + 1);
 
-      pony_assert(evaluated_rec.get_type() == CtfeValue::Type::Tuple);
+      pony_assert(evaluated_rec.is_tuple());
 
       lexint_t* lexpos = ast_int(nr);
       size_t tuple_pos = (size_t)lexpos->low;
@@ -700,7 +723,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     {
       AST_GET_CHILDREN(expression, iftype, else_clause);
       CtfeValue ret = evaluate(opt, errors, iftype, depth + 1);
-      if(ret.get_type() == CtfeValue::Type::Bool)
+      if(ret.is_empty())
       {
         if(!ret.get_bool().get_value())
         {
@@ -730,7 +753,8 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       }
       else
       {
-        ret = CtfeValue(CtfeValueBool(false));
+        // Empty CtfeValue indicates false
+        ret = CtfeValue();
       }
 
       return ret;
@@ -745,6 +769,130 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       // so this is just a pass through.
       return evaluate(opt, errors, ast_childidx(expression, 1), depth + 1);
 
+    case TK_MATCH:
+    {
+      AST_GET_CHILDREN(expression, matchref, cases, elsebody);
+      CtfeValue match = evaluate(opt, errors, matchref, depth + 1);
+
+      CtfeValue ret;
+
+      m_frames.push_frame();
+
+      bool matched = false;
+
+      // Match cases by exhaustion
+      ast_t* match_type = match.get_type_ast();
+      ast_t* the_case = ast_child(cases);
+      while(the_case != NULL)
+      {
+        AST_GET_CHILDREN(the_case, pattern, guard, body);
+
+        // First test that match is a subtype of the pattern
+        ast_t* pattern_type = ast_type(pattern);
+
+        if(is_subtype(match_type, pattern_type, NULL, opt))
+        {
+          if(ast_id(pattern) == TK_MATCH_CAPTURE)
+          {
+            // Test whether the value is captured under a new name
+            //map_value(opt, pattern, match, false);
+
+            const char* var_name = ast_name(ast_child(pattern));
+
+            if(!m_frames.new_value(var_name, match))
+            {
+              ast_error_frame(errors, expression,
+                "Parameter with name %s was already found in this case expression frame",
+                var_name);
+              throw CtfeFailToEvaluateException();
+            }
+
+            matched = true;
+          }
+          else
+          {
+            // Otherwise test if the pattern matches
+            CtfeValue evaluated_pattern = evaluate(opt, errors, pattern, depth + 1);
+
+            ast_t* recv_type = ast_type(matchref);
+
+            vector<CtfeValue> args;
+            args.push_back(evaluated_pattern);
+
+            ast_t* res_type = type_builtin(opt, the_case, "Bool");
+
+            CtfeValue equal = call_method(opt, errors, expression, res_type, stringtab("eq"),
+              match.get_type_ast(), match, args, NULL, depth + 1);
+
+            pony_assert(equal.is_bool());
+
+            matched = equal.get_bool().get_value();
+          }
+
+          // if the pattern match proceed to check the guard
+          if(matched)
+          {
+            if(ast_id(guard) != TK_NONE)
+            {
+              CtfeValue eval_guard = evaluate(opt, errors, guard, depth + 1);
+
+              pony_assert(eval_guard.is_bool());
+
+              if(eval_guard.get_bool().get_value())
+              {
+                ret = evaluate(opt, errors, body, depth + 1);
+                break;
+              }
+            }
+            else
+            {
+              ret = evaluate(opt, errors, body, depth + 1);
+              break;
+            }
+          }
+        }
+
+        the_case = ast_sibling(the_case);
+      }
+
+      if(!matched)
+      {
+        ret = evaluate(opt, errors, elsebody, depth + 1);
+      }
+
+      m_frames.push_frame();
+
+      return ret;
+    }
+
+    case TK_IS:
+    {
+      AST_GET_CHILDREN(expression, recv, that);
+      CtfeValue recv_value = evaluate(opt, errors, recv, depth + 1);
+      CtfeValue that_value = evaluate(opt, errors, that, depth + 1);
+
+      bool ret_bool = is_subtype(recv_value.get_type_ast(),
+        that_value.get_type_ast(), NULL, opt);
+
+      ast_t* underlying_type = (ast_t*)ast_data(ast_type(recv));
+
+      if(ast_id(underlying_type) != TK_PRIMITIVE)
+      {
+        if(ret_bool)
+        {
+          ast_t* res_type = type_builtin(opt, expression, "Bool");
+
+          vector<CtfeValue> args = { that_value };
+
+          CtfeValue equal = call_method(opt, errors, expression, res_type, stringtab("eq"),
+                  recv_value.get_type_ast(), that_value, args, NULL, depth + 1);
+          return equal;
+        }
+      }
+
+      return CtfeValue(CtfeValueBool(ret_bool), ast_type(expression));
+    }
+
     default:
       ast_error_frame(errors, expression,
         "The CTFE runner does not support the '%s' expression",
@@ -756,7 +904,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
 }
 
 
-CtfeValue CtfeRunner::left_side_assign(pass_opt_t* opt, errorframe_t* errors,
+void CtfeRunner::left_side_assign(pass_opt_t* opt, errorframe_t* errors,
   ast_t* left, CtfeValue& right_val, int depth)
 {
   switch(ast_id(left))
@@ -785,30 +933,29 @@ CtfeValue CtfeRunner::left_side_assign(pass_opt_t* opt, errorframe_t* errors,
 
       const char* var_name = ast_name(id);
 
-      switch(evaluated_receiver.get_type())
+      if(evaluated_receiver.is_struct())
       {
-        case CtfeValue::Type::StructRef:
+        CtfeValueStruct* s = evaluated_receiver.get_struct_ref();
+        if (!s->update_value(var_name, right_val))
         {
-          CtfeValueStruct* s = evaluated_receiver.get_struct_ref();
-          if (!s->update_value(var_name, right_val))
-          {
-            ast_error_frame(errors, left,
-              "Could not update symbol '%s' was not found in struct, this "
-              "should not happen", var_name);
-            throw CtfeFailToEvaluateException();
-          }
-          break;
+          ast_error_frame(errors, left,
+            "Could not update symbol '%s' was not found in struct, this "
+            "should not happen", var_name);
+          throw CtfeFailToEvaluateException();
         }
-        default:
+      }
+      else
+      {
           ast_error_frame(errors, left,
             "Unsupported field variable type");
           throw CtfeFailToEvaluateException();
       }
+
       break;
     }
     case TK_TUPLE:
     {
-      pony_assert(right_val.get_type() == CtfeValue::Type::Tuple);
+      pony_assert(right_val.is_tuple());
 
       ast_t* seq_elem = ast_child(left);
       size_t i = 0;
@@ -825,7 +972,7 @@ CtfeValue CtfeRunner::left_side_assign(pass_opt_t* opt, errorframe_t* errors,
           throw CtfeFailToEvaluateException();
         }
 
-        CtfeValue ret = left_side_assign(opt, errors, elem, right_tuple_value, depth + 1);
+        left_side_assign(opt, errors, elem, right_tuple_value, depth + 1);
 
         i++;
         seq_elem = ast_sibling(seq_elem);
@@ -839,8 +986,6 @@ CtfeValue CtfeRunner::left_side_assign(pass_opt_t* opt, errorframe_t* errors,
         "Unsupported assignment receiver type");
       throw CtfeFailToEvaluateException();
   }
-
-  return CtfeValue();
 }
 
 

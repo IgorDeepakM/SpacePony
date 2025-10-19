@@ -3,30 +3,33 @@
 #include "ctfe_runner.h"
 #include "ctfe_exception.h"
 #include "ctfe_types.h"
+#include "ctfe_ast_type.h"
 
 #include <algorithm>
+
+#include "../ast/ast.h"
 
 
 using namespace std;
 
 
-CtfeValuePointer::CtfeValuePointer(const CtfeValueTypeRef& typeref):
+CtfeValuePointer::CtfeValuePointer(ast_t* pointer_type):
   m_array{nullptr},
   m_size{0},
   m_elem_size{0},
-  m_typeref{typeref}
+  m_pointer_type{ast_dup(pointer_type)}
 {
-  m_elem_size = typeref.get_size_of_type();
+  m_elem_size = CtfeAstType::get_size_of_type(ast_child(ast_childidx(pointer_type, 2)));
 }
 
 
-CtfeValuePointer::CtfeValuePointer(size_t size, const CtfeValueTypeRef& typeref, CtfeRunner &ctfeRunner):
+CtfeValuePointer::CtfeValuePointer(size_t size, ast_t* pointer_type, CtfeRunner &ctfeRunner):
   m_array{nullptr},
   m_size{size},
   m_elem_size{0},
-  m_typeref{typeref}
+  m_pointer_type{ast_dup(pointer_type)}
 {
-  m_elem_size = typeref.get_size_of_type();
+  m_elem_size = CtfeAstType::get_size_of_type(ast_child(ast_childidx(pointer_type, 2)));
 
   if(size > 0)
   {
@@ -35,28 +38,75 @@ CtfeValuePointer::CtfeValuePointer(size_t size, const CtfeValueTypeRef& typeref,
 
     fill(m_array, m_array + size * m_elem_size, 0);
 
-    ctfeRunner.add_allocated_reference(CtfeValue(*this));
+    ctfeRunner.add_allocated_reference(CtfeValue(*this, pointer_type));
   }
 }
 
 
-CtfeValuePointer::CtfeValuePointer(uint8_t *array, size_t size, const CtfeValueTypeRef& typeref):
+CtfeValuePointer::CtfeValuePointer(uint8_t *array, size_t size, ast_t* pointer_type):
   m_array{array},
   m_size{size},
   m_elem_size{0},
-  m_typeref{typeref}
+  m_pointer_type{ast_dup(pointer_type)}
 {
-  m_elem_size = typeref.get_size_of_type();
+  m_elem_size = CtfeAstType::get_size_of_type(ast_child(ast_childidx(pointer_type, 2)));
 }
 
 
-CtfeValuePointer::CtfeValuePointer(void *ptr, const CtfeValueTypeRef& typeref):
+CtfeValuePointer::CtfeValuePointer(void *ptr, ast_t* pointer_type):
   m_array{reinterpret_cast<uint8_t*>(ptr)},
   m_size{0},
   m_elem_size{0},
-  m_typeref{typeref}
+  m_pointer_type{ast_dup(pointer_type)}
 {
-  m_elem_size = typeref.get_size_of_type();
+  m_elem_size = CtfeAstType::get_size_of_type(ast_child(ast_childidx(pointer_type, 2)));
+}
+
+
+CtfeValuePointer::~CtfeValuePointer()
+{
+  if(m_pointer_type != nullptr)
+  {
+    ast_free_unattached(m_pointer_type);
+    m_pointer_type = nullptr;
+  }
+}
+
+
+void swap(CtfeValuePointer& a, CtfeValuePointer& b)
+{
+  swap(a.m_array, b.m_array);
+  swap(a.m_size, b.m_size);
+  swap(a.m_elem_size, b.m_elem_size);
+  swap(a.m_pointer_type, b.m_pointer_type);
+}
+
+
+CtfeValuePointer::CtfeValuePointer(const CtfeValuePointer &other):
+  m_array{other.m_array},
+  m_size{other.m_size},
+  m_elem_size{other.m_elem_size},
+  m_pointer_type{ast_dup(other.m_pointer_type)}
+{
+
+}
+
+
+CtfeValuePointer::CtfeValuePointer(CtfeValuePointer&& other) noexcept:
+  m_array{nullptr},
+  m_size{0},
+  m_elem_size{0},
+  m_pointer_type{nullptr}
+{
+  swap(*this, other);
+}
+
+
+CtfeValuePointer& CtfeValuePointer::operator=(CtfeValuePointer other)
+{
+  swap(*this, other);
+
+  return *this;
 }
 
 
@@ -64,9 +114,9 @@ CtfeValuePointer CtfeValuePointer::realloc(size_t size, CtfeRunner &ctfeRunner)
 {
   if(size > 0)
   {
-    CtfeValuePointer new_p = CtfeValuePointer(size, m_typeref, ctfeRunner);
+    CtfeValuePointer new_p = CtfeValuePointer(size, m_pointer_type, ctfeRunner);
     fill(m_array, m_array + size * m_elem_size, 0);
-    ctfeRunner.add_allocated_reference(CtfeValue(new_p));
+    ctfeRunner.add_allocated_reference(CtfeValue(new_p, m_pointer_type));
     
     for(size_t i = 0; (i < (m_size * m_elem_size)) && (i < (new_p.m_size * m_elem_size)); i++)
     {
@@ -77,7 +127,7 @@ CtfeValuePointer CtfeValuePointer::realloc(size_t size, CtfeRunner &ctfeRunner)
   }
   else
   {
-    return CtfeValuePointer(m_typeref);
+    return CtfeValuePointer(m_pointer_type);
   }
 }
 
@@ -92,7 +142,7 @@ CtfeValue CtfeValuePointer::apply(size_t i) const
 {
   if(i < m_size)
   {
-    return CtfeValue::read_from_memory(m_typeref.get_type(), &m_array[i * m_elem_size]);
+    return CtfeValue::read_from_memory(get_pointer_elem_type_ast(), &m_array[i * m_elem_size]);
   }
   else
   {
@@ -107,7 +157,7 @@ CtfeValue CtfeValuePointer::update(size_t i, const CtfeValue& val)
 
   if(i < m_size)
   {
-    ret = CtfeValue::read_from_memory(m_typeref.get_type(), &m_array[i * m_elem_size]);
+    ret = CtfeValue::read_from_memory(get_pointer_elem_type_ast(), &m_array[i * m_elem_size]);
     val.write_to_memory(&m_array[i * m_elem_size]);
   }
   else
@@ -123,7 +173,7 @@ CtfeValuePointer CtfeValuePointer::pointer_at_index(size_t i) const
 {
   if(i < m_size)
   {
-    return CtfeValuePointer(&m_array[i * m_elem_size], m_size - (i * m_elem_size), m_typeref);
+    return CtfeValuePointer(&m_array[i * m_elem_size], m_size - (i * m_elem_size), m_pointer_type);
   }
   else
   {
@@ -158,11 +208,11 @@ CtfeValue CtfeValuePointer::_delete(size_t n, size_t len)
 
   if(n == 0)
   {
-    ret = CtfeValue::read_from_memory(m_typeref.get_type(), &m_array[0]);
+    ret = CtfeValue::read_from_memory(get_pointer_elem_type_ast(), &m_array[0]);
   }
   else if(n + len < m_size)
   {
-    ret = CtfeValue::read_from_memory(m_typeref.get_type(), &m_array[0]);
+    ret = CtfeValue::read_from_memory(get_pointer_elem_type_ast(), &m_array[0]);
     move(m_array + n * m_elem_size, m_array + (n + len) * m_elem_size, m_array);
 
     return ret;
@@ -193,8 +243,8 @@ void CtfeValuePointer::delete_array_pointer()
 
 
 bool CtfeValuePointer::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
-  CtfeValue& recv, const vector<CtfeValue>& args, const string& method_name, CtfeValue& result,
-  CtfeRunner &ctfeRunner)
+  ast_t* res_type, CtfeValue& recv, const vector<CtfeValue>& args, const string& method_name,
+  CtfeValue& result, CtfeRunner &ctfeRunner)
 {
   if(args.size() == 2)
   {
@@ -212,7 +262,7 @@ bool CtfeValuePointer::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
     {
       CtfeValuePointer rec_val = recv.get_pointer();
       uint64_t size = args[0].to_uint64();
-      result = CtfeValue(CtfeValuePointer(size, rec_val.m_typeref, ctfeRunner));
+      result = CtfeValue(CtfeValuePointer(size, res_type, ctfeRunner), res_type);
       return true;
     }
     else if(method_name == "realloc")
@@ -220,7 +270,7 @@ bool CtfeValuePointer::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
       CtfeValuePointer rec_val = recv.get_pointer();
       uint64_t size = args[0].to_uint64();
       CtfeValuePointer ptr = rec_val.realloc(size, ctfeRunner);
-      result = CtfeValue(ptr);
+      result = CtfeValue(ptr, res_type);
       return true;
     }
     else if(method_name == "apply")
@@ -235,7 +285,7 @@ bool CtfeValuePointer::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
       CtfeValuePointer rec_val = recv.get_pointer();
       uint64_t pos = args[0].to_uint64();
       CtfeValuePointer ptr = rec_val.pointer_at_index(pos);
-      result = CtfeValue(ptr);
+      result = CtfeValue(ptr, res_type);
       return true;
     }
   }
@@ -244,7 +294,7 @@ bool CtfeValuePointer::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
     if(method_name == "_unsafe" || method_name == "convert")
     {
       CtfeValuePointer rec_val = recv.get_pointer();
-      result = CtfeValue(rec_val.return_same_pointer());
+      result = CtfeValue(rec_val.return_same_pointer(), res_type);
       return true;
     }
   }

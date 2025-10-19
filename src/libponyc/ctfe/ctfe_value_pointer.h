@@ -6,8 +6,6 @@
 #include <memory>
 #include <variant>
 
-#include "ctfe_value_type_ref.h"
-
 #include "../pass/pass.h"
 
 
@@ -20,13 +18,19 @@ class CtfeValuePointer
   uint8_t* m_array;
   size_t m_size;
   size_t m_elem_size;
-  CtfeValueTypeRef m_typeref;
+  ast_t *m_pointer_type;
+
+  friend void swap(CtfeValuePointer& a, CtfeValuePointer& b);
 
 public:
-  CtfeValuePointer(const CtfeValueTypeRef& typeref);
-  CtfeValuePointer(size_t size, const CtfeValueTypeRef& typeref, CtfeRunner &ctfeRunner);
-  CtfeValuePointer(uint8_t *array, size_t size, const CtfeValueTypeRef& typeref);
-  CtfeValuePointer(void *ptr, const CtfeValueTypeRef& typeref);
+  CtfeValuePointer(ast_t* pointer_type);
+  CtfeValuePointer(size_t size, ast_t* pointer_typ, CtfeRunner &ctfeRunner);
+  CtfeValuePointer(uint8_t *array, size_t size, ast_t* pointer_type);
+  CtfeValuePointer(void *ptr, ast_t* pointer_type);
+  CtfeValuePointer(const CtfeValuePointer& other);
+  CtfeValuePointer(CtfeValuePointer&& other) noexcept;
+  ~CtfeValuePointer();
+  CtfeValuePointer& operator=(CtfeValuePointer other);
   CtfeValuePointer realloc(size_t size, CtfeRunner &ctfeRunner);
   CtfeValuePointer return_same_pointer() const;
   CtfeValue apply(size_t i) const;
@@ -39,8 +43,10 @@ public:
   void delete_array_pointer();
 
   uint8_t *get_cpointer() const { return m_array; }
+  ast_t* get_pointer_type_ast() const { return m_pointer_type; }
+  ast_t* get_pointer_elem_type_ast() const { return ast_child(ast_childidx(m_pointer_type, 2)); }
 
-  static bool run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
-    CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result,
-    CtfeRunner &ctfeRunner);
+  static bool run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
+    CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
+    CtfeValue& result, CtfeRunner &ctfeRunner);
 };
