@@ -10,9 +10,12 @@ using namespace std;
 CtfeValue CtfeRunner::handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
     int depth)
 {
-  AST_GET_CHILDREN(ast, name, return_typeargs, args, namedargs, question);
+  AST_GET_CHILDREN(ast, name, return_typeargs, args);
 
   vector<CtfeValue> evaluated_args;
+  ast_t* ffi_decl = (ast_t*)ast_data(ast);
+  ast_t* ffi_decl_return_typargs = ast_childidx(ffi_decl, 1);
+  ast_t* return_type = ast_child(ffi_decl_return_typargs);
 
   ast_t* argument = ast_child(args);
   while(argument != NULL)
@@ -26,7 +29,7 @@ CtfeValue CtfeRunner::handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast
   string ffi_name = ast_name(name);
   if(ffi_name == "@memcmp" || ffi_name == "@memmove"|| ffi_name == "@memcpy")
   {
-    return handle_ffi_ptr_ptr_size(opt, errors, ast, ffi_name, evaluated_args);
+    return handle_ffi_ptr_ptr_size(opt, errors, ast, return_type, ffi_name, evaluated_args);
   }
   else if(string(ast_name(name)) == "@memset")
   {
@@ -36,7 +39,7 @@ CtfeValue CtfeRunner::handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast
 
     CtfeValue arg1 = evaluated_args[0];
 
-    if(arg1.get_type() == CtfeValue::Type::Pointer)
+    if(arg1.is_pointer())
     {
       ptr = arg1.get_pointer().get_cpointer();
     }
@@ -49,7 +52,7 @@ CtfeValue CtfeRunner::handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast
 
     CtfeValue arg2 = evaluated_args[1];
 
-    if(arg2.is_typed_int() || arg2.get_type() == CtfeValue::Type::IntLiteral)
+    if(arg2.is_typed_int())
     {
       ch = arg2.to_uint64();
     }
@@ -62,7 +65,7 @@ CtfeValue CtfeRunner::handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast
 
     CtfeValue arg3 = evaluated_args[2];
 
-    if(arg3.is_typed_int() || arg3.get_type() == CtfeValue::Type::IntLiteral)
+    if(arg3.is_typed_int())
     {
       size = arg3.to_uint64();
     }
@@ -74,8 +77,7 @@ CtfeValue CtfeRunner::handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast
     }
 
     void* ret = memset(ptr, ch, size);
-    ast_t* pointer_type = ast_child(ast_childidx(ast_type(ast), 2));
-    return CtfeValue(CtfeValuePointer(ret, CtfeValueTypeRef(pointer_type)));
+    return CtfeValue(CtfeValuePointer(ret, return_type), return_type);
   }
 
   ast_error_frame(errors, ast,
@@ -85,7 +87,7 @@ CtfeValue CtfeRunner::handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast
 
 
 CtfeValue CtfeRunner::handle_ffi_ptr_ptr_size(pass_opt_t* opt, errorframe_t* errors,
-  ast_t* ast, const string& ffi_name, const vector<CtfeValue>& evaluated_args)
+  ast_t* ast, ast_t* return_type, const string& ffi_name, const vector<CtfeValue>& evaluated_args)
 {
   void* ptr1 = NULL;
   void* ptr2 = NULL;
@@ -93,7 +95,7 @@ CtfeValue CtfeRunner::handle_ffi_ptr_ptr_size(pass_opt_t* opt, errorframe_t* err
 
   CtfeValue arg1 = evaluated_args[0];
 
-  if(arg1.get_type() == CtfeValue::Type::Pointer)
+  if(arg1.is_pointer())
   {
     ptr1 = arg1.get_pointer().get_cpointer();
   }
@@ -106,7 +108,7 @@ CtfeValue CtfeRunner::handle_ffi_ptr_ptr_size(pass_opt_t* opt, errorframe_t* err
 
   CtfeValue arg2 = evaluated_args[1];
 
-  if(arg2.get_type() == CtfeValue::Type::Pointer)
+  if(arg2.is_pointer())
   {
     ptr2 = arg2.get_pointer().get_cpointer();
   }
@@ -119,7 +121,7 @@ CtfeValue CtfeRunner::handle_ffi_ptr_ptr_size(pass_opt_t* opt, errorframe_t* err
 
   CtfeValue arg3 = evaluated_args[2];
 
-  if(arg3.is_typed_int() || arg3.get_type() == CtfeValue::Type::IntLiteral)
+  if(arg3.is_typed_int())
   {
     size = arg3.to_uint64();
   }
@@ -134,19 +136,17 @@ CtfeValue CtfeRunner::handle_ffi_ptr_ptr_size(pass_opt_t* opt, errorframe_t* err
   {
     int ret = memcmp(ptr1, ptr2, size);
     const string ret_type_name = ast_name(ast_childidx(ast_type(ast), 1));
-    return CtfeValue(CtfeValueIntLiteral(ret), ret_type_name);
+    return CtfeValue(CtfeValueIntLiteral(ret), return_type);
   }
   else if(ffi_name == "@memmove")
   {
     void* ret = memmove(ptr1, ptr2, size);
-    ast_t* pointer_type = ast_child(ast_childidx(ast_type(ast), 2));
-    return CtfeValue(CtfeValuePointer(ret, CtfeValueTypeRef(pointer_type)));
+    return CtfeValue(CtfeValuePointer(ret, return_type), return_type);
   }
   else if(ffi_name == "@memcpy")
   {
     void* ret = memcpy(ptr1, ptr2, size);
-    ast_t* pointer_type = ast_child(ast_childidx(ast_type(ast), 2));
-    return CtfeValue(CtfeValuePointer(ret, CtfeValueTypeRef(pointer_type)));
+    return CtfeValue(CtfeValuePointer(ret, return_type), return_type);
   }
 
 

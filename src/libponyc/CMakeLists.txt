@@ -44,6 +44,7 @@ add_library(libponyc STATIC
     codegen/gendebug.cc
     codegen/genopt.cc
     codegen/host.cc
+    ctfe/ctfe_ast_type.cc
     ctfe/ctfe_ffi_calls.cc
     ctfe/ctfe_frames.cc
     ctfe/ctfe_reach.cc
@@ -54,7 +55,6 @@ add_library(libponyc STATIC
     ctfe/ctfe_value_pointer.cc
     ctfe/ctfe_value_struct.cc
     ctfe/ctfe_value_tuple.cc
-    ctfe/ctfe_value_type_ref.cc
     expr/array.c
     expr/call.c
     expr/control.c

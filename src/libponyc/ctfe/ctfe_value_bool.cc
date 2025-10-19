@@ -40,17 +40,16 @@ CtfeValueBool CtfeValueBool::op_not() const
 }
 
 
-ast_t* CtfeValueBool::create_ast_literal_node(pass_opt_t* opt, ast_t* from)
+ast_t* CtfeValueBool::create_ast_literal_node()
 {
   ast_t* new_node = ast_blank(m_val ? TK_TRUE : TK_FALSE);
-  ast_t* type = type_builtin(opt, from, "Bool");
-  ast_settype(new_node, type);
   return new_node;
 }
 
 
-bool CtfeValueBool::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, CtfeValue& recv,
-  const std::vector<CtfeValue>& args, const std::string& method_name, CtfeValue& result)
+bool CtfeValueBool::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
+  CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
+  CtfeValue& result)
 {
   if(args.size() == 1)
   {
@@ -59,7 +58,7 @@ bool CtfeValueBool::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast
       const CtfeValueBool& rec_val = recv.get_bool();
       const CtfeValueBool& first_arg = args[0].get_bool();
       CtfeValueBool r = rec_val.op_and(first_arg);
-      result = CtfeValue(r);
+      result = CtfeValue(r, res_type);
       return true;
     }
     else if(method_name == "op_or")
@@ -67,7 +66,7 @@ bool CtfeValueBool::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast
       const CtfeValueBool& rec_val = recv.get_bool();
       const CtfeValueBool& first_arg = args[0].get_bool();
       CtfeValueBool r = rec_val.op_or(first_arg);
-      result = CtfeValue(r);
+      result = CtfeValue(r, res_type);
       return true;
     }
     else if(method_name == "op_xor")
@@ -75,7 +74,7 @@ bool CtfeValueBool::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast
       const CtfeValueBool& rec_val = recv.get_bool();
       const CtfeValueBool& first_arg = args[0].get_bool();
       CtfeValueBool r = rec_val.op_xor(first_arg);
-      result = CtfeValue(r);
+      result = CtfeValue(r, res_type);
       return true;
     }
   }
@@ -85,7 +84,7 @@ bool CtfeValueBool::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast
     {
       const CtfeValueBool& rec_val = recv.get_bool();
       CtfeValueBool r = rec_val.op_not();
-      result = CtfeValue(r);
+      result = CtfeValue(r, res_type);
       return true;
     }
   }
