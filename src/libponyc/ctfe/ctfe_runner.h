@@ -23,6 +23,8 @@ class CtfeRunner
     ast_t* members);
   void left_side_assign(pass_opt_t* opt, errorframe_t* errors, ast_t* left,
     CtfeValue& right_val, int depth);
+  bool match_eq_element(pass_opt_t* opt, errorframe_t* errors, ast_t* ast_pos,
+    CtfeValue &match, ast_t* pattern, ast_t* the_case, int depth);
 
   CtfeValue handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, int depth);
   CtfeValue handle_ffi_ptr_ptr_size(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,

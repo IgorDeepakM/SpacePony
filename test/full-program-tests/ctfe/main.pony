@@ -509,7 +509,42 @@ actor Main
     d2 = union_match("passthrough")
 
     if (d1 != "passthrough") or (d2 != "passthrough") then
-      @pony_exitcode(exit_add + 5)
+      @pony_exitcode(exit_add + 6)
+    end
+
+    var e1 = comptime tuple_match(None, 33) end
+    var e2 = tuple_match(None, 33)
+
+    if (e1 != "none") or (e2 != "none") then
+      @pony_exitcode(exit_add + 7)
+    end
+
+    e1 = comptime tuple_match("tt", 2) end
+    e2 = tuple_match("tt", 2)
+
+    if (e1 != "tt two") or (e2 != "tt two") then
+      @pony_exitcode(exit_add + 8)
+    end
+
+    e1 = comptime tuple_match("tt", 3) end
+    e2 = tuple_match("tt", 3)
+
+    if (e1 != "tt three") or (e2 != "tt three") then
+      @pony_exitcode(exit_add + 9)
+    end
+
+    e1 = comptime tuple_match("tt", 15) end
+    e2 = tuple_match("tt", 15)
+
+    if (e1 != "tt other big integer") or (e2 != "tt other big integer") then
+      @pony_exitcode(exit_add + 10)
+    end
+
+    e1 = comptime tuple_match("tt", 8) end
+    e2 = tuple_match("tt", 8)
+
+    if (e1 != "tt other small integer") or (e2 != "tt other small integer") then
+      @pony_exitcode(exit_add + 11)
     end
 
   fun simple_match(x: String): U32 =>
@@ -527,4 +562,15 @@ actor Main
       | 3 => "three"
       | let u: U32 => "other integer"
       | let s: String => s
+    end
+
+  fun tuple_match(x: (String | None), y: U32): String =>
+    match (x, y)
+    | (None, _) => "none"
+    | (let s: String, 2) => s + " two"
+    | (let s: String, 3) => s + " three"
+    | (let s: String, let u: U32) if u > 14 => s + " other big integer"
+    | (let s: String, _) => s + " other small integer"
+    else
+      "something else"
     end

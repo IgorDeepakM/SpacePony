@@ -198,8 +198,8 @@ bool CtfeValueTypedInt<T>::run_method(pass_opt_t* opt, errorframe_t* errors, ast
     }
     else if(method_name == "le")
     {
-      const CtfeValueTypedInt<T>& rec_val = args[0].get_typed_int<T>();
-      const CtfeValueTypedInt<T>& first_arg = args[1].get_typed_int<T>();
+      const CtfeValueTypedInt<T>& rec_val = recv.get_typed_int<T>();
+      const CtfeValueTypedInt<T>& first_arg = args[0].get_typed_int<T>();
       CtfeValueBool r = rec_val.le(first_arg);
       result = CtfeValue(r, res_type);
       return true;

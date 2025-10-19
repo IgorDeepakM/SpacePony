@@ -354,39 +354,25 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     case TK_DONTCAREREF:
       return CtfeValue(ast_type(expression));
     case TK_TRUE:
-    {
-      ast_t* bool_type = ast_type(expression);
-      CtfeValue ret;
-      if(bool_type != nullptr)
-      {
-        ret = CtfeValue(CtfeValueBool(true), bool_type);
-      }
-      else
-      {
-        bool_type = type_builtin(opt, expression, "Bool");
-        ret = CtfeValue(CtfeValueBool(true), bool_type);
-        ast_free_unattached(bool_type);
-      }
-
-      return ret;
-    }
     case TK_FALSE:
     {
       ast_t* bool_type = ast_type(expression);
       CtfeValue ret;
+      bool val = ast_id(expression) == TK_TRUE ? true : false;
       if(bool_type != nullptr)
       {
-        ret = CtfeValue(CtfeValueBool(false), bool_type);
+        ret = CtfeValue(CtfeValueBool(val), bool_type);
       }
       else
       {
         bool_type = type_builtin(opt, expression, "Bool");
-        ret = CtfeValue(CtfeValueBool(false), bool_type);
+        ret = CtfeValue(CtfeValueBool(val), bool_type);
         ast_free_unattached(bool_type);
       }
 
       return ret;
     }
+
     // Literal cases where we can return the value
     case TK_INT:
       return CtfeValue(CtfeValueIntLiteral(*ast_int(expression)), ast_type(expression));
@@ -504,6 +490,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
 
     case TK_VARREF:
     case TK_LETREF:
+    case TK_MATCH_CAPTURE:
     {
       const char* var_name = ast_name(ast_child(expression));
       CtfeValue found_value;
@@ -792,10 +779,12 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       return handle_ffi_call(opt, errors, expression, depth + 1);
 
     case TK_RECOVER:
-      // recover doesn't do anything to the actual expression other than
-      // changing the capbility which is only affects the Pony type system,
-      // so this is just a pass through.
-      return evaluate(opt, errors, ast_childidx(expression, 1), depth + 1);
+    case TK_CONSUME:
+    {
+      CtfeValue ret = evaluate(opt, errors, ast_childidx(expression, 1), depth + 1);
+      ret.set_type_ast(ast_type(expression));
+      return ret;
+    }
 
     case TK_MATCH:
     {
@@ -804,59 +793,69 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
 
       CtfeValue ret;
 
-      m_frames.push_frame();
-
       bool matched = false;
 
       // Match cases by exhaustion
       ast_t* match_type = match.get_type_ast();
       ast_t* the_case = ast_child(cases);
-      while(the_case != NULL)
+      while(the_case != NULL && !matched)
       {
         AST_GET_CHILDREN(the_case, pattern, guard, body);
 
         // First test that match is a subtype of the pattern
         ast_t* pattern_type = ast_type(pattern);
 
-        if(is_subtype(match_type, pattern_type, NULL, opt))
+        bool is_subtype = false;
+        if(match.is_tuple())
         {
-          if(ast_id(pattern) == TK_MATCH_CAPTURE)
+          pony_assert(ast_id(pattern_type) == TK_TUPLETYPE);
+
+          is_subtype = match.get_tuple().is_subtype(pattern_type, opt);
+        }
+        else
+        {
+          is_subtype = is_subtype_ignore_cap(match_type, pattern_type, NULL, opt);
+        }
+
+
+        if(is_subtype)
+        {
+          m_frames.push_frame();
+
+          if(match.is_tuple())
           {
-            // Test whether the value is captured under a new name
-            //map_value(opt, pattern, match, false);
+            pony_assert(ast_id(pattern) == TK_TUPLE);
 
-            const char* var_name = ast_name(ast_child(pattern));
+            ast_t* pattern_elem_seq = ast_child(pattern);
 
-            if(!m_frames.new_value(var_name, match))
+            bool element_match = true;
+            CtfeValueTuple& match_tuple = match.get_tuple();
+            for(size_t i = 0; i < match_tuple.size(); i++)
             {
-              ast_error_frame(errors, expression,
-                "Parameter with name %s was already found in this case expression frame",
-                var_name);
-              throw CtfeFailToEvaluateException();
+              CtfeValue match_val;
+              if(!match_tuple.get_value(i, match_val))
+              {
+                pony_assert(false);
+              }
+
+              ast_t* pattern_elem = ast_child(pattern_elem_seq);
+
+              if(!match_eq_element(opt, errors, expression, match_val, pattern_elem,
+                the_case, depth))
+              {
+                element_match = false;
+                break;
+              }
+
+              pattern_elem_seq = ast_sibling(pattern_elem_seq);
             }
 
-            matched = true;
+            matched = element_match;
           }
           else
           {
-            // Otherwise test if the pattern matches
-            CtfeValue evaluated_pattern = evaluate(opt, errors, pattern, depth + 1);
-
-            ast_t* recv_type = ast_type(matchref);
-
-            vector<CtfeValue> args;
-            args.push_back(evaluated_pattern);
-
-            ast_t* res_type = type_builtin(opt, the_case, "Bool");
-
-            CtfeValue equal = call_method(opt, errors, expression, res_type, stringtab("eq"),
-              match.get_type_ast(), match, args, NULL, depth + 1);
-
-            ast_free_unattached(res_type);
-
-            pony_assert(equal.is_bool());
-
-            matched = equal.get_bool().get_value();
+            matched = match_eq_element(opt, errors, expression, match, pattern,
+              the_case, depth);
           }
 
           // if the pattern match proceed to check the guard
@@ -871,15 +870,19 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
               if(eval_guard.get_bool().get_value())
               {
                 ret = evaluate(opt, errors, body, depth + 1);
-                break;
+              }
+              else
+              {
+                matched = false;
               }
             }
             else
             {
               ret = evaluate(opt, errors, body, depth + 1);
-              break;
             }
           }
+
+          m_frames.pop_frame();
         }
 
         the_case = ast_sibling(the_case);
@@ -887,10 +890,10 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
 
       if(!matched)
       {
+        m_frames.push_frame();
         ret = evaluate(opt, errors, elsebody, depth + 1);
+        m_frames.pop_frame();
       }
-
-      m_frames.push_frame();
 
       return ret;
     }
@@ -1018,6 +1021,50 @@ void CtfeRunner::left_side_assign(pass_opt_t* opt, errorframe_t* errors,
       ast_error_frame(errors, left,
         "Unsupported assignment receiver type");
       throw CtfeFailToEvaluateException();
+  }
+}
+
+
+bool CtfeRunner::match_eq_element(pass_opt_t* opt, errorframe_t* errors, ast_t* ast_pos,
+  CtfeValue &match, ast_t* pattern, ast_t* the_case, int depth)
+{
+  if(ast_id(pattern) == TK_DONTCAREREF)
+  {
+    return true;
+  }
+  else if(ast_id(pattern) == TK_MATCH_CAPTURE)
+  {
+    // Test whether the value is captured under a new name
+    //map_value(opt, pattern, match, false);
+
+    const char* var_name = ast_name(ast_child(pattern));
+
+    if(!m_frames.new_value(var_name, match))
+    {
+      ast_error_frame(errors, ast_pos,
+        "Parameter with name %s was already found in this case expression frame",
+        var_name);
+      throw CtfeFailToEvaluateException();
+    }
+
+    return true;
+  }
+  else
+  {
+    CtfeValue evaluated_pattern = evaluate(opt, errors, pattern, depth + 1);
+
+    vector<CtfeValue> args = { evaluated_pattern };
+
+    ast_t* res_type = type_builtin(opt, the_case, "Bool");
+
+    CtfeValue equal = call_method(opt, errors, ast_pos, res_type, stringtab("eq"),
+      match.get_type_ast(), match, args, NULL, depth + 1);
+
+    ast_free_unattached(res_type);
+
+    pony_assert(equal.is_bool());
+
+    return equal.get_bool().get_value();
   }
 }
 

@@ -122,6 +122,17 @@ CtfeValue& CtfeValue::operator=(CtfeValue val)
 }
 
 
+void CtfeValue::set_type_ast(ast_t* new_type)
+{
+  if(m_type != nullptr)
+  {
+    ast_free_unattached(m_type);
+  }
+
+  m_type = ast_dup(new_type);
+}
+
+
 void CtfeValue::convert_from_int_literal_to_type(const CtfeValueIntLiteral& val,
   ast_t* type)
 {
@@ -382,59 +393,91 @@ bool CtfeValue::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, as
     return false;
   }
 
-  const string type_name = recv.get_type_name();
+  if(recv.is_machine_word())
+  {
+    const string type_name = recv.get_type_name();
 
-  if(type_name == "Bool")
-  {
-    return CtfeValueBool::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
-  }
-  else if(type_name == "I8")
-  {
-    return CtfeValueTypedInt<int8_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
-  }
-  else if(type_name == "U8")
-  {
-    return CtfeValueTypedInt<uint8_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
-  }
-  else if(type_name == "I16")
-  {
-    return CtfeValueTypedInt<int16_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
-  }
-  else if(type_name == "U16")
-  {
-    return CtfeValueTypedInt<uint16_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
-  }
-  else if(type_name == "I32")
-  {
-    return CtfeValueTypedInt<int32_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
-  }
-  else if(type_name == "U32")
-  {
-    return CtfeValueTypedInt<uint32_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
-  }
-  else if(type_name == "I64")
-  {
-    return CtfeValueTypedInt<int64_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
-  }
-  else if(type_name == "U64")
-  {
-    return CtfeValueTypedInt<uint64_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
-  }
-  else if(type_name == "I128")
-  {
-    return CtfeValueTypedInt<CtfeI128Type>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
-  }
-  else if(type_name == "U128")
-  {
-    return CtfeValueTypedInt<CtfeU128Type>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
-  }
-  else if(type_name == "ILong")
-  {
+    if(type_name == "Bool")
+    {
+      return CtfeValueBool::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
+    }
+    else if(type_name == "I8")
+    {
+      return CtfeValueTypedInt<int8_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
+    }
+    else if(type_name == "U8")
+    {
+      return CtfeValueTypedInt<uint8_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
+    }
+    else if(type_name == "I16")
+    {
+      return CtfeValueTypedInt<int16_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
+    }
+    else if(type_name == "U16")
+    {
+      return CtfeValueTypedInt<uint16_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
+    }
+    else if(type_name == "I32")
+    {
+      return CtfeValueTypedInt<int32_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
+    }
+    else if(type_name == "U32")
+    {
+      return CtfeValueTypedInt<uint32_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
+    }
+    else if(type_name == "I64")
+    {
+      return CtfeValueTypedInt<int64_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
+    }
+    else if(type_name == "U64")
+    {
+      return CtfeValueTypedInt<uint64_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
+    }
+    else if(type_name == "I128")
+    {
+      return CtfeValueTypedInt<CtfeI128Type>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
+    }
+    else if(type_name == "U128")
+    {
+      return CtfeValueTypedInt<CtfeU128Type>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
+    }
+    else if(type_name == "ILong")
+    {
+        if(get_long_size() == 4)
+        {
+          return CtfeValueTypedInt<int32_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
+        }
+        else if(get_long_size() == 8)
+        {
+          return CtfeValueTypedInt<int64_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
+        }
+        else
+        {
+          pony_assert(false);
+        }
+    }
+    else if(type_name == "ULong")
+    {
       if(get_long_size() == 4)
+      {
+        return CtfeValueTypedInt<uint32_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
+      }
+      else if(get_long_size() == 8)
+      {
+        return CtfeValueTypedInt<uint64_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
+      }
+      else
+      {
+        pony_assert(false);
+      }
+    }
+    else if(type_name == "ISize")
+    {
+      if(get_size_size() == 4)
       {
         return CtfeValueTypedInt<int32_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
       }
-      else if(get_long_size() == 8)
+      else if(get_size_size() == 8)
       {
         return CtfeValueTypedInt<int64_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
       }
@@ -442,50 +485,21 @@ bool CtfeValue::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, as
       {
         pony_assert(false);
       }
-  }
-  else if(type_name == "ULong")
-  {
-    if(get_long_size() == 4)
-    {
-      return CtfeValueTypedInt<uint32_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
     }
-    else if(get_long_size() == 8)
+    else if(type_name == "USize")
     {
-      return CtfeValueTypedInt<uint64_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
-    }
-    else
-    {
-      pony_assert(false);
-    }
-  }
-  else if(type_name == "ISize")
-  {
-    if(get_size_size() == 4)
-    {
-      return CtfeValueTypedInt<int32_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
-    }
-    else if(get_size_size() == 8)
-    {
-      return CtfeValueTypedInt<int64_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
-    }
-    else
-    {
-      pony_assert(false);
-    }
-  }
-  else if(type_name == "USize")
-  {
-    if(get_size_size() == 4)
-    {
-      return CtfeValueTypedInt<uint32_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
-    }
-    else if(get_size_size() == 8)
-    {
-      return CtfeValueTypedInt<uint64_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
-    }
-    else
-    {
-      pony_assert(false);
+      if(get_size_size() == 4)
+      {
+        return CtfeValueTypedInt<uint32_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
+      }
+      else if(get_size_size() == 8)
+      {
+        return CtfeValueTypedInt<uint64_t>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
+      }
+      else
+      {
+        pony_assert(false);
+      }
     }
   }
   else if(CtfeAstType::is_pointer(recv.get_type_ast()))

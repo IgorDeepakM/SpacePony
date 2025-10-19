@@ -25,6 +25,7 @@ public:
   static bool is_none(ast_t* type) { return ::is_none(type); }
   static bool is_struct(ast_t* ast);
   static bool is_tuple(ast_t* ast) { return ast_id(ast) == TK_TUPLETYPE; };
+  static bool is_machine_word(ast_t* ast) { return ::is_machine_word(ast); }
 
   static void initialize(pass_opt_t* opt);
   static uint8_t get_long_size() { return m_long_size; }

@@ -3,6 +3,8 @@
 
 #include <algorithm>
 
+#include "ponyassert.h"
+
 
 using namespace std;
 
@@ -95,4 +97,28 @@ bool CtfeValueTuple::get_value(size_t pos, CtfeValue& value) const
   }
 
   return false;
+}
+
+
+bool CtfeValueTuple::is_subtype(ast_t* pattern_type, pass_opt_t* opt)
+{
+  bool match = true;
+
+  ast_t* b_type_elem = ast_child(pattern_type);
+
+  for(size_t i = 0; i < m_size; i++)
+  {
+    pony_assert(b_type_elem != nullptr);
+    ast_t* a_type_elem = m_vars[i].get_type_ast();
+
+    if(!is_subtype_ignore_cap(a_type_elem, b_type_elem, NULL, opt))
+    {
+      match = false;
+      break;
+    }
+
+    b_type_elem = ast_sibling(b_type_elem);
+  }
+
+  return match;
 }

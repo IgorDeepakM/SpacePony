@@ -32,13 +32,12 @@ public:
   ~CtfeValuePointer();
   CtfeValuePointer& operator=(CtfeValuePointer other);
   CtfeValuePointer realloc(size_t size, CtfeRunner &ctfeRunner);
-  CtfeValuePointer return_same_pointer() const;
   CtfeValue apply(size_t i) const;
   CtfeValue update(size_t i, const CtfeValue& val);
   CtfeValuePointer pointer_at_index(size_t i) const;
   CtfeValuePointer insert(size_t n, size_t len);
   CtfeValue _delete(size_t n, size_t len);
-  void copy_to(CtfeValuePointer& that, size_t len);
+  CtfeValuePointer copy_to(CtfeValuePointer& that, size_t len);
 
   void delete_array_pointer();
 
