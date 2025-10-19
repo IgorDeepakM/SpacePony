@@ -470,38 +470,45 @@ actor Main
     @memcmp(p1, p4, 10)
 
   fun test_match(exit_add: I32) =>
-    let c1 = comptime simple_match("T1000") end
-    let c2 = simple_match("T1000")
+    var c1 = comptime simple_match("T1000") end
+    var c2 = simple_match("T1000")
 
     if (c1 != 2) or (c2 != 2) then
       @pony_exitcode(exit_add + 1)
     end
 
-    let d1 = comptime union_match(None) end
-    let d2 = union_match(None)
+    c1 = comptime simple_match("T3000") end
+    c2 = simple_match("T3000")
 
-    if (d1 != "none") or (d2 != "none") then
+    if (c1 != 99) or (c2 != 99) then
       @pony_exitcode(exit_add + 2)
     end
 
-    let e1 = comptime union_match(3) end
-    let e2 = union_match(3)
+    var d1 = comptime union_match(None) end
+    var d2 = union_match(None)
 
-    if (e1 != "three") or (e2 != "three") then
+    if (d1 != "none") or (d2 != "none") then
       @pony_exitcode(exit_add + 3)
     end
 
-    let f1 = comptime union_match(4) end
-    let f2 = union_match(4)
+    d1 = comptime union_match(3) end
+    d2 = union_match(3)
 
-    if (f1 != "other integer") or (f2 != "other integer") then
+    if (d1 != "three") or (d2 != "three") then
       @pony_exitcode(exit_add + 4)
     end
 
-    let g1 = comptime union_match("passthrough") end
-    let g2 = union_match("passthrough")
+    d1 = comptime union_match(4) end
+    d2 = union_match(4)
 
-    if (g1 != "passthrough") or (g2 != "passthrough") then
+    if (d1 != "other integer") or (d2 != "other integer") then
+      @pony_exitcode(exit_add + 5)
+    end
+
+    d1 = comptime union_match("passthrough") end
+    d2 = union_match("passthrough")
+
+    if (d1 != "passthrough") or (d2 != "passthrough") then
       @pony_exitcode(exit_add + 5)
     end
 

@@ -118,7 +118,7 @@ CtfeValue CtfeRunner::call_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
 
   pony_assert(recv_type != NULL);
 
-  deferred_reification_t* looked_up = lookup(opt, ast_pos, recv_type, method_name);
+  deferred_reification_t* looked_up = lookup_try(opt, ast_pos, recv_type, method_name, true);
   if(looked_up == NULL)
   {
     ast_error_frame(errors, ast_pos,
@@ -354,9 +354,39 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     case TK_DONTCAREREF:
       return CtfeValue(ast_type(expression));
     case TK_TRUE:
-      return CtfeValue(CtfeValueBool(true), ast_type(expression));
+    {
+      ast_t* bool_type = ast_type(expression);
+      CtfeValue ret;
+      if(bool_type != nullptr)
+      {
+        ret = CtfeValue(CtfeValueBool(true), bool_type);
+      }
+      else
+      {
+        bool_type = type_builtin(opt, expression, "Bool");
+        ret = CtfeValue(CtfeValueBool(true), bool_type);
+        ast_free_unattached(bool_type);
+      }
+
+      return ret;
+    }
     case TK_FALSE:
-      return CtfeValue(CtfeValueBool(false), ast_type(expression));
+    {
+      ast_t* bool_type = ast_type(expression);
+      CtfeValue ret;
+      if(bool_type != nullptr)
+      {
+        ret = CtfeValue(CtfeValueBool(false), bool_type);
+      }
+      else
+      {
+        bool_type = type_builtin(opt, expression, "Bool");
+        ret = CtfeValue(CtfeValueBool(false), bool_type);
+        ast_free_unattached(bool_type);
+      }
+
+      return ret;
+    }
     // Literal cases where we can return the value
     case TK_INT:
       return CtfeValue(CtfeValueIntLiteral(*ast_int(expression)), ast_type(expression));
@@ -822,6 +852,8 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
             CtfeValue equal = call_method(opt, errors, expression, res_type, stringtab("eq"),
               match.get_type_ast(), match, args, NULL, depth + 1);
 
+            ast_free_unattached(res_type);
+
             pony_assert(equal.is_bool());
 
             matched = equal.get_bool().get_value();
@@ -884,6 +916,9 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
 
           CtfeValue equal = call_method(opt, errors, expression, res_type, stringtab("eq"),
                   recv_value.get_type_ast(), that_value, args, NULL, depth + 1);
+
+          ast_free_unattached(res_type);
+
           return equal;
         }
       }
