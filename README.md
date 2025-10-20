@@ -2,6 +2,34 @@
 
 SpacePony is an experimental fork of the [Pony programming language](https://github.com/ponylang/ponyc). The goal of the fork is to improve the FFI capabilities and add more systems programming language features.
 
+## Quick start
+
+SpacePony currently doesn't have any official binary releases, however it is easy to clone this repo and build the compiler.
+
+* First clone this repo in any subdirectory.
+
+### Linux/Macos
+
+By default SpacePony uses Clang as the compiler. Also Cmake and Python3 is needed.
+
+* In the base directory type:
+  * **make libs build_flags="-j6"** (this will build associated libraries such as LLVM, this will take a while. Adjust the -j6 option to the number of cores you want to use)
+  * **make configure**
+  * **make build**
+
+### Windows
+
+By default SpacePony uses the MSVC compiler. Also Cmake and Python3 is needed. Everything can be installed using MS Visual Studio. Open a Powershell terminal in order to run the make script, simplest is to open the "Developer PowerShell for VS 202x" where all the compiler stuff is added to the path.
+
+* In the base directory type:
+  * **.\make.ps1 libs** (this will build associated libraries such as LLVM, this will take a while)
+  * **.\make.ps1 configure**
+  * **.\make.ps1 build**
+
+The compiled output including the ponyc compiler is located in the build/release directory.
+
+Did I miss anything? This guide will tell you more [Building from source](BUILD.md)
+
 ## List of changes.
 
 ### Pointer
