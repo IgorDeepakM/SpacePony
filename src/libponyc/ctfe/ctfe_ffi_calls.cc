@@ -1,8 +1,10 @@
 #include "ctfe_runner.h"
 
 #include "ponyassert.h"
+#include "../ast/lexint.h"
 
 #include <cstring>
+#include <bit>
 
 
 using namespace std;
@@ -27,13 +29,18 @@ CtfeValue CtfeRunner::handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast
   }
 
   string ffi_name = ast_name(name);
+
+  if(ffi_name.rfind("@llvm.", 0) == 0)
+  {
+    return handle_llvm_ffi(opt, errors, ast, return_type, ffi_name, evaluated_args);
+  }
   if(ffi_name == "@memcmp" || ffi_name == "@memmove"|| ffi_name == "@memcpy")
   {
     return handle_ffi_ptr_ptr_size(opt, errors, ast, return_type, ffi_name, evaluated_args);
   }
   else if(string(ast_name(name)) == "@memset")
   {
-    void* ptr = NULL;
+    void* ptr = nullptr;
     int ch = 0;
     size_t size = 0;
 
@@ -89,8 +96,8 @@ CtfeValue CtfeRunner::handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast
 CtfeValue CtfeRunner::handle_ffi_ptr_ptr_size(pass_opt_t* opt, errorframe_t* errors,
   ast_t* ast, ast_t* return_type, const string& ffi_name, const vector<CtfeValue>& evaluated_args)
 {
-  void* ptr1 = NULL;
-  void* ptr2 = NULL;
+  void* ptr1 = nullptr;
+  void* ptr2 = nullptr;
   size_t size = 0;
 
   CtfeValue arg1 = evaluated_args[0];
@@ -135,7 +142,6 @@ CtfeValue CtfeRunner::handle_ffi_ptr_ptr_size(pass_opt_t* opt, errorframe_t* err
   if(ffi_name == "@memcmp")
   {
     int ret = memcmp(ptr1, ptr2, size);
-    const string ret_type_name = ast_name(ast_childidx(ast_type(ast), 1));
     return CtfeValue(CtfeValueIntLiteral(ret), return_type);
   }
   else if(ffi_name == "@memmove")
@@ -149,8 +155,57 @@ CtfeValue CtfeRunner::handle_ffi_ptr_ptr_size(pass_opt_t* opt, errorframe_t* err
     return CtfeValue(CtfeValuePointer(ret, return_type), return_type);
   }
 
-
   pony_assert(false);
 
   return CtfeValue();
+}
+
+
+CtfeValue CtfeRunner::handle_llvm_ffi(pass_opt_t* opt, errorframe_t* errors,
+  ast_t* ast, ast_t* return_type, const string& ffi_name, const vector<CtfeValue>& evaluated_args)
+{
+
+  if(ffi_name.rfind("@llvm.ctlz.", 0) == 0)
+  {
+    uint64_t src = 0;
+    //bool is_zero_undef = false; not needed
+
+    CtfeValue arg1 = evaluated_args[0];
+
+    if(arg1.is_typed_int())
+    {
+      src = arg1.to_uint64();
+    }
+    else
+    {
+      ast_error_frame(errors, ast,
+        "Incompatible argument 1 in CTFE calling %s", ffi_name.c_str());
+      throw CtfeFailToEvaluateException();
+    }
+
+    if(ffi_name == "@llvm.ctlz.i64")
+    {
+      int ret = count_leading_zeros(src);
+      return CtfeValue(CtfeValueIntLiteral(ret), return_type);
+    }
+    else if(ffi_name == "@llvm.ctlz.i32")
+    {
+      int ret = count_leading_zeros(src << 32);
+      return CtfeValue(CtfeValueIntLiteral(ret > 32 ? 32 : ret), return_type);
+    }
+    else if(ffi_name == "@llvm.ctlz.i16")
+    {
+      int ret = count_leading_zeros(src << (32 + 16));
+      return CtfeValue(CtfeValueIntLiteral(ret > 16 ? 16 : ret), return_type);
+    }
+    else if(ffi_name == "@llvm.ctlz.i8")
+    {
+      int ret = count_leading_zeros(src << (32 + 16 + 8));
+      return CtfeValue(CtfeValueIntLiteral(ret > 8 ? 8 : ret), return_type);
+    }
+  }
+
+  ast_error_frame(errors, ast,
+        "CTFE unsupported LLVM FFI call calling %s", ffi_name.c_str());
+  throw CtfeFailToEvaluateException();
 }

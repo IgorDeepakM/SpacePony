@@ -29,6 +29,9 @@ class CtfeRunner
   CtfeValue handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, int depth);
   CtfeValue handle_ffi_ptr_ptr_size(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
     ast_t* return_type, const std::string& ffi_name, const std::vector<CtfeValue>& evaluated_args);
+  CtfeValue handle_llvm_ffi(pass_opt_t* opt, errorframe_t* errors,
+    ast_t* ast, ast_t* return_type, const std::string& ffi_name,
+    const std::vector<CtfeValue>& evaluated_args);
 
 public:
   CtfeRunner(pass_opt_t* opt);

@@ -123,9 +123,7 @@ size_t CtfeAstType::get_size_of_type(ast_t* type)
   }
   else
   {
-    ast_t* underlying_type = (ast_t*)ast_data(type);
-    if(ast_id(underlying_type) == TK_STRUCT ||
-       ast_id(underlying_type) == TK_CLASS)
+    if(is_struct(type) || is_interface(type))
     {
       return sizeof(void*);
     }
@@ -150,6 +148,18 @@ bool CtfeAstType::is_struct(ast_t* ast)
   ast_t* underlying_type = (ast_t*)ast_data(ast);
   if(ast_id(underlying_type) == TK_STRUCT ||
       ast_id(underlying_type) == TK_CLASS)
+  {
+    return true;
+  }
+
+  return false;
+}
+
+
+bool CtfeAstType::is_interface(ast_t* ast)
+{
+  ast_t* underlying_type = (ast_t*)ast_data(ast);
+  if(ast_id(underlying_type) == TK_INTERFACE)
   {
     return true;
   }

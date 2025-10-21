@@ -40,6 +40,8 @@ actor Main
     test_pointer(160)
     test_ffi_calls(180)
     test_match(200)
+    test_array(220)
+    test_string(240)
 
   fun test_literal_int(exit_add: I32) =>
     // Test shift with negative numbers
@@ -574,3 +576,55 @@ actor Main
     else
       "something else"
     end
+
+  fun test_array(exit_add: I32) =>
+    var c1 = comptime array_add() end
+    var c2 = array_add()
+
+    if (c1 != 30) or (c2 != 30) then
+      @pony_exitcode(exit_add + 1)
+    end
+
+  fun array_add(): I32 =>
+    let x: Array[I32] = [1; 2; 3; 4; 5]
+    let y: Array[I32] = [1; 2; 3; 4; 5]
+
+    var res: I32 = 0
+
+    let iterator_x = x.values()
+    let iterator_y = y.values()
+    while iterator_x.has_next() and iterator_y.has_next() do
+      var x_val: I32 = 0
+      var y_val: I32 = 0
+      try
+        x_val = iterator_x.next()?
+        y_val = iterator_y.next()?
+        res = res + x_val + y_val
+      else
+        break 0
+      end
+    end
+
+    res
+
+  fun test_string(exit_add: I32) =>
+    var c1 = comptime string_add("this", " that") end
+    var c2 = string_add("this", " that")
+
+    if (c1 != "this that") or (c2 != "this that") then
+      @pony_exitcode(exit_add + 1)
+    end
+
+    var d1 = comptime string_split_join("1 2 3 4") end
+    var d2 = string_split_join("1 2 3 4")
+
+    if (d1 != "1234") or (d2 != "1234") then
+      @pony_exitcode(exit_add + 2)
+    end
+
+  fun string_add(x: String, y: String): String =>
+    x + y
+
+  fun string_split_join(x: String): String =>
+    let r = x.split(" ")
+    "".join((consume r).values())

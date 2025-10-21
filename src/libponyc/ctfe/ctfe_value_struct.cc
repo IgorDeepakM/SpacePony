@@ -1,11 +1,24 @@
 #include "ctfe_value_struct.h"
 
+#include <algorithm>
+
 
 using namespace std;
 
-CtfeValueStruct::CtfeValueStruct()
+CtfeValueStruct::CtfeValueStruct(ast_t *type):
+  m_type{ast_dup(type)}
 {
 
+}
+
+
+CtfeValueStruct::~CtfeValueStruct()
+{
+  if(m_type != nullptr)
+  {
+    ast_free_unattached(m_type);
+    m_type = nullptr;
+  }
 }
 
 
@@ -39,4 +52,19 @@ bool CtfeValueStruct::get_value(const string& name, CtfeValue& value) const
   }
   
   return false;
+}
+
+
+void CtfeValueStruct::write_to_memory(uint8_t* ptr) const
+{
+  const CtfeValueStruct* r = this;
+  memcpy(ptr, &r, sizeof(CtfeValueStruct*));
+}
+
+
+CtfeValueStruct* CtfeValueStruct::read_from_memory(uint8_t* ptr)
+{
+  CtfeValueStruct* r = nullptr;
+  memcpy(&r, ptr, sizeof(CtfeValueStruct*));
+  return r;
 }

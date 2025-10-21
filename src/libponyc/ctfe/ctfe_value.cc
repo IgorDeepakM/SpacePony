@@ -730,6 +730,10 @@ void CtfeValue::write_to_memory(uint8_t* ptr) const
       pony_assert(false);
     }
   }
+  else if(CtfeAstType::is_struct(m_type) || CtfeAstType::is_interface(m_type))
+  {
+    get_struct_ref()->write_to_memory(ptr);
+  }
   else
   {
     pony_assert(false);
@@ -739,7 +743,7 @@ void CtfeValue::write_to_memory(uint8_t* ptr) const
 
 CtfeValue CtfeValue::read_from_memory(ast_t* type, uint8_t* ptr)
 {
-const string type_name = CtfeAstType::get_type_name(type);
+  const string type_name = CtfeAstType::get_type_name(type);
 
   if(type_name == "Bool")
   {
@@ -843,6 +847,20 @@ const string type_name = CtfeAstType::get_type_name(type);
     else
     {
       pony_assert(false);
+    }
+  }
+  else if(CtfeAstType::is_struct(type) || CtfeAstType::is_interface(type))
+  {
+    CtfeValueStruct* s = CtfeValueStruct::read_from_memory(ptr);
+    if(s != nullptr)
+    {
+      // When restored from memory, the type information is lost as it is only a pointer.
+      // This can be restored from the CtfeValueStruct itself.
+      return CtfeValue(s, s->get_type_ast());
+    }
+    else
+    {
+      return CtfeValue();
     }
   }
   else

@@ -45,7 +45,7 @@ bool CtfeRunner::populate_struct_members(pass_opt_t* opt, errorframe_t* errors,
 {
   ast_t* member = ast_child(members);
 
-  while(member != NULL)
+  while(member != nullptr)
   {
     switch(ast_id(member))
     {
@@ -68,7 +68,7 @@ bool CtfeRunner::populate_struct_members(pass_opt_t* opt, errorframe_t* errors,
         if(ast_id(underlying_type) == TK_STRUCT ||
            ast_id(underlying_type) == TK_CLASS)
         {
-          CtfeValueStruct* embed_s = new CtfeValueStruct();
+          CtfeValueStruct* embed_s = new CtfeValueStruct(embed_type);
           embed_val = CtfeValue(embed_s, embed_type);
           add_allocated_reference(embed_val);
 
@@ -116,10 +116,24 @@ CtfeValue CtfeRunner::call_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
     return result;
   }
 
-  pony_assert(recv_type != NULL);
+  pony_assert(recv_type != nullptr);
+
+  // If the underlying type is an interface it is a possible lamda
+  ast_t* recv_underlying_type = (ast_t*)ast_data(recv_type);
+  if(recv_underlying_type != nullptr)
+  {
+    switch(ast_id(recv_underlying_type))
+    {
+      case TK_INTERFACE:
+        recv_type = recv_val.get_type_ast();
+        break;
+      default:
+        break;
+    }
+  }
 
   deferred_reification_t* looked_up = lookup_try(opt, ast_pos, recv_type, method_name, true);
-  if(looked_up == NULL)
+  if(looked_up == nullptr)
   {
     ast_error_frame(errors, ast_pos,
       "CTFE: could not find the method '%s'", method_name);
@@ -127,18 +141,18 @@ CtfeValue CtfeRunner::call_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
   }
 
   ast_t* looked_up_ast = looked_up->ast;
-  ast_t* reified_lookedup_ast = NULL;
+  ast_t* reified_lookedup_ast = nullptr;
   bool ctfe_frame_pop = false;
   bool failed = false;
 
-  if(typeargs != NULL)
+  if(typeargs != nullptr)
   {
     ast_t* typeparams = ast_childidx(looked_up_ast, 2);
     deferred_reify_add_method_typeparams(looked_up, typeparams, typeargs, opt);
   }
 
-  if(looked_up->method_typeargs != NULL || looked_up->type_typeargs != NULL ||
-      looked_up->thistype != NULL)
+  if(looked_up->method_typeargs != nullptr || looked_up->type_typeargs != nullptr ||
+      looked_up->thistype != nullptr)
   {
     reified_lookedup_ast = deferred_reify(looked_up, looked_up_ast, opt);
     looked_up_ast = reified_lookedup_ast;
@@ -166,7 +180,7 @@ CtfeValue CtfeRunner::call_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
   CtfeValue return_value;
 
   ast_t* seq = ast_childidx(looked_up_ast, 6);
-  if(ast_id(ast_child(seq)) != TK_COMPILE_INTRINSIC)
+  if(ast_id(seq) != TK_NONE && ast_id(ast_child(seq)) != TK_COMPILE_INTRINSIC)
   {
     try
     {
@@ -179,7 +193,7 @@ CtfeValue CtfeRunner::call_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
     catch(const CtfeException& e)
     {
       m_frames.pop_frame();
-      if(reified_lookedup_ast != NULL)
+      if(reified_lookedup_ast != nullptr)
       {
         ast_free_unattached(reified_lookedup_ast);
       }
@@ -189,14 +203,22 @@ CtfeValue CtfeRunner::call_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
   }
   else
   {
-    ast_error_frame(errors, ast_pos,
-      "Unsupported compiler intrinsic function");
+    if(ast_id(seq) == TK_NONE)
+    {
+      // This means that we haven't found the proper virtual method
+      pony_assert(false);
+    }
+    else if(ast_id(ast_child(seq)) != TK_COMPILE_INTRINSIC)
+    {
+      ast_error_frame(errors, ast_pos,
+        "Unsupported compiler intrinsic function");
+    }
     failed = true;
   }
 
   m_frames.pop_frame();
 
-  if(reified_lookedup_ast != NULL)
+  if(reified_lookedup_ast != nullptr)
   {
     ast_free_unattached(reified_lookedup_ast);
   }
@@ -222,10 +244,10 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
 
   vector<CtfeValue> args;
   CtfeValue rec_val;
-  ast_t* recv_type = NULL;
-  const char* method_name = NULL;
+  ast_t* recv_type = nullptr;
+  const char* method_name = nullptr;
   CtfeValue return_value;
-  ast_t* typeargs = NULL;
+  ast_t* typeargs = nullptr;
 
   switch(ast_id(receiver))
   {
@@ -265,7 +287,7 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
         }
         else
         {
-          CtfeValueStruct* s = new CtfeValueStruct();
+          CtfeValueStruct* s = new CtfeValueStruct(recv_type);
           rec_val = CtfeValue(s, recv_type);
           add_allocated_reference(rec_val);
 
@@ -283,9 +305,14 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
       {
         rec_val = CtfeValue(recv_type);
       }
+      else
+      {
+        pony_assert(false);
+      }
       break;
     }
     case TK_FUNREF:
+    case TK_FUNCHAIN:
     {
       if(ast_id(ast_childidx(receiver, 1)) == TK_TYPEARGS)
       {
@@ -293,10 +320,10 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
         receiver = ast_child(receiver);
       }
 
-      AST_GET_CHILDREN(receiver, rec_type, pos_args);
-      rec_val = evaluate(opt, errors, rec_type, depth + 1);
-      method_name = ast_name(ast_sibling(rec_type));
-      recv_type = ast_type(rec_type);
+      ast_t* rec_expr = ast_child(receiver);
+      rec_val = evaluate(opt, errors, rec_expr, depth + 1);
+      method_name = ast_name(ast_sibling(rec_expr));
+      recv_type = ast_type(rec_expr);
       break;
     }
     default:
@@ -306,7 +333,7 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
   }
 
   ast_t* argument = ast_child(positional_args);
-  while(argument != NULL)
+  while(argument != nullptr)
   {
     CtfeValue evaluated_arg = evaluate(opt, errors, argument, depth + 1);
 
@@ -314,9 +341,10 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
     argument = ast_sibling(argument);
   }
 
-  pony_assert(method_name != NULL);
+  pony_assert(method_name != nullptr);
 
   ast_t* result_type = ast_type(ast);
+
   return_value = call_method(opt, errors, ast, result_type, method_name, recv_type, rec_val, args,
     typeargs, depth);
 
@@ -330,6 +358,7 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
     {
       case TK_NEWREF:
       case TK_NEWBEREF:
+      case TK_FUNCHAIN:
         return rec_val;
       default:
         return return_value;
@@ -387,7 +416,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       ast_t* alloc_var_type = ast_childidx(alloc_var, 1);
       ast_t* ptr_var = ast_sibling(alloc_var);
       ast_t* ptr_var_type = ast_childidx(ptr_var, 1);
-      CtfeValueStruct* s = new CtfeValueStruct();
+      CtfeValueStruct* s = new CtfeValueStruct(string_type);
 
       size_t len = ast_name_len(expression);
       s->new_value("_size", CtfeValue(CtfeValueIntLiteral(len), size_var_type));
@@ -402,7 +431,6 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       add_allocated_reference(ret);
 
       return ret;
-      break;
     }
 
     case TK_THIS:
@@ -440,7 +468,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     case TK_SEQ:
     {
       CtfeValue evaluated;
-      for(ast_t* p = ast_child(expression); p != NULL; p = ast_sibling(p))
+      for(ast_t* p = ast_child(expression); p != nullptr; p = ast_sibling(p))
       {
         evaluated = evaluate(opt, errors, p, depth + 1);
 
@@ -460,7 +488,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       pony_assert(condition_evaluated.is_bool());
 
       m_frames.push_frame();
-      CtfeValue ret =  condition_evaluated.get_bool().get_value() ?
+      CtfeValue ret = condition_evaluated.get_bool().get_value() ?
             evaluate(opt, errors, then_branch, depth + 1):
             evaluate(opt, errors, else_branch, depth + 1);
       m_frames.pop_frame();
@@ -471,7 +499,9 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     case TK_RETURN:
     {
       AST_GET_CHILDREN(expression, return_expr);
-      return evaluate(opt, errors, return_expr, depth + 1);
+      CtfeValue ret = evaluate(opt, errors, return_expr, depth + 1);
+      ret.set_control_flow_modifier(CtfeValue::ControlFlowModifier::Return);
+      return ret;
     }
 
     case TK_VAR:
@@ -543,9 +573,6 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     case TK_ASSIGN:
     {
       AST_GET_CHILDREN(expression, left, right);
-
-      const char* var_name = NULL;
-      bool new_value = false;
 
       CtfeValue left_value = evaluate(opt, errors, left, depth + 1);
       CtfeValue right_value = evaluate(opt, errors, right, depth + 1);
@@ -643,9 +670,12 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       CtfeValue evaluated_cond = evaluate(opt, errors, cond, depth + 1);
 
       CtfeValue repeat_value;
+      bool last_was_from_continue = false;
 
       do
       {
+        last_was_from_continue = false;
+
         m_frames.push_frame();
         repeat_value = evaluate(opt, errors, repeat_body, depth + 1);
         m_frames.pop_frame();
@@ -661,12 +691,17 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
           repeat_value.clear_control_flow_modifier();
           break;
         }
+        else if(modifier == CtfeValue::ControlFlowModifier::Continue)
+        {
+          repeat_value.clear_control_flow_modifier();
+          last_was_from_continue = true;
+        }
 
         evaluated_cond = evaluate(opt, errors, cond, depth + 1);
 
       }while(evaluated_cond.get_bool().get_value() == false);
 
-      if(repeat_value.get_control_flow_modifier() == CtfeValue::ControlFlowModifier::Continue)
+      if(last_was_from_continue)
       {
         m_frames.push_frame();
         repeat_value = evaluate(opt, errors, elsebody, depth + 1);
@@ -682,7 +717,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
 
       // First go through and check how many members
       size_t tuple_size = 0;
-      while(elem != NULL)
+      while(elem != nullptr)
       {
         tuple_size++;
         elem = ast_sibling(elem);
@@ -692,7 +727,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
 
       elem = ast_child(expression);
       size_t i = 0;
-      while(elem != NULL)
+      while(elem != nullptr)
       {
         CtfeValue evaluated_elem = evaluate(opt, errors, elem, depth + 1);
 
@@ -760,7 +795,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       AST_GET_CHILDREN(expression, left, right, then);
 
       CtfeValue ret;
-      if(is_subtype(left, right, NULL, opt))
+      if(is_subtype(left, right, nullptr, opt))
       {
         m_frames.push_frame();
         ret = evaluate(opt, errors, then, depth + 1);
@@ -798,7 +833,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       // Match cases by exhaustion
       ast_t* match_type = match.get_type_ast();
       ast_t* the_case = ast_child(cases);
-      while(the_case != NULL && !matched)
+      while(the_case != nullptr && !matched)
       {
         AST_GET_CHILDREN(the_case, pattern, guard, body);
 
@@ -814,7 +849,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
         }
         else
         {
-          is_subtype = is_subtype_ignore_cap(match_type, pattern_type, NULL, opt);
+          is_subtype = is_subtype_ignore_cap(match_type, pattern_type, nullptr, opt);
         }
 
 
@@ -904,29 +939,23 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       CtfeValue recv_value = evaluate(opt, errors, recv, depth + 1);
       CtfeValue that_value = evaluate(opt, errors, that, depth + 1);
 
-      bool ret_bool = is_subtype(recv_value.get_type_ast(),
-        that_value.get_type_ast(), NULL, opt);
+      bool is_sub = is_subtype(recv_value.get_type_ast(),
+        that_value.get_type_ast(), nullptr, opt);
 
       ast_t* underlying_type = (ast_t*)ast_data(ast_type(recv));
 
-      if(ast_id(underlying_type) != TK_PRIMITIVE)
+      // None can be matched on type basis, but has no value
+      if(!recv_value.is_none() && is_sub)
       {
-        if(ret_bool)
-        {
-          ast_t* res_type = type_builtin(opt, expression, "Bool");
+        vector<CtfeValue> args = { that_value };
 
-          vector<CtfeValue> args = { that_value };
+        CtfeValue equal = call_method(opt, errors, expression, ast_type(expression), stringtab("eq"),
+                recv_value.get_type_ast(), recv_value, args, nullptr, depth + 1);
 
-          CtfeValue equal = call_method(opt, errors, expression, res_type, stringtab("eq"),
-                  recv_value.get_type_ast(), that_value, args, NULL, depth + 1);
-
-          ast_free_unattached(res_type);
-
-          return equal;
-        }
+        return equal;
       }
 
-      return CtfeValue(CtfeValueBool(ret_bool), ast_type(expression));
+      return CtfeValue(CtfeValueBool(is_sub), ast_type(expression));
     }
 
     default:
@@ -995,7 +1024,7 @@ void CtfeRunner::left_side_assign(pass_opt_t* opt, errorframe_t* errors,
 
       ast_t* seq_elem = ast_child(left);
       size_t i = 0;
-      while(seq_elem != NULL)
+      while(seq_elem != nullptr)
       {
         ast_t* elem = ast_child(seq_elem);
 
@@ -1058,7 +1087,7 @@ bool CtfeRunner::match_eq_element(pass_opt_t* opt, errorframe_t* errors, ast_t* 
     ast_t* res_type = type_builtin(opt, the_case, "Bool");
 
     CtfeValue equal = call_method(opt, errors, ast_pos, res_type, stringtab("eq"),
-      match.get_type_ast(), match, args, NULL, depth + 1);
+      match.get_type_ast(), match, args, nullptr, depth + 1);
 
     ast_free_unattached(res_type);
 
@@ -1095,14 +1124,14 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
 
   // evaluate the expression passing NULL as 'this' as we aren't
   // evaluating a method on an object
-  errorframe_t errors = NULL;
+  errorframe_t errors = nullptr;
   bool failed = false;
 
   try
   {
     CtfeValue evaluated = evaluate(opt, &errors, expression, 0);
     ast_t* new_literal = evaluated.create_ast_literal_node(opt, &errors, ast);
-    if(new_literal != NULL)
+    if(new_literal != nullptr)
     {
       ast_replace(astp, new_literal);
       return true;
@@ -1119,7 +1148,7 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
 
   if(failed)
   {
-    if(ast_type(expression) != NULL)
+    if(ast_type(expression) != nullptr)
     {
       ast_settype(ast, ast_from(ast_type(expression), TK_ERRORTYPE));
     }
@@ -1127,7 +1156,7 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
     {
       ast_settype(ast, ast_blank(TK_ERRORTYPE));
     }
-    errorframe_t frame = NULL;
+    errorframe_t frame = nullptr;
     ast_error_frame(&frame, ast, "could not evaluate compile time expression");
     errorframe_append(&frame, &errors);
     errorframe_report(&frame, opt->check.errors);
