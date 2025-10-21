@@ -52,6 +52,8 @@ lexint_t lexint_char(lexint_t const *i, int c);
 
 bool lexint_accum(lexint_t* i, uint64_t digit, uint64_t base);
 
+int count_leading_zeros(uint64_t n);
+
 double lexint_double(lexint_t const* i);
 
 lexint_t lexint_and(lexint_t const* a, lexint_t const* b);

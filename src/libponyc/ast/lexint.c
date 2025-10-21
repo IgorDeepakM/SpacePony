@@ -377,7 +377,7 @@ bool lexint_accum(lexint_t* i, uint64_t digit, uint64_t base)
 // Support for clz (count leading zeros) is suprisingly platform, and even CPU,
 // dependent. Therefore, since we're not overly concerned with performance
 // within the lexer, we provide a software version here.
-static int count_leading_zeros(uint64_t n)
+int count_leading_zeros(uint64_t n)
 {
   if(n == 0)
     return 64;

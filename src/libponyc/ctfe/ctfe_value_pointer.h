@@ -31,7 +31,7 @@ public:
   CtfeValuePointer(CtfeValuePointer&& other) noexcept;
   ~CtfeValuePointer();
   CtfeValuePointer& operator=(CtfeValuePointer other);
-  CtfeValuePointer realloc(size_t size, CtfeRunner &ctfeRunner);
+  CtfeValuePointer realloc(size_t size, size_t copy_len, CtfeRunner &ctfeRunner);
   CtfeValue apply(size_t i) const;
   CtfeValue update(size_t i, const CtfeValue& val);
   CtfeValuePointer pointer_at_index(size_t i) const;

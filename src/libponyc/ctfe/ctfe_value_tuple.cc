@@ -111,7 +111,7 @@ bool CtfeValueTuple::is_subtype(ast_t* pattern_type, pass_opt_t* opt)
     pony_assert(b_type_elem != nullptr);
     ast_t* a_type_elem = m_vars[i].get_type_ast();
 
-    if(!is_subtype_ignore_cap(a_type_elem, b_type_elem, NULL, opt))
+    if(!is_subtype_ignore_cap(a_type_elem, b_type_elem, nullptr, opt))
     {
       match = false;
       break;

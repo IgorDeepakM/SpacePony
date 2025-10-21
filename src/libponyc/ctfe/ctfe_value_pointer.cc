@@ -110,24 +110,24 @@ CtfeValuePointer& CtfeValuePointer::operator=(CtfeValuePointer other)
 }
 
 
-CtfeValuePointer CtfeValuePointer::realloc(size_t size, CtfeRunner &ctfeRunner)
+CtfeValuePointer CtfeValuePointer::realloc(size_t size, size_t copy_len, CtfeRunner &ctfeRunner)
 {
-  if(size > 0)
+  if(copy_len > m_size)
+  {
+    throw CtfeValueException();
+  }
+
+  if(size > m_size)
   {
     CtfeValuePointer new_p = CtfeValuePointer(size, m_pointer_type, ctfeRunner);
-    fill(m_array, m_array + size * m_elem_size, 0);
-    ctfeRunner.add_allocated_reference(CtfeValue(new_p, m_pointer_type));
-    
-    for(size_t i = 0; (i < (m_size * m_elem_size)) && (i < (new_p.m_size * m_elem_size)); i++)
-    {
-      new_p.m_array[i] = m_array[i];
-    }
+    copy(m_array, m_array + copy_len * m_elem_size, new_p.m_array);
+    fill(new_p.m_array + copy_len * m_elem_size, new_p.m_array + size * m_elem_size, 0);
 
     return new_p;
   }
   else
   {
-    return CtfeValuePointer(m_pointer_type);
+    return *this;
   }
 }
 
@@ -151,15 +151,14 @@ CtfeValue CtfeValuePointer::update(size_t i, const CtfeValue& val)
 
   if(i < m_size)
   {
-    ret = CtfeValue::read_from_memory(get_pointer_elem_type_ast(), &m_array[i * m_elem_size]);
+    CtfeValue ret = CtfeValue::read_from_memory(get_pointer_elem_type_ast(), &m_array[i * m_elem_size]);
     val.write_to_memory(&m_array[i * m_elem_size]);
+    return ret;
   }
   else
   {
     throw CtfeValueException();
   }
-
-  return ret;
 }
 
 
@@ -222,6 +221,11 @@ CtfeValue CtfeValuePointer::_delete(size_t n, size_t len)
 
 CtfeValuePointer CtfeValuePointer::copy_to(CtfeValuePointer& that, size_t len)
 {
+  if(len > m_size || len > that.m_size)
+  {
+    throw CtfeValueException();
+  }
+
   copy(m_array, m_array + (len * m_elem_size), that.m_array);
 
   return *this;
@@ -260,6 +264,15 @@ bool CtfeValuePointer::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
       result = CtfeValue(ptr, res_type);
       return true;
     }
+    else if(method_name == "realloc")
+    {
+      CtfeValuePointer rec_val = recv.get_pointer();
+      uint64_t size = args[0].to_uint64();
+      uint64_t copy_len = args[1].to_uint64();
+      CtfeValuePointer ptr = rec_val.realloc(size, copy_len, ctfeRunner);
+      result = CtfeValue(ptr, res_type);
+      return true;
+    }
   }
   else if(args.size() == 1)
   {
@@ -268,14 +281,6 @@ bool CtfeValuePointer::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
       CtfeValuePointer rec_val = recv.get_pointer();
       uint64_t size = args[0].to_uint64();
       result = CtfeValue(CtfeValuePointer(size, res_type, ctfeRunner), res_type);
-      return true;
-    }
-    else if(method_name == "realloc")
-    {
-      CtfeValuePointer rec_val = recv.get_pointer();
-      uint64_t size = args[0].to_uint64();
-      CtfeValuePointer ptr = rec_val.realloc(size, ctfeRunner);
-      result = CtfeValue(ptr, res_type);
       return true;
     }
     else if(method_name == "apply")
@@ -296,9 +301,16 @@ bool CtfeValuePointer::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
   }
   else if(args.size() == 0)
   {
-    if(method_name == "_unsafe" || method_name == "convert")
+    if(method_name == "_unsafe")
     {
       result = CtfeValue(recv.get_pointer(), res_type);
+      return true;
+    }
+    else if(method_name == "convert")
+    {
+      CtfeValuePointer from = recv.get_pointer();
+      CtfeValuePointer cp = CtfeValuePointer(from.m_array, from.m_size, res_type);
+      result = CtfeValue(cp, res_type);
       return true;
     }
     if(method_name == "create")
