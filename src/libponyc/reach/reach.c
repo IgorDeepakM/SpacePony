@@ -27,7 +27,7 @@ static void reachable_method(reach_t* r, deferred_reification_t* reify,
   ast_t* type, const char* name, ast_t* typeargs, pass_opt_t* opt);
 
 static void reachable_expr(reach_t* r, deferred_reification_t* reify,
-  ast_t* ast, pass_opt_t* opt);
+  ast_t** astp, pass_opt_t* opt);
 
 static size_t reach_method_hash(reach_method_t* m)
 {
@@ -1080,7 +1080,7 @@ static void reachable_pattern(reach_t* r, deferred_reification_t* reify,
       {
         // type will be reified in reachable_method
         reachable_method(r, reify, type, stringtab("eq"), NULL, opt);
-        reachable_expr(r, reify, ast, opt);
+        reachable_expr(r, reify, &ast, opt);
       }
       break;
     }
@@ -1232,8 +1232,10 @@ static void reachable_ffi(reach_t* r, deferred_reification_t* reify,
 }
 
 static void reachable_expr(reach_t* r, deferred_reification_t* reify,
-  ast_t* ast, pass_opt_t* opt)
+  ast_t** astp, pass_opt_t* opt)
 {
+  ast_t* ast = *astp;
+
   // If this is a method call, mark the method as reachable.
   switch(ast_id(ast))
   {
@@ -1269,8 +1271,8 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
     {
       AST_GET_CHILDREN(ast, pattern, guard, body);
       reachable_pattern(r, reify, pattern, opt);
-      reachable_expr(r, reify, guard, opt);
-      reachable_expr(r, reify, body, opt);
+      reachable_expr(r, reify, &guard, opt);
+      reachable_expr(r, reify, &body, opt);
       break;
     }
 
@@ -1311,10 +1313,10 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
       {
         if(ast_id(cond) == TK_TRUE)
         {
-          reachable_expr(r, reify, then_clause, opt);
+          reachable_expr(r, reify, &then_clause, opt);
           return;
         } else if(ast_id(cond) == TK_FALSE) {
-          reachable_expr(r, reify, else_clause, opt);
+          reachable_expr(r, reify, &else_clause, opt);
           return;
         }
       }
@@ -1338,9 +1340,9 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
       ast_t* r_super = deferred_reify(reify, super, opt);
 
       if(is_subtype_constraint(r_sub, r_super, NULL, opt))
-        reachable_expr(r, reify, left, opt);
+        reachable_expr(r, reify, &left, opt);
       else
-        reachable_expr(r, reify, right, opt);
+        reachable_expr(r, reify, &right, opt);
 
       ast_free_unattached(r_sub);
       ast_free_unattached(r_super);
@@ -1393,7 +1395,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
 
     case TK_COMPTIME:
     {
-      reach_comptime(opt, &ast);
+      reach_comptime(opt, astp);
       return;
     }
 
@@ -1405,7 +1407,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
 
   while(child != NULL)
   {
-    reachable_expr(r, reify, child, opt);
+    reachable_expr(r, reify, &child, opt);
     child = ast_sibling(child);
   }
 }
@@ -1481,7 +1483,7 @@ static void handle_method_stack(reach_t* r, pass_opt_t* opt)
     r->method_stack = reach_method_stack_pop(r->method_stack, &m);
 
     ast_t* body = ast_childidx(m->fun->ast, 6);
-    reachable_expr(r, m->fun, body, opt);
+    reachable_expr(r, m->fun, &body, opt);
   }
 }
 

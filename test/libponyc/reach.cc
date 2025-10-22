@@ -40,7 +40,7 @@ TEST_F(ReachTest, IsectHasSubtypes)
   ASSERT_NE(ab_ast, (void*)NULL);
 
   reach_t* reach = compile->reach;
-  reach_type_t* ab_reach = reach_type(reach, ab_ast);
+  reach_type_t* ab_reach = reach_type(reach, ab_ast, compile->opt);
   ASSERT_NE(ab_reach, (void*)NULL);
 
   size_t i = HASHMAP_BEGIN;
@@ -193,7 +193,7 @@ TEST_F(ReachTest, UnionReachedMethod)
   ASSERT_NE(p_ast, (void*)NULL);
 
   reach_t* reach = compile->reach;
-  reach_type_t* p_reach = reach_type(reach, p_ast);
+  reach_type_t* p_reach = reach_type(reach, p_ast, compile->opt);
   ASSERT_NE(p_reach, (void*)NULL);
 
   bool found = false;

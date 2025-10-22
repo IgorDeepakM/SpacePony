@@ -110,8 +110,15 @@ DEF(comptime_expr);
 
 DEF(valueformalarg);
   AST_NODE(TK_VALUEFORMALARG);
-  RULE("value formal argument value", literal);
+  IFELSE(TK_ASSIGN,
+    RULE("value type argument expression", seq),
+    RULE("value type argument literal", literal, comptime_expr);
+  );
   DONE();
+
+
+  //RULE("value formal argument value", literal);
+  //DONE();
 
 // type | typeargliteral | typeargconst
 DEF(typearg);

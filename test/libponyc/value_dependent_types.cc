@@ -452,14 +452,14 @@ TEST_F(VDTTest, TestDefaultValueTypeParameters)
   TEST_COMPILE(src);
 }
 
-TEST_F(VDTTest, DISABLED_TestNestedReifications)
+TEST_F(VDTTest, TestNestedReifications)
 {
   const char* src =
     "class C1[n: U32]\n"
     "  fun apply(): U32 => n\n"
     "class C2\n"
-    "  fun foo[m: U32](c: C1[#m]): U32 => c()\n"
-    "  fun bar[n: U32](c: C1[#n]): U32 => foo[#n](c)\n"
+    "  fun foo[m: U32](c: C1[m]): U32 => c()\n"
+    "  fun bar[n: U32](c: C1[n]): U32 => foo[n](c)\n"
     "  new create() => bar[12](C1[12])";
 
   TEST_COMPILE(src);
@@ -553,32 +553,12 @@ TEST_F(VDTTest, DISABLED_FBoundedPolymorphicClass)
   TEST_COMPILE(src);
 }
 
-TEST_F(VDTTest, DISABLED_DefaultDictionaryClass)
-{
-  const char* src =
-    "class Dictionary[Key, Value, default: Value]\n"
-
-    "class Student\n"
-    "  let name: String\n"
-    "  let class: U32\n"
-
-    "  new create(name': String, class': U32) =>\n"
-    "    name = name'\n"
-    "    class = class'\n"
-
-    "class C1\n"
-    "  dict = Dictionary[String, Student, Student].create(\"Bob\", 1)\n";
-
-  TEST_COMPILE(src);
-}
-
-TEST_F(VDTTest, DISABLED_VDTClassInheritsFromInterface)
+TEST_F(VDTTest, VDTClassInheritsFromInterface)
 {
   const char* src =
     "class Vector[A, size: USize] is Seq[A]";
   TEST_ERROR(src);
 }
-
 
 TEST_F(VDTTest, DISABLED_VDTTypeWithCompileTimeConstant)
 {

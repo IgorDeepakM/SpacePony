@@ -25,6 +25,7 @@ class CtfeRunner
     CtfeValue& right_val, int depth);
   bool match_eq_element(pass_opt_t* opt, errorframe_t* errors, ast_t* ast_pos,
     CtfeValue &match, ast_t* pattern, ast_t* the_case, int depth);
+  bool contains_valueparamref(ast_t* ast);
 
   CtfeValue handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, int depth);
   CtfeValue handle_ffi_ptr_ptr_size(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
