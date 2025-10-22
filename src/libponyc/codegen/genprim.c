@@ -18,9 +18,9 @@
 
 #include <string.h>
 
-#define FIND_METHOD(name, cap) \
+#define FIND_METHOD(name, cap, opt) \
   const char* strtab_name = stringtab(name); \
-  reach_method_t* m = reach_method(t, cap, strtab_name, NULL); \
+  reach_method_t* m = reach_method(t, cap, strtab_name, NULL, opt); \
   if(m == NULL) return; \
   m->intrinsic = true; \
   compile_type_t* c_t = (compile_type_t*)t->c_type; \
@@ -84,7 +84,7 @@ static LLVMValueRef field_value(compile_t* c, LLVMTypeRef struct_type,
 
 static void pointer_create(compile_t* c, reach_type_t* t)
 {
-  FIND_METHOD("create", TK_NONE);
+  FIND_METHOD("create", TK_NONE, c->opt);
   start_function(c, t, m, c_t->use_type, &c_t->use_type, 1);
 
   LLVMValueRef result = LLVMConstNull(c_t->use_type);
@@ -95,7 +95,7 @@ static void pointer_create(compile_t* c, reach_type_t* t)
 
 static void pointer_from_usize(compile_t* c, reach_type_t* t)
 {
-  FIND_METHOD("from_usize", TK_NONE);
+  FIND_METHOD("from_usize", TK_NONE, c->opt);
 
   LLVMTypeRef params[2];
   params[0] = c_t->use_type;
@@ -125,7 +125,7 @@ static void pointer_from_any(compile_t* c, reach_type_t* t, reach_method_t* m, v
 static void pointer_alloc(compile_t* c, reach_type_t* t,
   compile_type_t* t_elem)
 {
-  FIND_METHOD("alloc", TK_NONE);
+  FIND_METHOD("alloc", TK_NONE, c->opt);
 
   LLVMTypeRef params[2];
   params[0] = c_t->use_type;
@@ -157,7 +157,7 @@ static void pointer_alloc(compile_t* c, reach_type_t* t,
 static void pointer_realloc(compile_t* c, reach_type_t* t,
   compile_type_t* t_elem)
 {
-  FIND_METHOD("realloc", TK_NONE);
+  FIND_METHOD("realloc", TK_NONE, c->opt);
 
   LLVMTypeRef params[3];
   params[0] = c_t->use_type;
@@ -194,7 +194,7 @@ static void pointer_realloc(compile_t* c, reach_type_t* t,
 
 static void pointer_unsafe(compile_t* c, reach_type_t* t)
 {
-  FIND_METHOD("_unsafe", TK_NONE);
+  FIND_METHOD("_unsafe", TK_NONE, c->opt);
   start_function(c, t, m, c_t->use_type, &c_t->use_type, 1);
 
   genfun_build_ret(c, LLVMGetParam(c_m->func, 0));
@@ -223,7 +223,7 @@ static void pointer_apply(compile_t* c, void* data, token_id cap)
   reach_type_t* t_elem = ((reach_type_t**)data)[1];
   compile_type_t* c_t_elem = (compile_type_t*)t_elem->c_type;
 
-  FIND_METHOD("apply", cap);
+  FIND_METHOD("apply", cap, c->opt);
 
   LLVMTypeRef params[2];
   params[0] = c_t->use_type;
@@ -253,7 +253,7 @@ static void pointer_update(compile_t* c, reach_type_t* t,
 {
   compile_type_t* c_t_elem = (compile_type_t*)t_elem->c_type;
 
-  FIND_METHOD("update", TK_NONE);
+  FIND_METHOD("update", TK_NONE, c->opt);
 
   LLVMTypeRef params[3];
   params[0] = c_t->use_type;
@@ -282,7 +282,7 @@ static void pointer_pointer_at_index(compile_t* c, void* data, token_id cap)
   reach_type_t* t = ((reach_type_t**)data)[0];
   compile_type_t* t_elem = ((compile_type_t**)data)[1];
 
-  FIND_METHOD("pointer_at_index", cap);
+  FIND_METHOD("pointer_at_index", cap, c->opt);
 
   LLVMTypeRef params[3];
   params[0] = c_t->use_type;
@@ -303,7 +303,7 @@ static void pointer_pointer_at_index(compile_t* c, void* data, token_id cap)
 static void pointer_element_size(compile_t* c, reach_type_t* t,
   compile_type_t* t_elem)
 {
-  FIND_METHOD("_element_size", TK_NONE);
+  FIND_METHOD("_element_size", TK_NONE, c->opt);
   start_function(c, t, m, c->intptr, &c_t->use_type, 1);
 
   size_t size = (size_t)LLVMABISizeOfType(c->target_data, t_elem->mem_type);
@@ -316,7 +316,7 @@ static void pointer_element_size(compile_t* c, reach_type_t* t,
 static void pointer_insert(compile_t* c, reach_type_t* t,
   compile_type_t* t_elem)
 {
-  FIND_METHOD("_insert", TK_NONE);
+  FIND_METHOD("_insert", TK_NONE, c->opt);
 
   LLVMTypeRef params[3];
   params[0] = c_t->use_type;
@@ -349,7 +349,7 @@ static void pointer_delete(compile_t* c, reach_type_t* t,
 {
   compile_type_t* c_t_elem = (compile_type_t*)t_elem->c_type;
 
-  FIND_METHOD("_delete", TK_NONE);
+  FIND_METHOD("_delete", TK_NONE, c->opt);
 
   LLVMTypeRef params[3];
   params[0] = c_t->use_type;
@@ -385,7 +385,7 @@ static void pointer_copy_to(compile_t* c, void* data, token_id cap)
   reach_type_t* t = ((reach_type_t**)data)[0];
   compile_type_t* t_elem = ((compile_type_t**)data)[1];
 
-  FIND_METHOD("_copy_to", cap);
+  FIND_METHOD("_copy_to", cap, c->opt);
 
   LLVMTypeRef params[3];
   params[0] = c_t->use_type;
@@ -411,7 +411,7 @@ static void pointer_copy_to(compile_t* c, void* data, token_id cap)
 
 static void pointer_usize(compile_t* c, reach_type_t* t)
 {
-  FIND_METHOD("usize", TK_NONE);
+  FIND_METHOD("usize", TK_NONE, c->opt);
   start_function(c, t, m, c->intptr, &c_t->use_type, 1);
 
   LLVMValueRef ptr = LLVMGetParam(c_m->func, 0);
@@ -427,7 +427,7 @@ static void pointer_to_reftype(compile_t* c, void* data, token_id cap)
   reach_type_t* t = ((reach_type_t**)data)[0];
   compile_type_t* t_elem = ((compile_type_t**)data)[1];
 
-  FIND_METHOD("to_reftype", cap);
+  FIND_METHOD("to_reftype", cap, c->opt);
   start_function(c, t, m, t_elem->use_type, &c_t->use_type, 1);
 
   LLVMValueRef result = LLVMGetParam(c_m->func, 0);
@@ -452,7 +452,7 @@ static void pointer_to_reftype_no_check(compile_t* c, void* data, token_id cap)
   reach_type_t* t = ((reach_type_t**)data)[0];
   compile_type_t* t_elem = ((compile_type_t**)data)[1];
 
-  FIND_METHOD("to_reftype_no_check", cap);
+  FIND_METHOD("to_reftype_no_check", cap, c->opt);
   start_function(c, t, m, t_elem->use_type, &c_t->use_type, 1);
 
   LLVMValueRef result = LLVMGetParam(c_m->func, 0);
@@ -462,7 +462,7 @@ static void pointer_to_reftype_no_check(compile_t* c, void* data, token_id cap)
 
 static void pointer_is_null(compile_t* c, reach_type_t* t)
 {
-  FIND_METHOD("is_null", TK_NONE);
+  FIND_METHOD("is_null", TK_NONE, c->opt);
   start_function(c, t, m, c->i1, &c_t->use_type, 1);
 
   LLVMValueRef ptr = LLVMGetParam(c_m->func, 0);
@@ -474,7 +474,7 @@ static void pointer_is_null(compile_t* c, reach_type_t* t)
 
 static void pointer_eq(compile_t* c, reach_type_t* t)
 {
-  FIND_METHOD("eq", TK_NONE);
+  FIND_METHOD("eq", TK_NONE, c->opt);
   LLVMTypeRef params[2];
   params[0] = c_t->use_type;
   params[1] = c_t->use_type;
@@ -490,7 +490,7 @@ static void pointer_eq(compile_t* c, reach_type_t* t)
 
 static void pointer_lt(compile_t* c, reach_type_t* t)
 {
-  FIND_METHOD("lt", TK_NONE);
+  FIND_METHOD("lt", TK_NONE, c->opt);
   LLVMTypeRef params[2];
   params[0] = c_t->use_type;
   params[1] = c_t->use_type;
@@ -508,7 +508,7 @@ void genprim_pointer_methods(compile_t* c, reach_type_t* t)
 {
   ast_t* typeargs = ast_childidx(t->ast, 2);
   ast_t* typearg = ast_child(typeargs);
-  reach_type_t* t_elem = reach_type(c->reach, typearg);
+  reach_type_t* t_elem = reach_type(c->reach, typearg, c->opt);
   compile_type_t* c_t_elem = (compile_type_t*)t_elem->c_type;
 
   void* box_args[2];
@@ -544,7 +544,7 @@ void genprim_pointer_methods(compile_t* c, reach_type_t* t)
 
 static void nullable_pointer_create(compile_t* c, reach_type_t* t, compile_type_t* t_elem)
 {
-  FIND_METHOD("create", TK_NONE);
+  FIND_METHOD("create", TK_NONE, c->opt);
 
   LLVMTypeRef params[2];
   params[0] = c_t->use_type;
@@ -557,7 +557,7 @@ static void nullable_pointer_create(compile_t* c, reach_type_t* t, compile_type_
 
 static void nullable_pointer_none(compile_t* c, reach_type_t* t)
 {
-  FIND_METHOD("none", TK_NONE);
+  FIND_METHOD("none", TK_NONE, c->opt);
   start_function(c, t, m, c_t->use_type, &c_t->use_type, 1);
 
   genfun_build_ret(c, LLVMConstNull(c_t->use_type));
@@ -570,7 +570,7 @@ static void nullable_pointer_apply(compile_t* c, void* data, token_id cap)
   reach_type_t* t = ((reach_type_t**)data)[0];
   compile_type_t* t_elem = ((compile_type_t**)data)[1];
 
-  FIND_METHOD("apply", cap);
+  FIND_METHOD("apply", cap, c->opt);
   start_function(c, t, m, t_elem->use_type, &c_t->use_type, 1);
 
   LLVMValueRef result = LLVMGetParam(c_m->func, 0);
@@ -592,7 +592,7 @@ static void nullable_pointer_apply(compile_t* c, void* data, token_id cap)
 static void nullable_pointer_is_none(compile_t* c, reach_type_t* t, token_id cap)
 {
   // Returns true if the receiver is null.
-  FIND_METHOD("is_none", cap);
+  FIND_METHOD("is_none", cap, c->opt);
   start_function(c, t, m, c->i1, &c_t->use_type, 1);
 
   LLVMValueRef receiver = LLVMGetParam(c_m->func, 0);
@@ -607,7 +607,7 @@ void genprim_nullable_pointer_methods(compile_t* c, reach_type_t* t)
   ast_t* typeargs = ast_childidx(t->ast, 2);
   ast_t* typearg = ast_child(typeargs);
   compile_type_t* t_elem =
-    (compile_type_t*)reach_type(c->reach, typearg)->c_type;
+    (compile_type_t*)reach_type(c->reach, typearg, c->opt)->c_type;
 
   void* box_args[2];
   box_args[0] = t;
@@ -653,7 +653,7 @@ static void trace_c_fixed_sized_array_elements(compile_t* c, reach_type_t* t,
   if (!gentrace_needed(c, elem_type, elem_type))
     return;
 
-  reach_type_t* t_elem = reach_type(c->reach, elem_type);
+  reach_type_t* t_elem = reach_type(c->reach, elem_type, c->opt);
   compile_type_t* c_t_elem = (compile_type_t*)t_elem->c_type;
 
   LLVMBasicBlockRef entry_block = LLVMGetInsertBlock(c->builder);
@@ -750,7 +750,7 @@ void genprim_c_fixed_sized_array_serialise(compile_t* c, reach_type_t* t)
   // Serialise elements.
   ast_t* typeargs = ast_childidx(t->ast, 2);
   AST_GET_CHILDREN(typeargs, elem_type, num_elems);
-  reach_type_t* t_elem = reach_type(c->reach, elem_type);
+  reach_type_t* t_elem = reach_type(c->reach, elem_type, c->opt);
   compile_type_t* c_t_elem = (compile_type_t*)t_elem->c_type;
 
   pony_assert(ast_id(num_elems) == TK_VALUEFORMALARG &&
@@ -833,7 +833,7 @@ void genprim_c_fixed_sized_array_deserialise(compile_t* c, reach_type_t* t)
   ast_t* typeargs = ast_childidx(t->ast, 2);
   AST_GET_CHILDREN(typeargs, elem_type, num_elems);
 
-  reach_type_t* t_elem = reach_type(c->reach, elem_type);
+  reach_type_t* t_elem = reach_type(c->reach, elem_type, c->opt);
   compile_type_t* c_t_e = (compile_type_t*)t_elem->c_type;
 
   LLVMValueRef array_ptr = field_loc(c, object, c_t->structure, 0);
@@ -1128,7 +1128,7 @@ void genprim_atomic_methods(compile_t* c, reach_type_t* t)
 {
   ast_t* typeargs = ast_childidx(t->ast, 2);
   ast_t* typearg = ast_child(typeargs);
-  reach_type_t* t_elem = reach_type(c->reach, typearg);
+  reach_type_t* t_elem = reach_type(c->reach, typearg, c->opt);
 
   void* box_args[2];
   box_args[0] = t;          // Atomic structure reach type
@@ -1159,7 +1159,7 @@ static void donotoptimise_apply(compile_t* c, reach_type_t* t,
 
   ast_t* typearg = ast_child(m->typeargs);
   compile_type_t* t_elem =
-    (compile_type_t*)reach_type(c->reach, typearg)->c_type;
+    (compile_type_t*)reach_type(c->reach, typearg, c->opt)->c_type;
   compile_type_t* t_result = (compile_type_t*)m->result->c_type;
 
   LLVMTypeRef params[2];
@@ -1197,7 +1197,7 @@ static void donotoptimise_apply(compile_t* c, reach_type_t* t,
 
 static void donotoptimise_observe(compile_t* c, reach_type_t* t, token_id cap)
 {
-  FIND_METHOD("observe", cap);
+  FIND_METHOD("observe", cap, c->opt);
   compile_type_t* t_result = (compile_type_t*)m->result->c_type;
 
   start_function(c, t, m, t_result->use_type, &c_t->use_type, 1);
@@ -1239,7 +1239,7 @@ static void trace_array_elements(compile_t* c, reach_type_t* t,
   if(!gentrace_needed(c, typearg, typearg))
     return;
 
-  reach_type_t* t_elem = reach_type(c->reach, typearg);
+  reach_type_t* t_elem = reach_type(c->reach, typearg, c->opt);
   compile_type_t* c_t_elem = (compile_type_t*)t_elem->c_type;
 
   LLVMBasicBlockRef entry_block = LLVMGetInsertBlock(c->builder);
@@ -1332,7 +1332,7 @@ void genprim_array_serialise_trace(compile_t* c, reach_type_t* t)
   ast_t* typeargs = ast_childidx(t->ast, 2);
   ast_t* typearg = ast_child(typeargs);
   compile_type_t* t_elem =
-    (compile_type_t*)reach_type(c->reach, typearg)->c_type;
+    (compile_type_t*)reach_type(c->reach, typearg, c->opt)->c_type;
 
   size_t abisize = (size_t)LLVMABISizeOfType(c->target_data, t_elem->use_type);
   LLVMValueRef l_size = LLVMConstInt(c->intptr, abisize, false);
@@ -1418,7 +1418,7 @@ void genprim_array_serialise(compile_t* c, reach_type_t* t)
   // Serialise elements.
   ast_t* typeargs = ast_childidx(t->ast, 2);
   ast_t* typearg = ast_child(typeargs);
-  reach_type_t* t_elem = reach_type(c->reach, typearg);
+  reach_type_t* t_elem = reach_type(c->reach, typearg, c->opt);
   compile_type_t* c_t_e = (compile_type_t*)t_elem->c_type;
 
   size_t abisize = (size_t)LLVMABISizeOfType(c->target_data, c_t_e->mem_type);
@@ -1501,7 +1501,7 @@ void genprim_array_deserialise(compile_t* c, reach_type_t* t)
   ast_t* typeargs = ast_childidx(t->ast, 2);
   ast_t* typearg = ast_child(typeargs);
 
-  reach_type_t* t_elem = reach_type(c->reach, typearg);
+  reach_type_t* t_elem = reach_type(c->reach, typearg, c->opt);
   compile_type_t* c_t_e = (compile_type_t*)t_elem->c_type;
   size_t abisize = (size_t)LLVMABISizeOfType(c->target_data, c_t_e->use_type);
   LLVMValueRef l_size = LLVMConstInt(c->intptr, abisize, false);
@@ -1694,7 +1694,7 @@ void genprim_string_deserialise(compile_t* c, reach_type_t* t)
 
 static void platform_freebsd(compile_t* c, reach_type_t* t, token_id cap)
 {
-  FIND_METHOD("freebsd", cap);
+  FIND_METHOD("freebsd", cap, c->opt);
   start_function(c, t, m, c->i1, &c_t->use_type, 1);
 
   LLVMValueRef result =
@@ -1705,7 +1705,7 @@ static void platform_freebsd(compile_t* c, reach_type_t* t, token_id cap)
 
 static void platform_dragonfly(compile_t* c, reach_type_t* t, token_id cap)
 {
-  FIND_METHOD("dragonfly", cap);
+  FIND_METHOD("dragonfly", cap, c->opt);
   start_function(c, t, m, c->i1, &c_t->use_type, 1);
 
   LLVMValueRef result =
@@ -1716,7 +1716,7 @@ static void platform_dragonfly(compile_t* c, reach_type_t* t, token_id cap)
 
 static void platform_openbsd(compile_t* c, reach_type_t* t, token_id cap)
 {
-  FIND_METHOD("openbsd", cap);
+  FIND_METHOD("openbsd", cap, c->opt);
   start_function(c, t, m, c->i1, &c_t->use_type, 1);
 
   LLVMValueRef result =
@@ -1727,7 +1727,7 @@ static void platform_openbsd(compile_t* c, reach_type_t* t, token_id cap)
 
 static void platform_linux(compile_t* c, reach_type_t* t, token_id cap)
 {
-  FIND_METHOD("linux", cap);
+  FIND_METHOD("linux", cap, c->opt);
   start_function(c, t, m, c->i1, &c_t->use_type, 1);
 
   LLVMValueRef result =
@@ -1738,7 +1738,7 @@ static void platform_linux(compile_t* c, reach_type_t* t, token_id cap)
 
 static void platform_osx(compile_t* c, reach_type_t* t, token_id cap)
 {
-  FIND_METHOD("osx", cap);
+  FIND_METHOD("osx", cap, c->opt);
   start_function(c, t, m, c->i1, &c_t->use_type, 1);
 
   LLVMValueRef result =
@@ -1749,7 +1749,7 @@ static void platform_osx(compile_t* c, reach_type_t* t, token_id cap)
 
 static void platform_windows(compile_t* c, reach_type_t* t, token_id cap)
 {
-  FIND_METHOD("windows", cap);
+  FIND_METHOD("windows", cap, c->opt);
   start_function(c, t, m, c->i1, &c_t->use_type, 1);
 
   LLVMValueRef result =
@@ -1760,7 +1760,7 @@ static void platform_windows(compile_t* c, reach_type_t* t, token_id cap)
 
 static void platform_x86(compile_t* c, reach_type_t* t, token_id cap)
 {
-  FIND_METHOD("x86", cap);
+  FIND_METHOD("x86", cap, c->opt);
   start_function(c, t, m, c->i1, &c_t->use_type, 1);
 
   LLVMValueRef result =
@@ -1771,7 +1771,7 @@ static void platform_x86(compile_t* c, reach_type_t* t, token_id cap)
 
 static void platform_arm(compile_t* c, reach_type_t* t, token_id cap)
 {
-  FIND_METHOD("arm", cap);
+  FIND_METHOD("arm", cap, c->opt);
   start_function(c, t, m, c->i1, &c_t->use_type, 1);
 
   LLVMValueRef result =
@@ -1782,7 +1782,7 @@ static void platform_arm(compile_t* c, reach_type_t* t, token_id cap)
 
 static void platform_lp64(compile_t* c, reach_type_t* t, token_id cap)
 {
-  FIND_METHOD("lp64", cap);
+  FIND_METHOD("lp64", cap, c->opt);
   start_function(c, t, m, c->i1, &c_t->use_type, 1);
 
   LLVMValueRef result =
@@ -1793,7 +1793,7 @@ static void platform_lp64(compile_t* c, reach_type_t* t, token_id cap)
 
 static void platform_llp64(compile_t* c, reach_type_t* t, token_id cap)
 {
-  FIND_METHOD("llp64", cap);
+  FIND_METHOD("llp64", cap, c->opt);
   start_function(c, t, m, c->i1, &c_t->use_type, 1);
 
   LLVMValueRef result =
@@ -1804,7 +1804,7 @@ static void platform_llp64(compile_t* c, reach_type_t* t, token_id cap)
 
 static void platform_ilp32(compile_t* c, reach_type_t* t, token_id cap)
 {
-  FIND_METHOD("ilp32", cap);
+  FIND_METHOD("ilp32", cap, c->opt);
   start_function(c, t, m, c->i1, &c_t->use_type, 1);
 
   LLVMValueRef result =
@@ -1815,7 +1815,7 @@ static void platform_ilp32(compile_t* c, reach_type_t* t, token_id cap)
 
 static void platform_bigendian(compile_t* c, reach_type_t* t, token_id cap)
 {
-  FIND_METHOD("bigendian", cap);
+  FIND_METHOD("bigendian", cap, c->opt);
   start_function(c, t, m, c->i1, &c_t->use_type, 1);
 
   LLVMValueRef result =
@@ -1826,7 +1826,7 @@ static void platform_bigendian(compile_t* c, reach_type_t* t, token_id cap)
 
 static void platform_littleendian(compile_t* c, reach_type_t* t, token_id cap)
 {
-  FIND_METHOD("littleendian", cap);
+  FIND_METHOD("littleendian", cap, c->opt);
   start_function(c, t, m, c->i1, &c_t->use_type, 1);
 
   LLVMValueRef result =
@@ -1837,7 +1837,7 @@ static void platform_littleendian(compile_t* c, reach_type_t* t, token_id cap)
 
 static void platform_native128(compile_t* c, reach_type_t* t, token_id cap)
 {
-  FIND_METHOD("native128", cap);
+  FIND_METHOD("native128", cap, c->opt);
   start_function(c, t, m, c->i1, &c_t->use_type, 1);
 
   LLVMValueRef result =
@@ -1848,7 +1848,7 @@ static void platform_native128(compile_t* c, reach_type_t* t, token_id cap)
 
 static void platform_debug(compile_t* c, reach_type_t* t, token_id cap)
 {
-  FIND_METHOD("debug", cap);
+  FIND_METHOD("debug", cap, c->opt);
   start_function(c, t, m, c->i1, &c_t->use_type, 1);
 
   LLVMValueRef result = LLVMConstInt(c->i1, !c->opt->release, false);
@@ -1858,7 +1858,7 @@ static void platform_debug(compile_t* c, reach_type_t* t, token_id cap)
 
 static void platform_runtimestats(compile_t* c, reach_type_t* t, token_id cap)
 {
-  FIND_METHOD("runtimestats", cap);
+  FIND_METHOD("runtimestats", cap, c->opt);
   start_function(c, t, m, c->i1, &c_t->use_type, 1);
 
 #if defined(USE_RUNTIMESTATS) || defined(USE_RUNTIMESTATS_MESSAGES)
@@ -1874,7 +1874,7 @@ static void platform_runtimestats(compile_t* c, reach_type_t* t, token_id cap)
 
 static void platform_runtimestatsmessages(compile_t* c, reach_type_t* t, token_id cap)
 {
-  FIND_METHOD("runtimestatsmessages", cap);
+  FIND_METHOD("runtimestatsmessages", cap, c->opt);
   start_function(c, t, m, c->i1, &c_t->use_type, 1);
 
 #ifdef USE_RUNTIMESTATS_MESSAGES
@@ -1926,7 +1926,7 @@ static void number_value(compile_t* c, num_conv_t* type, token_id cap)
   if(t == NULL)
     return;
 
-  FIND_METHOD("_value", cap);
+  FIND_METHOD("_value", cap, c->opt);
   start_function(c, t, m, type->type, &type->type, 1);
 
   LLVMValueRef arg = LLVMGetParam(c_m->func, 0);
@@ -2164,7 +2164,7 @@ static void number_conversion(compile_t* c, void** data, token_id cap)
   if(t == NULL)
     return;
 
-  FIND_METHOD(to->fun_name, cap);
+  FIND_METHOD(to->fun_name, cap, c->opt);
   start_function(c, t, m, to->type, &from->type, 1);
 
   LLVMValueRef arg = LLVMGetParam(c_m->func, 0);
@@ -2238,7 +2238,7 @@ static void unsafe_number_conversion(compile_t* c, void** data, token_id cap)
 
   const char* name = genname_unsafe(to->fun_name);
 
-  FIND_METHOD(name, cap);
+  FIND_METHOD(name, cap, c->opt);
   start_function(c, t, m, to->type, &from->type, 1);
 
   LLVMValueRef arg = LLVMGetParam(c_m->func, 0);
@@ -2385,7 +2385,7 @@ static void number_conversions(compile_t* c)
 
 static void f32__nan(compile_t* c, reach_type_t* t)
 {
-  FIND_METHOD("_nan", TK_NONE);
+  FIND_METHOD("_nan", TK_NONE, c->opt);
   start_function(c, t, m, c->f32, &c->f32, 1);
 
   LLVMValueRef result = LLVMConstNaN(c->f32);
@@ -2395,7 +2395,7 @@ static void f32__nan(compile_t* c, reach_type_t* t)
 
 static void f32__inf(compile_t* c, reach_type_t* t)
 {
-  FIND_METHOD("_inf", TK_NONE);
+  FIND_METHOD("_inf", TK_NONE, c->opt);
   LLVMTypeRef params[2];
   params[0] = c->f32;
   params[1] = c->i1;
@@ -2410,7 +2410,7 @@ static void f32__inf(compile_t* c, reach_type_t* t)
 
 static void f32_from_bits(compile_t* c, reach_type_t* t)
 {
-  FIND_METHOD("from_bits", TK_NONE);
+  FIND_METHOD("from_bits", TK_NONE, c->opt);
 
   LLVMTypeRef params[2];
   params[0] = c->f32;
@@ -2425,7 +2425,7 @@ static void f32_from_bits(compile_t* c, reach_type_t* t)
 
 static void f32_bits(compile_t* c, reach_type_t* t, token_id cap)
 {
-  FIND_METHOD("bits", cap);
+  FIND_METHOD("bits", cap, c->opt);
   start_function(c, t, m, c->i32, &c->f32, 1);
 
   LLVMValueRef result = LLVMBuildBitCast(c->builder, LLVMGetParam(c_m->func, 0),
@@ -2436,7 +2436,7 @@ static void f32_bits(compile_t* c, reach_type_t* t, token_id cap)
 
 static void f64__nan(compile_t* c, reach_type_t* t)
 {
-  FIND_METHOD("_nan", TK_NONE);
+  FIND_METHOD("_nan", TK_NONE, c->opt);
   start_function(c, t, m, c->f64, &c->f64, 1);
 
   LLVMValueRef result = LLVMConstNaN(c->f64);
@@ -2446,7 +2446,7 @@ static void f64__nan(compile_t* c, reach_type_t* t)
 
 static void f64__inf(compile_t* c, reach_type_t* t)
 {
-  FIND_METHOD("_inf", TK_NONE);
+  FIND_METHOD("_inf", TK_NONE, c->opt);
   LLVMTypeRef params[2];
   params[0] = c->f64;
   params[1] = c->i1;
@@ -2461,7 +2461,7 @@ static void f64__inf(compile_t* c, reach_type_t* t)
 
 static void f64_from_bits(compile_t* c, reach_type_t* t)
 {
-  FIND_METHOD("from_bits", TK_NONE);
+  FIND_METHOD("from_bits", TK_NONE, c->opt);
 
   LLVMTypeRef params[2];
   params[0] = c->f64;
@@ -2476,7 +2476,7 @@ static void f64_from_bits(compile_t* c, reach_type_t* t)
 
 static void f64_bits(compile_t* c, reach_type_t* t, token_id cap)
 {
-  FIND_METHOD("bits", cap);
+  FIND_METHOD("bits", cap, c->opt);
   start_function(c, t, m, c->i64, &c->f64, 1);
 
   LLVMValueRef result = LLVMBuildBitCast(c->builder, LLVMGetParam(c_m->func, 0),

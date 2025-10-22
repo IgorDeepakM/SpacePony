@@ -10,7 +10,7 @@ LLVMValueRef gen_is(compile_t* c, ast_t* ast);
 
 LLVMValueRef gen_isnt(compile_t* c, ast_t* ast);
 
-void gen_is_tuple_fun(compile_t* c, reach_type_t* t);
+void gen_is_tuple_fun(compile_t* c, reach_type_t* t, pass_opt_t* opt);
 
 LLVMValueRef gen_numeric_size_table(compile_t* c);
 

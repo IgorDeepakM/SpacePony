@@ -19,7 +19,7 @@ extern "C" LLVMValueRef gen_inlineasm(compile_t* c, ast_t* ast)
 
   ast_t* ast_return_type = ast_childidx(ast, 3);
   ast_t* reified_ret = deferred_reify(c->frame->reify, ast_return_type, c->opt);
-  reach_type_t* reach_ret = reach_type(c->reach, reified_ret);
+  reach_type_t* reach_ret = reach_type(c->reach, reified_ret, c->opt);
   ast_free_unattached(reified_ret);
 
   compile_type_t* ret_cp = (compile_type_t*)reach_ret->c_type;
@@ -37,7 +37,7 @@ extern "C" LLVMValueRef gen_inlineasm(compile_t* c, ast_t* ast)
       ast_t* ast_param = ast_child(pos_arg);
       ast_t* ast_param_type = ast_type(ast_param);
       ast_t* reified_param = deferred_reify(c->frame->reify, ast_param_type, c->opt);
-      reach_type_t* reach_param = reach_type(c->reach, reified_param);
+      reach_type_t* reach_param = reach_type(c->reach, reified_param, c->opt);
       ast_free_unattached(reified_param);
     
       compile_type_t* param_cp = (compile_type_t*)reach_param->c_type;

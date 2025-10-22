@@ -337,7 +337,7 @@ static reach_method_t* add_rmethod(reach_t* r, reach_type_t* t,
   reach_method_name_t* n, token_id cap, ast_t* typeargs, pass_opt_t* opt,
   bool internal)
 {
-  const char* name = genname_fun(cap, n->name, typeargs);
+  const char* name = genname_fun(cap, n->name, typeargs, opt);
   reach_method_t* m = reach_rmethod(n, name);
 
   if(m != NULL)
@@ -742,12 +742,12 @@ static uint32_t get_new_tuple_id(reach_t* r)
   return (r->tuple_type_count++ * 4) + 2;
 }
 
-static reach_type_t* add_reach_type(reach_t* r, ast_t* type)
+static reach_type_t* add_reach_type(reach_t* r, ast_t* type, pass_opt_t* opt)
 {
   reach_type_t* t = POOL_ALLOC(reach_type_t);
   memset(t, 0, sizeof(reach_type_t));
 
-  t->name = genname_type(type);
+  t->name = genname_type(type, opt);
   t->mangle = "o";
   t->ast = set_cap_and_ephemeral(type, TK_REF, TK_NONE);
   t->ast_cap = ast_dup(type);
@@ -767,12 +767,12 @@ static reach_type_t* add_reach_type(reach_t* r, ast_t* type)
 static reach_type_t* add_isect_or_union(reach_t* r, ast_t* type,
   pass_opt_t* opt)
 {
-  reach_type_t* t = reach_type(r, type);
+  reach_type_t* t = reach_type(r, type, opt);
 
   if(t != NULL)
     return t;
 
-  t = add_reach_type(r, type);
+  t = add_reach_type(r, type, opt);
   t->underlying = ast_id(t->ast);
   t->is_trait = true;
 
@@ -797,12 +797,12 @@ static reach_type_t* add_tuple(reach_t* r, ast_t* type, pass_opt_t* opt)
   if(contains_dontcare(type))
     return NULL;
 
-  reach_type_t* t = reach_type(r, type);
+  reach_type_t* t = reach_type(r, type, opt);
 
   if(t != NULL)
     return t;
 
-  t = add_reach_type(r, type);
+  t = add_reach_type(r, type, opt);
   t->underlying = TK_TUPLETYPE;
   t->type_id = get_new_tuple_id(r);
   t->can_be_boxed = true;
@@ -848,12 +848,12 @@ static reach_type_t* add_tuple(reach_t* r, ast_t* type, pass_opt_t* opt)
 
 static reach_type_t* add_nominal(reach_t* r, ast_t* type, pass_opt_t* opt)
 {
-  reach_type_t* t = reach_type(r, type);
+  reach_type_t* t = reach_type(r, type, opt);
 
   if(t != NULL)
     return t;
 
-  t = add_reach_type(r, type);
+  t = add_reach_type(r, type, opt);
   ast_t* def = (ast_t*)ast_data(type);
   t->underlying = ast_id(def);
 
@@ -1515,10 +1515,10 @@ bool reach(reach_t* r, ast_t* type, const char* name, ast_t* typeargs,
   return !opt->check.evaluation_error;
 }
 
-reach_type_t* reach_type(reach_t* r, ast_t* type)
+reach_type_t* reach_type(reach_t* r, ast_t* type, pass_opt_t* opt)
 {
   reach_type_t k;
-  k.name = genname_type(type);
+  k.name = genname_type(type, opt);
   size_t index = HASHMAP_UNKNOWN;
   return reach_types_get(&r->types, &k, &index);
 }
@@ -1532,7 +1532,7 @@ reach_type_t* reach_type_name(reach_t* r, const char* name)
 }
 
 reach_method_t* reach_method(reach_type_t* t, token_id cap,
-  const char* name, ast_t* typeargs)
+  const char* name, ast_t* typeargs, pass_opt_t* opt)
 {
   reach_method_name_t* n = reach_method_name(t, name);
 
@@ -1560,7 +1560,7 @@ reach_method_t* reach_method(reach_type_t* t, token_id cap,
     cap = n->cap;
   }
 
-  name = genname_fun(cap, n->name, typeargs);
+  name = genname_fun(cap, n->name, typeargs, opt);
   return reach_rmethod(n, name);
 }
 
@@ -1572,9 +1572,9 @@ reach_method_name_t* reach_method_name(reach_type_t* t, const char* name)
   return reach_method_names_get(&t->methods, &k, &index);
 }
 
-uint32_t reach_vtable_index(reach_type_t* t, const char* name)
+uint32_t reach_vtable_index(reach_type_t* t, const char* name, pass_opt_t* opt)
 {
-  reach_method_t* m = reach_method(t, TK_NONE, name, NULL);
+  reach_method_t* m = reach_method(t, TK_NONE, name, NULL, opt);
 
   if(m == NULL)
     return (uint32_t)-1;

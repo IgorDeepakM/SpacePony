@@ -224,7 +224,7 @@ static bool check_type(compile_t* c, LLVMValueRef ptr, LLVMValueRef desc,
 static bool check_value(compile_t* c, ast_t* pattern, ast_t* param_type,
   LLVMValueRef value, LLVMBasicBlockRef next_block)
 {
-  reach_type_t* t = reach_type(c->reach, param_type);
+  reach_type_t* t = reach_type(c->reach, param_type, c->opt);
   LLVMValueRef r_value = gen_assign_cast(c,
     ((compile_type_t*)t->c_type)->use_type, value, param_type);
 
@@ -360,7 +360,7 @@ static bool dynamic_value_ptr(compile_t* c, LLVMValueRef ptr,
   // it isn't a boxed primitive, as that would go through the other path, ie
   // dynamic_match_object(). We also know it isn't an unboxed tuple. We can
   // load from ptr with a type based on the static type of the pattern.
-  reach_type_t* t = reach_type(c->reach, param_type);
+  reach_type_t* t = reach_type(c->reach, param_type, c->opt);
   LLVMTypeRef use_type = ((compile_type_t*)t->c_type)->use_type;
   LLVMValueRef value = LLVMBuildLoad2(c->builder, use_type, ptr, "");
 
@@ -396,7 +396,7 @@ static bool dynamic_capture_ptr(compile_t* c, LLVMValueRef ptr,
   // it isn't a boxed primitive or tuple, as that would go through the other
   // path, ie dynamic_match_object(). We also know it isn't an unboxed tuple.
   // We can load from ptr with a type based on the static type of the pattern.
-  reach_type_t* t = reach_type(c->reach, pattern_type);
+  reach_type_t* t = reach_type(c->reach, pattern_type, c->opt);
   LLVMTypeRef use_type = ((compile_type_t*)t->c_type)->use_type;
   LLVMValueRef value = LLVMBuildLoad2(c->builder, use_type, ptr, "");
 
@@ -754,7 +754,7 @@ LLVMValueRef gen_match(compile_t* c, ast_t* ast)
   if(needed && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
   {
     ast_t* type = deferred_reify(reify, ast_type(ast), c->opt);
-    reach_type_t* t_phi = reach_type(c->reach, type);
+    reach_type_t* t_phi = reach_type(c->reach, type, c->opt);
     phi_type = ((compile_type_t*)t_phi->c_type)->use_type;
     ast_free_unattached(type);
   }

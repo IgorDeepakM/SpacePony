@@ -418,7 +418,7 @@ static bool make_c_fixed_sized_array_struct(compile_t* c, reach_type_t* t)
   size_t buf_size = sizeof(LLVMTypeRef);
   LLVMTypeRef* elements = (LLVMTypeRef*)ponyint_pool_alloc_size(buf_size);
 
-  reach_type_t* elem_reach_type = reach_type(c->reach, elem_type);
+  reach_type_t* elem_reach_type = reach_type(c->reach, elem_type, c->opt);
   compile_type_t* elem_reach_c_t = (compile_type_t*)elem_reach_type->c_type;
 
   pony_assert(lexint_cmp64(size_val, UINT32_MAX) <= 0);
@@ -673,7 +673,7 @@ static void make_intrinsic_methods(compile_t* c, reach_type_t* t)
   {
     gen_digestof_fun(c, t);
     if(ast_id(t->ast) == TK_TUPLETYPE)
-      gen_is_tuple_fun(c, t);
+      gen_is_tuple_fun(c, t, c->opt);
   }
 
   if(ast_id(t->ast) != TK_NOMINAL)

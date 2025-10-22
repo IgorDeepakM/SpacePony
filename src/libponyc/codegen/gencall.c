@@ -501,12 +501,12 @@ LLVMValueRef gen_funptr(compile_t* c, ast_t* ast)
 
   // Get the receiver type.
   ast_t* type = deferred_reify(c->frame->reify, ast_type(receiver), c->opt);
-  reach_type_t* t = reach_type(c->reach, type);
+  reach_type_t* t = reach_type(c->reach, type, c->opt);
   pony_assert(t != NULL);
 
   const char* name = ast_name(method);
   token_id cap = cap_dispatch(type);
-  reach_method_t* m = reach_method(t, cap, name, typeargs);
+  reach_method_t* m = reach_method(t, cap, name, typeargs, c->opt);
   LLVMValueRef funptr = dispatch_function(c, t, m, value);
 
   ast_free_unattached(type);
@@ -672,7 +672,7 @@ static bool contains_boxable(ast_t* type)
   }
 }
 
-static bool can_inline_message_send(reach_type_t* t, reach_method_t* m,
+static bool can_inline_message_send(compile_t* c, reach_type_t* t, reach_method_t* m,
   const char* method_name)
 {
   switch(t->underlying)
@@ -692,7 +692,7 @@ static bool can_inline_message_send(reach_type_t* t, reach_method_t* m,
   reach_type_t* sub;
   while((sub = reach_type_cache_next(&t->subtypes, &i)) != NULL)
   {
-    reach_method_t* m_sub = reach_method(sub, m->cap, method_name, m->typeargs);
+    reach_method_t* m_sub = reach_method(sub, m->cap, method_name, m->typeargs, c->opt);
 
     if(m_sub == NULL)
       continue;
@@ -821,11 +821,11 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
   // Get the receiver type.
   const char* method_name = ast_name(method);
   ast_t* type = deferred_reify(reify, ast_type(receiver), c->opt);
-  reach_type_t* t = reach_type(c->reach, type);
+  reach_type_t* t = reach_type(c->reach, type, c->opt);
   pony_assert(t != NULL);
 
   token_id cap = cap_dispatch(type);
-  reach_method_t* m = reach_method(t, cap, method_name, typeargs);
+  reach_method_t* m = reach_method(t, cap, method_name, typeargs, c->opt);
 
   ast_free_unattached(type);
   ast_free_unattached(typeargs);
@@ -923,7 +923,7 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
       case TK_INTERFACE:
       case TK_TRAIT:
         if(m->cap == TK_TAG)
-          is_message = can_inline_message_send(t, m, method_name);
+          is_message = can_inline_message_send(c, t, m, method_name);
         break;
 
       default: {}
@@ -969,7 +969,7 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
     while(arg != NULL)
     {
       ast_t* arg_type = deferred_reify(reify, ast_type(arg), c->opt);
-      reach_type_t* pt = reach_type(c->reach, arg_type);
+      reach_type_t* pt = reach_type(c->reach, arg_type, c->opt);
 
       if(m->params[param_pos].pass_by_value)
       {
@@ -1108,12 +1108,12 @@ LLVMValueRef gen_pattern_eq(compile_t* c, ast_t* pattern, LLVMValueRef r_value)
 
   // Generate the receiver.
   LLVMValueRef l_value = gen_expr(c, pattern);
-  reach_type_t* t = reach_type(c->reach, pattern_type);
+  reach_type_t* t = reach_type(c->reach, pattern_type, c->opt);
   pony_assert(t != NULL);
 
   // Static or virtual dispatch.
   token_id cap = cap_dispatch(pattern_type);
-  reach_method_t* m = reach_method(t, cap, c->str_eq, NULL);
+  reach_method_t* m = reach_method(t, cap, c->str_eq, NULL, c->opt);
   LLVMValueRef func = dispatch_function(c, t, m, l_value);
 
   ast_free_unattached(pattern_type);
@@ -1206,7 +1206,7 @@ static void declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* f_name,
 
   // Get the return type.
   ast_t* ret_type = deferred_reify(reify, ret_ast, c->opt);
-  reach_type_t* reified_ret = reach_type(c->reach, ast_child(ret_type));
+  reach_type_t* reified_ret = reach_type(c->reach, ast_child(ret_type), c->opt);
   pony_assert(reified_ret != NULL);
   ast_free_unattached(ret_type);
 
@@ -1264,7 +1264,7 @@ static void declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* f_name,
         p_type = ast_childidx(arg, 1);
 
       p_type = deferred_reify(reify, p_type, c->opt);
-      reach_type_t* pt = reach_type(c->reach, p_type);
+      reach_type_t* pt = reach_type(c->reach, p_type, c->opt);
       pony_assert(pt != NULL);
       bool pass_by_value = ast_has_annotation(ast_childidx(arg, 1), "byval");
       ffi_decl->params[param_count].reach_type = pt;
@@ -1488,7 +1488,7 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
   // The return type must come from the call site because of
   // return value polymorphism
   ast_t* type = deferred_reify(reify, ast_type(ast), c->opt);
-  reach_type_t* t = reach_type(c->reach, type);
+  reach_type_t* t = reach_type(c->reach, type, c->opt);
   pony_assert(t != NULL);
   ast_free_unattached(type);
 
