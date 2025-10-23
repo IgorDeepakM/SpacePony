@@ -49,11 +49,11 @@ static const char* c_type_name(compile_t* c, const char* name)
   return NULL;
 }
 
-static void print_base_type(compile_t* c, printbuf_t* buf, ast_t* type)
+static void print_base_type(compile_t* c, printbuf_t* buf, ast_t* type, pass_opt_t* opt)
 {
   if(ast_id(type) == TK_NOMINAL)
   {
-    const char* name = genname_type(type);
+    const char* name = genname_type(type, opt);
     const char* c_name = c_type_name(c, name);
 
     if(c_name != NULL)
@@ -65,33 +65,33 @@ static void print_base_type(compile_t* c, printbuf_t* buf, ast_t* type)
   }
 }
 
-static int print_pointer_type(compile_t* c, printbuf_t* buf, ast_t* type)
+static int print_pointer_type(compile_t* c, printbuf_t* buf, ast_t* type, pass_opt_t* opt)
 {
   ast_t* typeargs = ast_childidx(type, 2);
   ast_t* elem = ast_child(typeargs);
 
   if(is_pointer(elem) || is_nullable_pointer(elem))
-    return print_pointer_type(c, buf, elem) + 1;
+    return print_pointer_type(c, buf, elem, opt) + 1;
 
-  print_base_type(c, buf, elem);
+  print_base_type(c, buf, elem, opt);
   return 1;
 }
 
-static void print_type_name(compile_t* c, printbuf_t* buf, ast_t* type)
+static void print_type_name(compile_t* c, printbuf_t* buf, ast_t* type, pass_opt_t* opt)
 {
   if(is_pointer(type) || is_nullable_pointer(type))
   {
-    int depth = print_pointer_type(c, buf, type);
+    int depth = print_pointer_type(c, buf, type, opt);
 
     for(int i = 0; i < depth; i++)
       printbuf(buf, "*");
   } else {
-    print_base_type(c, buf, type);
+    print_base_type(c, buf, type, opt);
   }
 }
 
 static void print_params(compile_t* c, printbuf_t* buf, reach_param_t* params,
-  size_t param_count, bool initial_comma)
+  size_t param_count, bool initial_comma, pass_opt_t* opt)
 {
   for(size_t i = 0; i < param_count; ++i)
   {
@@ -101,7 +101,7 @@ static void print_params(compile_t* c, printbuf_t* buf, reach_param_t* params,
     else
       initial_comma = true;
 
-    print_type_name(c, buf, params[i].type->ast_cap);
+    print_type_name(c, buf, params[i].type->ast_cap, opt);
 
     // Smash trailing primes to underscores.
     const char* name = params[i].name;
@@ -147,7 +147,7 @@ static bool should_emit_fun(reach_method_t* m)
 }
 
 static void print_method(compile_t* c, printbuf_t* buf, reach_type_t* t,
-  reach_method_t* m)
+  reach_method_t* m, pass_opt_t* opt)
 {
   if(!should_emit_fun(m))
     return;
@@ -169,7 +169,7 @@ static void print_method(compile_t* c, printbuf_t* buf, reach_type_t* t,
 
   // Print the function signature.
   if((m->cap != TK_AT) || !is_none(rtype))
-    print_type_name(c, buf, rtype);
+    print_type_name(c, buf, rtype, opt);
   else
     printbuf(buf, "void");
 
@@ -192,17 +192,17 @@ static void print_method(compile_t* c, printbuf_t* buf, reach_type_t* t,
   printbuf(buf, "(");
   if(m->cap != TK_AT)
   {
-    print_type_name(c, buf, t->ast);
+    print_type_name(c, buf, t->ast, opt);
     printbuf(buf, " self");
-    print_params(c, buf, m->params, m->param_count, true);
+    print_params(c, buf, m->params, m->param_count, true, opt);
   } else {
-    print_params(c, buf, m->params, m->param_count, false);
+    print_params(c, buf, m->params, m->param_count, false, opt);
   }
 
   printbuf(buf, ");\n\n");
 }
 
-static void print_methods(compile_t* c, reach_type_t* t, printbuf_t* buf)
+static void print_methods(compile_t* c, reach_type_t* t, printbuf_t* buf, pass_opt_t* opt)
 {
   size_t i = HASHMAP_BEGIN;
   reach_method_name_t* n;
@@ -213,11 +213,11 @@ static void print_methods(compile_t* c, reach_type_t* t, printbuf_t* buf)
     reach_method_t* m;
 
     while((m = reach_mangled_next(&n->r_mangled, &j)) != NULL)
-      print_method(c, buf, t, m);
+      print_method(c, buf, t, m, opt);
   }
 }
 
-static void print_types(compile_t* c, FILE* fp, printbuf_t* buf)
+static void print_types(compile_t* c, FILE* fp, printbuf_t* buf, pass_opt_t* opt)
 {
   size_t i = HASHMAP_BEGIN;
   reach_type_t* t;
@@ -249,11 +249,11 @@ static void print_types(compile_t* c, FILE* fp, printbuf_t* buf)
         );
     }
 
-    print_methods(c, t, buf);
+    print_methods(c, t, buf, opt);
   }
 }
 
-bool genheader(compile_t* c)
+bool genheader(compile_t* c, pass_opt_t* opt)
 {
   // Open a header file.
   const char* file_h =
@@ -308,7 +308,7 @@ bool genheader(compile_t* c)
   }
 
   printbuf_t* buf = printbuf_new();
-  print_types(c, fp, buf);
+  print_types(c, fp, buf, opt);
   fwrite(buf->m, 1, buf->offset, fp);
   printbuf_free(buf);
 

@@ -958,6 +958,10 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       return CtfeValue(CtfeValueBool(is_sub), ast_type(expression));
     }
 
+    case TK_COMPTIME:
+      // Comptime inside another comptime, no problem we just evaulate that as well
+      return evaluate(opt, errors, ast_child(expression), depth + 1);
+
     default:
       ast_error_frame(errors, expression,
         "The CTFE runner does not support the '%s' expression",
@@ -1098,6 +1102,21 @@ bool CtfeRunner::match_eq_element(pass_opt_t* opt, errorframe_t* errors, ast_t* 
 }
 
 
+bool CtfeRunner::contains_valueparamref(ast_t* ast)
+{
+  while(ast != NULL)
+  {
+    if(ast_id(ast) == TK_VALUEFORMALPARAMREF ||
+       contains_valueparamref(ast_child(ast)))
+    {
+      return true;
+    }
+    ast = ast_sibling(ast);
+  }
+  return false;
+}
+
+
 bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
 {
   ast_t* ast = *astp;
@@ -1111,7 +1130,12 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
   //ast_setconstant(ast);
   //ast_t* expression = ast;
 
-  ast_t* expression = ast_child(ast);
+  ast_t* expression = ast;
+
+  if(contains_valueparamref(expression))
+  {
+    return true;
+  }
 
   // Insert an empty this reference so that we can at least call functions inside the
   // current object. However it is not possible to access any variables.

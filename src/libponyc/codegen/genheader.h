@@ -6,7 +6,7 @@
 
 PONY_EXTERN_C_BEGIN
 
-bool genheader(compile_t* c);
+bool genheader(compile_t* c, pass_opt_t* opt);
 
 PONY_EXTERN_C_END
 

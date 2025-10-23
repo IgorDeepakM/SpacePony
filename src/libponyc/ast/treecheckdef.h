@@ -85,11 +85,16 @@ RULE(method,
 
 RULE(type_params, ONE_OR_MORE(type_param, value_formal_param), TK_TYPEPARAMS);
 
+RULE(comptime_expr,
+  HAS_TYPE(type)
+  CHILD(seq),
+  TK_COMPTIME);
+
 GROUP(value_formal_literal,
   int_literal, float_literal, bool_literal, string);
 
 RULE(value_formal_arg,
-  CHILD(value_formal_literal)
+  CHILD(value_formal_literal, seq, comptime_expr)
   HAS_TYPE(type),
   TK_VALUEFORMALARG);
 

@@ -47,7 +47,7 @@ LLVMValueRef gen_if(compile_t* c, ast_t* ast)
   if(needed && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
   {
     ast_t* type = deferred_reify(reify, ast_type(ast), c->opt);
-    phi_type = (compile_type_t*)reach_type(c->reach, type)->c_type;
+    phi_type = (compile_type_t*)reach_type(c->reach, type, c->opt)->c_type;
     ast_free_unattached(type);
   }
 
@@ -208,7 +208,7 @@ LLVMValueRef gen_while(compile_t* c, ast_t* ast)
   if(needed && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
   {
     ast_t* type = deferred_reify(reify, ast_type(ast), c->opt);
-    phi_type = (compile_type_t*)reach_type(c->reach, type)->c_type;
+    phi_type = (compile_type_t*)reach_type(c->reach, type, c->opt)->c_type;
     ast_free_unattached(type);
   }
 
@@ -335,7 +335,7 @@ LLVMValueRef gen_repeat(compile_t* c, ast_t* ast)
   if(needed && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
   {
     ast_t* type = deferred_reify(reify, ast_type(ast), c->opt);
-    phi_type = (compile_type_t*)reach_type(c->reach, type)->c_type;
+    phi_type = (compile_type_t*)reach_type(c->reach, type, c->opt)->c_type;
     ast_free_unattached(type);
   }
 
@@ -458,7 +458,7 @@ LLVMValueRef gen_recover(compile_t* c, ast_t* ast)
     deferred_reification_t* reify = c->frame->reify;
 
     ast_t* type = deferred_reify(reify, ast_type(ast), c->opt);
-    compile_type_t* c_t = (compile_type_t*)reach_type(c->reach, type)->c_type;
+    compile_type_t* c_t = (compile_type_t*)reach_type(c->reach, type, c->opt)->c_type;
     ast_free_unattached(type);
 
     type = deferred_reify(reify, ast_type(body), c->opt);
@@ -623,7 +623,7 @@ LLVMValueRef gen_try(compile_t* c, ast_t* ast)
   if(needed && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
   {
     ast_t* type = deferred_reify(reify, ast_type(ast), c->opt);
-    phi_type = (compile_type_t*)reach_type(c->reach, type)->c_type;
+    phi_type = (compile_type_t*)reach_type(c->reach, type, c->opt)->c_type;
     ast_free_unattached(type);
   }
 
@@ -737,7 +737,7 @@ LLVMValueRef gen_disposing_block_can_error(compile_t* c, ast_t* ast)
   if(needed && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
   {
     ast_t* type = deferred_reify(reify, ast_type(ast), c->opt);
-    phi_type = (compile_type_t*)reach_type(c->reach, type)->c_type;
+    phi_type = (compile_type_t*)reach_type(c->reach, type, c->opt)->c_type;
     ast_free_unattached(type);
   }
 
@@ -832,7 +832,7 @@ LLVMValueRef gen_disposing_block_cant_error(compile_t* c, ast_t* ast)
   if(needed && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
   {
     ast_t* type = deferred_reify(reify, ast_type(ast), c->opt);
-    phi_type = (compile_type_t*)reach_type(c->reach, type)->c_type;
+    phi_type = (compile_type_t*)reach_type(c->reach, type, c->opt)->c_type;
     ast_free_unattached(type);
   }
 

@@ -870,7 +870,7 @@ static bool genfun_forward(compile_t* c, reach_type_t* t,
   compile_method_t* c_m = (compile_method_t*)m->c_method;
   pony_assert(c_m->func != NULL);
 
-  reach_method_t* m2 = reach_method(t, m->cap, n->name, m->typeargs);
+  reach_method_t* m2 = reach_method(t, m->cap, n->name, m->typeargs, c->opt);
   pony_assert(m2 != NULL);
   pony_assert(m2 != m);
   compile_method_t* c_m2 = (compile_method_t*)m2->c_method;
@@ -1174,7 +1174,7 @@ static void primitive_call(compile_t* c, const char* method)
     if(t->underlying != TK_PRIMITIVE)
       continue;
 
-    reach_method_t* m = reach_method(t, TK_NONE, method, NULL);
+    reach_method_t* m = reach_method(t, TK_NONE, method, NULL, c->opt);
 
     if(m == NULL)
       continue;

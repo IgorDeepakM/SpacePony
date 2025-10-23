@@ -132,7 +132,7 @@ LLVMValueRef gen_main(compile_t* c, reach_type_t* t_main, reach_type_t* t_env)
   LLVMValueRef main_actor = create_main(c, t_main, ctx);
 
   // Create an Env on the main actor's heap.
-  reach_method_t* m = reach_method(t_env, TK_NONE, c->str__create, NULL);
+  reach_method_t* m = reach_method(t_env, TK_NONE, c->str__create, NULL, c->opt);
 
   LLVMValueRef env_args[4];
   env_args[0] = gencall_alloc(c, t_env, NULL);
@@ -159,7 +159,7 @@ LLVMValueRef gen_main(compile_t* c, reach_type_t* t_main, reach_type_t* t_env)
     false);
 
   // Allocate the message, setting its size and ID.
-  uint32_t index = reach_vtable_index(t_main, c->str_create);
+  uint32_t index = reach_vtable_index(t_main, c->str_create, c->opt);
   size_t msg_size = (size_t)LLVMABISizeOfType(c->target_data, msg_type);
   args[0] = LLVMConstInt(c->i32, ponyint_pool_index(msg_size), false);
   args[1] = LLVMConstInt(c->i32, index, false);
@@ -599,8 +599,8 @@ bool genexe(compile_t* c, ast_t* program)
   if(c->opt->verbosity >= VERBOSITY_ALL)
     reach_dump(c->reach);
 
-  reach_type_t* t_main = reach_type(c->reach, main_ast);
-  reach_type_t* t_env = reach_type(c->reach, env_ast);
+  reach_type_t* t_main = reach_type(c->reach, main_ast, c->opt);
+  reach_type_t* t_env = reach_type(c->reach, env_ast, c->opt);
 
   ast_free(main_ast);
   ast_free(env_ast);

@@ -42,6 +42,7 @@ actor Main
     test_match(200)
     test_array(220)
     test_string(240)
+    test_value_type_param_expr(260)
 
   fun test_literal_int(exit_add: I32) =>
     // Test shift with negative numbers
@@ -628,3 +629,17 @@ actor Main
   fun string_split_join(x: String): String =>
     let r = x.split(" ")
     "".join((consume r).values())
+
+  fun test_value_type_param_expr(exit_add: I32) =>
+    var c1 = comptime value_param_add_1[comptime 1 + 4 end, 3](5) end
+    var c2 = value_param_add_1[comptime 1 + 4 end, 3](5)
+
+    if (c1 != 23) or (c2 != 23) then
+      @pony_exitcode(exit_add + 1)
+    end
+
+  fun value_param_add_1[x: I32, y: I32](z: I32): I32 =>
+    value_param_add_2[= x * y, y](z)
+
+  fun value_param_add_2[y: I32, z: I32](x: I32): I32 =>
+    x + y + z

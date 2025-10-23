@@ -27,7 +27,7 @@ static void reachable_method(reach_t* r, deferred_reification_t* reify,
   ast_t* type, const char* name, ast_t* typeargs, pass_opt_t* opt);
 
 static void reachable_expr(reach_t* r, deferred_reification_t* reify,
-  ast_t* ast, pass_opt_t* opt);
+  ast_t** astp, pass_opt_t* opt);
 
 static size_t reach_method_hash(reach_method_t* m)
 {
@@ -337,7 +337,7 @@ static reach_method_t* add_rmethod(reach_t* r, reach_type_t* t,
   reach_method_name_t* n, token_id cap, ast_t* typeargs, pass_opt_t* opt,
   bool internal)
 {
-  const char* name = genname_fun(cap, n->name, typeargs);
+  const char* name = genname_fun(cap, n->name, typeargs, opt);
   reach_method_t* m = reach_rmethod(n, name);
 
   if(m != NULL)
@@ -742,12 +742,12 @@ static uint32_t get_new_tuple_id(reach_t* r)
   return (r->tuple_type_count++ * 4) + 2;
 }
 
-static reach_type_t* add_reach_type(reach_t* r, ast_t* type)
+static reach_type_t* add_reach_type(reach_t* r, ast_t* type, pass_opt_t* opt)
 {
   reach_type_t* t = POOL_ALLOC(reach_type_t);
   memset(t, 0, sizeof(reach_type_t));
 
-  t->name = genname_type(type);
+  t->name = genname_type(type, opt);
   t->mangle = "o";
   t->ast = set_cap_and_ephemeral(type, TK_REF, TK_NONE);
   t->ast_cap = ast_dup(type);
@@ -767,12 +767,12 @@ static reach_type_t* add_reach_type(reach_t* r, ast_t* type)
 static reach_type_t* add_isect_or_union(reach_t* r, ast_t* type,
   pass_opt_t* opt)
 {
-  reach_type_t* t = reach_type(r, type);
+  reach_type_t* t = reach_type(r, type, opt);
 
   if(t != NULL)
     return t;
 
-  t = add_reach_type(r, type);
+  t = add_reach_type(r, type, opt);
   t->underlying = ast_id(t->ast);
   t->is_trait = true;
 
@@ -797,12 +797,12 @@ static reach_type_t* add_tuple(reach_t* r, ast_t* type, pass_opt_t* opt)
   if(contains_dontcare(type))
     return NULL;
 
-  reach_type_t* t = reach_type(r, type);
+  reach_type_t* t = reach_type(r, type, opt);
 
   if(t != NULL)
     return t;
 
-  t = add_reach_type(r, type);
+  t = add_reach_type(r, type, opt);
   t->underlying = TK_TUPLETYPE;
   t->type_id = get_new_tuple_id(r);
   t->can_be_boxed = true;
@@ -848,12 +848,12 @@ static reach_type_t* add_tuple(reach_t* r, ast_t* type, pass_opt_t* opt)
 
 static reach_type_t* add_nominal(reach_t* r, ast_t* type, pass_opt_t* opt)
 {
-  reach_type_t* t = reach_type(r, type);
+  reach_type_t* t = reach_type(r, type, opt);
 
   if(t != NULL)
     return t;
 
-  t = add_reach_type(r, type);
+  t = add_reach_type(r, type, opt);
   ast_t* def = (ast_t*)ast_data(type);
   t->underlying = ast_id(def);
 
@@ -1080,7 +1080,7 @@ static void reachable_pattern(reach_t* r, deferred_reification_t* reify,
       {
         // type will be reified in reachable_method
         reachable_method(r, reify, type, stringtab("eq"), NULL, opt);
-        reachable_expr(r, reify, ast, opt);
+        reachable_expr(r, reify, &ast, opt);
       }
       break;
     }
@@ -1232,8 +1232,10 @@ static void reachable_ffi(reach_t* r, deferred_reification_t* reify,
 }
 
 static void reachable_expr(reach_t* r, deferred_reification_t* reify,
-  ast_t* ast, pass_opt_t* opt)
+  ast_t** astp, pass_opt_t* opt)
 {
+  ast_t* ast = *astp;
+
   // If this is a method call, mark the method as reachable.
   switch(ast_id(ast))
   {
@@ -1269,8 +1271,8 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
     {
       AST_GET_CHILDREN(ast, pattern, guard, body);
       reachable_pattern(r, reify, pattern, opt);
-      reachable_expr(r, reify, guard, opt);
-      reachable_expr(r, reify, body, opt);
+      reachable_expr(r, reify, &guard, opt);
+      reachable_expr(r, reify, &body, opt);
       break;
     }
 
@@ -1311,10 +1313,10 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
       {
         if(ast_id(cond) == TK_TRUE)
         {
-          reachable_expr(r, reify, then_clause, opt);
+          reachable_expr(r, reify, &then_clause, opt);
           return;
         } else if(ast_id(cond) == TK_FALSE) {
-          reachable_expr(r, reify, else_clause, opt);
+          reachable_expr(r, reify, &else_clause, opt);
           return;
         }
       }
@@ -1338,9 +1340,9 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
       ast_t* r_super = deferred_reify(reify, super, opt);
 
       if(is_subtype_constraint(r_sub, r_super, NULL, opt))
-        reachable_expr(r, reify, left, opt);
+        reachable_expr(r, reify, &left, opt);
       else
-        reachable_expr(r, reify, right, opt);
+        reachable_expr(r, reify, &right, opt);
 
       ast_free_unattached(r_sub);
       ast_free_unattached(r_super);
@@ -1393,7 +1395,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
 
     case TK_COMPTIME:
     {
-      reach_comptime(opt, &ast);
+      reach_comptime(opt, astp);
       return;
     }
 
@@ -1405,7 +1407,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
 
   while(child != NULL)
   {
-    reachable_expr(r, reify, child, opt);
+    reachable_expr(r, reify, &child, opt);
     child = ast_sibling(child);
   }
 }
@@ -1481,7 +1483,7 @@ static void handle_method_stack(reach_t* r, pass_opt_t* opt)
     r->method_stack = reach_method_stack_pop(r->method_stack, &m);
 
     ast_t* body = ast_childidx(m->fun->ast, 6);
-    reachable_expr(r, m->fun, body, opt);
+    reachable_expr(r, m->fun, &body, opt);
   }
 }
 
@@ -1515,10 +1517,10 @@ bool reach(reach_t* r, ast_t* type, const char* name, ast_t* typeargs,
   return !opt->check.evaluation_error;
 }
 
-reach_type_t* reach_type(reach_t* r, ast_t* type)
+reach_type_t* reach_type(reach_t* r, ast_t* type, pass_opt_t* opt)
 {
   reach_type_t k;
-  k.name = genname_type(type);
+  k.name = genname_type(type, opt);
   size_t index = HASHMAP_UNKNOWN;
   return reach_types_get(&r->types, &k, &index);
 }
@@ -1532,7 +1534,7 @@ reach_type_t* reach_type_name(reach_t* r, const char* name)
 }
 
 reach_method_t* reach_method(reach_type_t* t, token_id cap,
-  const char* name, ast_t* typeargs)
+  const char* name, ast_t* typeargs, pass_opt_t* opt)
 {
   reach_method_name_t* n = reach_method_name(t, name);
 
@@ -1560,7 +1562,7 @@ reach_method_t* reach_method(reach_type_t* t, token_id cap,
     cap = n->cap;
   }
 
-  name = genname_fun(cap, n->name, typeargs);
+  name = genname_fun(cap, n->name, typeargs, opt);
   return reach_rmethod(n, name);
 }
 
@@ -1572,9 +1574,9 @@ reach_method_name_t* reach_method_name(reach_type_t* t, const char* name)
   return reach_method_names_get(&t->methods, &k, &index);
 }
 
-uint32_t reach_vtable_index(reach_type_t* t, const char* name)
+uint32_t reach_vtable_index(reach_type_t* t, const char* name, pass_opt_t* opt)
 {
-  reach_method_t* m = reach_method(t, TK_NONE, name, NULL);
+  reach_method_t* m = reach_method(t, TK_NONE, name, NULL, opt);
 
   if(m == NULL)
     return (uint32_t)-1;
