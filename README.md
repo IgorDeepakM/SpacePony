@@ -294,7 +294,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 ### Added an extra capability, nhb.
 
-* Added the extra cability called **nhb**. The nhb capability makes it possible to mutably share a class among actors. This is inteded when it is possible to mutably share a class when the class has implemented some form of custom synchronization like atomics or mutexes. 
+* Added the extra capability called **nhb**. The nhb capability makes it possible to mutably share a class among actors. This is intended for when it is possible to mutably share a class when the class has implemented some form of custom synchronization like atomics or mutexes. 
 
   ```pony
   class NhbClass
@@ -354,7 +354,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 * The CTFE has taken some ideas and code from (https://github.com/lukecheeseman/ponyta) but most of the implementation is completely new. The `#postexpr` in ponyta will not be used at all and the `#` character can be used for future purposes instead.
 
-* It is possible to go really far with CTFE and the goal is to support as many expressions and types as possible. CTFE will be added to more places than only `comptime expression end`. It is also possible for the CTFE to try evaulating at key places in the code. In the D language it is possible load files at compile time using `import("file.txt")` which can be used together with CTFE and similar functionality should be added to SpacePony as well.
+* It is possible to go really far with CTFE and the goal is to support as many expressions and types as possible. CTFE will be added to more places than only `comptime expression end`. It is also possible to try running CTFE at key places in the code. In the D language it is possible load files at compile time using `import("file.txt")` which can be used together with CTFE and similar functionality should be added to SpacePony as well.
 
 * Note that the purpose of CTFE is not really optimizations but rather a guarantee that an expression can be evaluated at compile time. LLVM already does constant folding and can do the much of same job as CTFE. One important decision to add CTFE was to be able to have expressions in value type parameters in generics.
 
@@ -374,7 +374,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
     C1[= u + v]
   ```
 
-  Why having `=` in front of the expression and not the expression directly? Unfortunately it is a parsing techicality, the `=` is needed for making the parser selecting the correct rule that otherwise would ambigous.
+  Why having `=` in front of the expression and not the expression directly? Unfortunately it is a parsing technicality, the `=` is needed for making the parser selecting the correct rule that otherwise would ambiguous.
 
   One big problem with expressions in the type arguments is that there is no type check when they are used. Right now it just accept a type comparison as soon as an expression is encountered. The problem is that the type checks are done in passes prior to the reach pass where the CTFE is being run. Literals can be easily checked for equality, but not an expression that has not been reduced to a literal. Comparing an AST tree is too difficult, take the following example `C1[= a + b + c] is C1[= c + b + a]` which is potentially the same type but a different expression yields later in the reach pass the same result in the type argument. This was unresolved in ponyta and currently also unresolved in SpacePony. Hopefully there will be a solution to this in the future.
   
@@ -384,9 +384,9 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 * Right now there is a class called FixedSizedArray which is copy of CFixedSizedArray but implemented as a class with a type descriptor. However, since it is already "spoiled" with a an extra class member, why not add a size field as well. In this case FixedSizedArray can be converted to a FixedCapacityArray instead. It is unclear what is the most useful, if FixedCapacityArray or FixedSizedArray are necessary at all in addition to CFixedSizedArray.
 
-* Since there are suddenly several different arrays, a Slice class might be needed. This would be eqvivalent to std::span in C++. However, it is also possible to reuse the Array class for this purpose as it is possible to load the Array with outside raw pointers. This is possible because the Array class use garbage collected pointers which can co-exist with foreign raw pointers. The D language has chosen this approach where there is a merge between the slice and the dynamic array. Slices or reuse Array as both their pros and cons.
+* Since there are suddenly several different arrays, a Slice class might be needed. This would be equivalent to std::span in C++. However, it is also possible to reuse the Array class for this purpose as it is possible to load the Array with outside raw pointers. This is possible because the Array class use garbage collected pointers which can co-exist with foreign raw pointers. The D language has chosen this approach where there is a merge between the slice and the dynamic array. Slices or reuse Array as both their pros and cons.
 
-* Real asynchronous IO and not a POSIX like wrapper. An API that can be used for anything streaming like Files, HTTP, TCP. The API should also use the best available asynchrounous OS API primitives.
+* Real asynchronous IO and not a POSIX like wrapper. An API that can be used for anything streaming like Files, HTTP, TCP. The API should also use the best available asynchronous OS API primitives.
 
 * Implement a good and comprehensive reflection interface.
 
