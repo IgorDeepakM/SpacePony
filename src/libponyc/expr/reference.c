@@ -634,6 +634,12 @@ bool expr_valueformalparamref(pass_opt_t* opt, ast_t** astp)
   sym_status_t status;
   ast_t* def = ast_get(ast, name, &status);
 
+  // Needed for recursive value types. ex class Foo[n: Foo[n]]
+  if(ast_data(ast) == NULL)
+  {
+    ast_setdata(ast, def);
+  }
+
   ast_t* constraint = ast_childidx(def, 1);
   ast_settype(ast, constraint);
 

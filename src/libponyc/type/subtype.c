@@ -1665,7 +1665,7 @@ static bool is_typevalueparam_sub_x(ast_t* sub, ast_t* super, check_cap_t check_
   }
   else
   {
-    ast_t* sub_underlying_type = ast_type(sub);
+    ast_t* sub_underlying_type = (ast_t*)ast_data(sub);
     pony_assert(sub_underlying_type != NULL);
 
     return is_x_sub_x(sub_underlying_type, super, check_cap, errorf, opt);
