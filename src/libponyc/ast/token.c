@@ -10,7 +10,6 @@
 
 struct token_t
 {
-  token_id id;
   source_t* source;
   size_t line;
   size_t pos;
@@ -31,14 +30,21 @@ struct token_t
 #ifndef PONY_NDEBUG
   bool frozen;
 #endif
+
+  // What is token_id doing down here? Having token_id at the beginning
+  // can potentially waste up to 7 bytes because natural alignments and
+  // token_t is a POD which means members aren't rearranged to optimize
+  // size. Moving smaller members to the end of a struct can help reducing
+  // the total struct size. What is important is to keep token_id under the
+  // next allocation bucket size because othereise the memory consumption will
+  // increase a lot due to that token_t is allocated by the thousands.
+  token_id id;
 };
 
 
 // Minimal token structure for signature computation.
 struct token_signature_t
 {
-  token_id id;
-
   union
   {
     struct
@@ -50,6 +56,8 @@ struct token_signature_t
     double real;
     lexint_t integer;
   };
+
+  token_id id;
 };
 
 
