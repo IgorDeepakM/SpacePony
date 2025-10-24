@@ -932,21 +932,29 @@ static ast_result_t syntax_embed(pass_opt_t* opt, ast_t* ast)
   return AST_OK;
 }
 
+
 static bool check_is_type(pass_opt_t* opt, ast_t* type)
 {
-  if (ast_id(type) == TK_ID)
+  if(ast_id(type) == TK_TYPEARGS)
+    return true;
+
+  if(ast_id(type) == TK_ID)
     return check_id_type_param_constraint(opt, type);
 
+  if(ast_id(type) == TK_VALUEFORMALARG)
+    return true;
+
   ast_t* child = ast_child(type);
-  while (child != NULL)
+  while(child != NULL)
   {
-    if (!check_is_type(opt, child))
+    if(!check_is_type(opt, child))
       return false;
     child = ast_sibling(child);
   }
 
   return true;
 }
+
 
 static ast_result_t syntax_type_param(pass_opt_t* opt, ast_t* ast)
 {

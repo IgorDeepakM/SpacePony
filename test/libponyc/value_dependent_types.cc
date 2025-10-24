@@ -545,7 +545,7 @@ TEST_F(VDTTest, DISABLED_ReturnTypeSumOfInputTypesCallError)
   TEST_ERROR(src);
 }
 
-TEST_F(VDTTest, DISABLED_FBoundedPolymorphicClass)
+TEST_F(VDTTest, FBoundedPolymorphicClass)
 {
   const char* src =
     "class Foo[n: Foo[n]]\n";
