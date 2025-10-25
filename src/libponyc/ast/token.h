@@ -93,6 +93,7 @@ typedef enum token_id
   TK_UNARY_MINUS_TILDE,
   TK_ELLIPSIS,
   TK_CONSTANT,
+  TK_CONSTANT_OBJECT,
 
   // Newline symbols, only used by lexer and parser
   TK_LPAREN_NEW,

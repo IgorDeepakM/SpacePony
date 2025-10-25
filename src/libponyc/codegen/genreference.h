@@ -44,6 +44,8 @@ LLVMValueRef gen_string(compile_t* c, ast_t* ast);
 
 LLVMValueRef gen_valueformalparamref(compile_t* c, ast_t* ast);
 
+LLVMValueRef gen_constant_object(compile_t* c, ast_t* ast);
+
 PONY_EXTERN_C_END
 
 #endif

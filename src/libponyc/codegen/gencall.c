@@ -434,7 +434,7 @@ static ast_t* find_embed_constructor_receiver(ast_t* call)
   return fieldref;
 }
 
-static LLVMValueRef gen_constructor_receiver(compile_t* c, reach_type_t* t,
+LLVMValueRef gen_constructor_receiver(compile_t* c, reach_type_t* t,
   ast_t* call)
 {
   ast_t* fieldref = find_embed_constructor_receiver(call);

@@ -122,3 +122,19 @@ bool CtfeValueTuple::is_subtype(ast_t* pattern_type, pass_opt_t* opt)
 
   return match;
 }
+
+
+ast_t* CtfeValueTuple::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
+  ast_t* from)
+{
+  ast_t* obj = ast_blank(TK_TUPLE);
+  for(size_t i  = 0; i < m_size; i++)
+  {
+    CtfeValue elem = m_vars[i];
+    ast_t* var_node = elem.create_ast_literal_node(opt, errors, from);
+    ast_settype(var_node, elem.get_type_ast());
+    ast_append(obj, var_node);
+  }
+
+  return obj;
+}

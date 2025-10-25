@@ -5,6 +5,7 @@
 
 #include "ponyassert.h"
 #include "../pass/pass.h"
+#include "../ast/lexer.h"
 
 #include <algorithm>
 
@@ -246,131 +247,146 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
 {
   ast_t* new_node = NULL;
 
-  const string pony_type = CtfeAstType::get_type_name(m_type);
+  if(CtfeAstType::is_tuple(m_type))
+  {
+    new_node = get_tuple().create_ast_literal_node(opt, errors, from);
+  }
+  else if(CtfeAstType::is_nominal(m_type))
+  {
+    const string pony_type = CtfeAstType::get_type_name(m_type);
 
-  if(pony_type == "Bool")
-  {
-    new_node = get<CtfeValueBool>(m_val).create_ast_literal_node();
-  }
-  else if(pony_type == "I8")
-  {
-    new_node = get<CtfeValueTypedInt<int8_t>>(m_val).create_ast_literal_node();
-  }
-  else if(pony_type == "U8")
-  {
-    new_node =  get<CtfeValueTypedInt<uint8_t>>(m_val).create_ast_literal_node();
-  }
-  else if(pony_type == "I16")
-  {
-    new_node =  get<CtfeValueTypedInt<int16_t>>(m_val).create_ast_literal_node();
-  }
-  else if(pony_type == "U16")
-  {
-    new_node =  get<CtfeValueTypedInt<uint16_t>>(m_val).create_ast_literal_node();
-  }
-  else if(pony_type == "I32")
-  {
-    new_node =  get<CtfeValueTypedInt<int32_t>>(m_val).create_ast_literal_node();
-  }
-  else if(pony_type == "U32")
-  {
-    new_node =  get<CtfeValueTypedInt<uint32_t>>(m_val).create_ast_literal_node();
-  }
-  else if(pony_type == "I64")
-  {
-    new_node =  get<CtfeValueTypedInt<int64_t>>(m_val).create_ast_literal_node();
-  }
-  else if(pony_type == "U64")
-  {
-    new_node =  get<CtfeValueTypedInt<uint64_t>>(m_val).create_ast_literal_node();
-  }
-  else if(pony_type == "I128")
-  {
-    new_node =  get<CtfeValueTypedInt<CtfeI128Type>>(m_val).create_ast_literal_node();
-  }
-  else if(pony_type == "U128")
-  {
-      new_node =  get<CtfeValueTypedInt<CtfeU128Type>>(m_val).create_ast_literal_node();
-  }
-  else if(pony_type == "ILong")
-  {
-    if(get_long_size() == 4)
+    if(pony_type == "Bool")
     {
-      new_node = get<CtfeValueTypedInt<int32_t>>(m_val).create_ast_literal_node();
+      new_node = get<CtfeValueBool>(m_val).create_ast_literal_node();
     }
-    else if(get_long_size() == 8)
+    else if(pony_type == "I8")
     {
-      new_node = get<CtfeValueTypedInt<int64_t>>(m_val).create_ast_literal_node();
+      new_node = get<CtfeValueTypedInt<int8_t>>(m_val).create_ast_literal_node();
     }
-    else
+    else if(pony_type == "U8")
     {
-      pony_assert(false);
+      new_node =  get<CtfeValueTypedInt<uint8_t>>(m_val).create_ast_literal_node();
     }
-  }
-  else if(pony_type == "ULong")
-  {
-    if(get_long_size() == 4)
+    else if(pony_type == "I16")
     {
-      new_node = get<CtfeValueTypedInt<uint32_t>>(m_val).create_ast_literal_node();
+      new_node =  get<CtfeValueTypedInt<int16_t>>(m_val).create_ast_literal_node();
     }
-    else if(get_long_size() == 8)
+    else if(pony_type == "U16")
     {
-      new_node = get<CtfeValueTypedInt<uint64_t>>(m_val).create_ast_literal_node();
+      new_node =  get<CtfeValueTypedInt<uint16_t>>(m_val).create_ast_literal_node();
     }
-    else
+    else if(pony_type == "I32")
     {
-      pony_assert(false);
+      new_node =  get<CtfeValueTypedInt<int32_t>>(m_val).create_ast_literal_node();
     }
-  }
-  else if(pony_type == "ISize")
-  {
-    if(get_size_size() == 4)
+    else if(pony_type == "U32")
     {
-      new_node = get<CtfeValueTypedInt<int32_t>>(m_val).create_ast_literal_node();
+      new_node =  get<CtfeValueTypedInt<uint32_t>>(m_val).create_ast_literal_node();
     }
-    else if(get_size_size() == 8)
+    else if(pony_type == "I64")
     {
-      new_node = get<CtfeValueTypedInt<int64_t>>(m_val).create_ast_literal_node();
+      new_node =  get<CtfeValueTypedInt<int64_t>>(m_val).create_ast_literal_node();
     }
-    else
+    else if(pony_type == "U64")
     {
-      pony_assert(false);
+      new_node =  get<CtfeValueTypedInt<uint64_t>>(m_val).create_ast_literal_node();
     }
-  }
-  else if(pony_type == "USize")
-  {
-    if(get_size_size() == 4)
+    else if(pony_type == "I128")
     {
-      new_node = get<CtfeValueTypedInt<uint32_t>>(m_val).create_ast_literal_node();
+      new_node =  get<CtfeValueTypedInt<CtfeI128Type>>(m_val).create_ast_literal_node();
     }
-    else if(get_size_size() == 8)
+    else if(pony_type == "U128")
     {
-      new_node = get<CtfeValueTypedInt<uint64_t>>(m_val).create_ast_literal_node();
+        new_node =  get<CtfeValueTypedInt<CtfeU128Type>>(m_val).create_ast_literal_node();
     }
-    else
+    else if(pony_type == "ILong")
     {
-      pony_assert(false);
+      if(get_long_size() == 4)
+      {
+        new_node = get<CtfeValueTypedInt<int32_t>>(m_val).create_ast_literal_node();
+      }
+      else if(get_long_size() == 8)
+      {
+        new_node = get<CtfeValueTypedInt<int64_t>>(m_val).create_ast_literal_node();
+      }
+      else
+      {
+        pony_assert(false);
+      }
     }
-  }
-  else
-  {
-    if(CtfeAstType::is_struct(m_type))
+    else if(pony_type == "ULong")
     {
+      if(get_long_size() == 4)
+      {
+        new_node = get<CtfeValueTypedInt<uint32_t>>(m_val).create_ast_literal_node();
+      }
+      else if(get_long_size() == 8)
+      {
+        new_node = get<CtfeValueTypedInt<uint64_t>>(m_val).create_ast_literal_node();
+      }
+      else
+      {
+        pony_assert(false);
+      }
+    }
+    else if(pony_type == "ISize")
+    {
+      if(get_size_size() == 4)
+      {
+        new_node = get<CtfeValueTypedInt<int32_t>>(m_val).create_ast_literal_node();
+      }
+      else if(get_size_size() == 8)
+      {
+        new_node = get<CtfeValueTypedInt<int64_t>>(m_val).create_ast_literal_node();
+      }
+      else
+      {
+        pony_assert(false);
+      }
+    }
+    else if(pony_type == "USize")
+    {
+      if(get_size_size() == 4)
+      {
+        new_node = get<CtfeValueTypedInt<uint32_t>>(m_val).create_ast_literal_node();
+      }
+      else if(get_size_size() == 8)
+      {
+        new_node = get<CtfeValueTypedInt<uint64_t>>(m_val).create_ast_literal_node();
+      }
+      else
+      {
+        pony_assert(false);
+      }
+    }
+    else if(CtfeAstType::is_struct(m_type))
+    {
+      CtfeValueStruct* s = get_struct_ref();
+
       if(CtfeAstType::get_type_name(m_type) == "String")
       {
         new_node = ast_blank(TK_STRING);
         CtfeValue string;
-        CtfeValueStruct* s = get_struct_ref();
         s->get_value("_ptr", string);
         ast_set_name(new_node, reinterpret_cast<const char*>(string.get_pointer().get_cpointer()));
       }
       else
       {
-        ast_error_frame(errors, from,
-                "It is currently not possible to create a literal from "
-                "a class or struct reference.");
+        new_node = s->create_ast_literal_node(opt, errors, from);
+        // We don't take the type from CtfeValue but rather CtfeValueStruct type
+        return new_node;
       }
     }
+    else
+    {
+      ast_error_frame(errors, from,
+        "CTFE: creating constant object from unknown nominal type");
+    }
+  }
+  else
+  {
+    ast_error_frame(errors, from,
+      "CTFE: cannot create a constant object of type '%s'", lexer_print(ast_id(m_type)));
   }
 
   if(new_node != nullptr)

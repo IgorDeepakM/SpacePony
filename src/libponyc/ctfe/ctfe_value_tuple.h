@@ -27,4 +27,6 @@ public:
   size_t size() const { return m_size; }
 
   bool is_subtype(ast_t* pattern_type, pass_opt_t* opt);
+
+  ast_t* create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors, ast_t* from);
 };

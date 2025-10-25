@@ -50,6 +50,8 @@ const char* genname_program_fn(const char* program, const char* name);
 
 const char* genname_type_with_id(const char* type, uint64_t type_id);
 
+const char* object_hygienic_name(pass_opt_t* opt, ast_t* type);
+
 PONY_EXTERN_C_END
 
 #endif
