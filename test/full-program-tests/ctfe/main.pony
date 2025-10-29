@@ -16,6 +16,12 @@ struct S1
   var y: U32 = 3030
   embed z: E1 = E1
 
+struct S2
+  var x: U32 = 2020
+  var y: U32 = 3030
+  var z: E1 = E1
+  embed z2: E1 = E1
+
 class G1[T1: (Int & Real[T1] val), T2: (Int & Real[T2] val)]
   var g1: T1
   var g2: T2
@@ -43,6 +49,7 @@ actor Main
     test_array(220)
     test_string(240)
     test_value_type_param_expr(260)
+    test_constant_object(280)
 
   fun test_literal_int(exit_add: I32) =>
     // Test shift with negative numbers
@@ -331,7 +338,15 @@ actor Main
     c2 = test_nested_tuple_creation_assignment()
 
     if (c1 != true) or (c2 != true) then
-      @pony_exitcode(exit_add + 1)
+      @pony_exitcode(exit_add + 2)
+    end
+
+    var d1 = comptime test_constant_tuple_creation() end
+    var d2 = test_constant_tuple_creation()
+
+    if (d1._1 != 11) or (d2._1 != 11) or
+       (d1._2 != 33) or (d2._2 != 33) then
+      @pony_exitcode(exit_add + 3)
     end
 
   fun test_tuple_creation_assignment(): Bool =>
@@ -390,6 +405,9 @@ actor Main
     end
 
     true
+
+  fun test_constant_tuple_creation(): (U32, U64) =>
+    (11, 33)
 
   fun test_generics(exit_add: I32) =>
     let c1 = comptime test_method_typeargs[I32, U64](11, 22) end
@@ -643,3 +661,37 @@ actor Main
 
   fun value_param_add_2[y: I32, z: I32](x: I32): I32 =>
     x + y + z
+
+  fun test_constant_object(exit_add: I32) =>
+    let c1: S2 val = comptime S2 end
+    let c2: S2 val = S2
+
+    if (c1.x != 2020) or (c2.x != 2020) or
+       (c1.y != 3030) or (c2.y != 3030) or
+       (c1.z.em != 1010) or (c2.z.em != 1010) or
+       (c1.z2.em != 1010) or (c2.z2.em != 1010) then
+      @pony_exitcode(exit_add + 1)
+    end
+
+    var d1 = comptime create_constant_struct() end
+    var d2 = create_constant_struct()
+
+    if (d1.x != 2020) or (d2.x != 2020) or
+       (d1.y != 3030) or (d2.y != 3030)
+       (d1.z.em != 1010) or (d2.z.em != 1010) or
+       (d1.z2.em != 1010) or (d2.z2.em != 1010) then
+      @pony_exitcode(exit_add + 2)
+    end
+
+    // Test that the costant object has been allocated and copied
+    // and can be written to when assigned to a TK_REF
+    d1.x = 5050
+    d1.z.em = 7070
+    d1.z2.em = 9090
+
+    if (d1.x != 5050) or (d1.z.em != 7070) or (d1.z2.em != 9090) then
+      @pony_exitcode(exit_add + 3)
+    end
+
+  fun create_constant_struct(): S2 =>
+    S2

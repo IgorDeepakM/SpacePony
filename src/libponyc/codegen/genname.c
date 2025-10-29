@@ -236,3 +236,50 @@ const char* genname_type_with_id(const char* type, uint64_t type_id)
   printbuf(buf, "%s_%" PRIu64, type, type_id);
   return stringtab_buf(buf);
 }
+
+static void construct_object_hygienic_name(printbuf_t* buf,
+  pass_opt_t* opt, ast_t* type)
+{
+  switch(ast_id(type))
+  {
+    case TK_NOMINAL:
+    {
+      const char* type_name = ast_name(ast_childidx(type, 1));
+      ast_t* def = (ast_t*)ast_data(type);
+
+      frame_push(&opt->check, ast_nearest(def, TK_PACKAGE));
+      const char* s = package_hygienic_id(&opt->check);
+      frame_pop(&opt->check);
+
+      printbuf(buf, "%s_%s", type_name, s);
+      return;
+    }
+
+    case TK_TUPLETYPE:
+    {
+      printbuf(buf, "%dt", ast_childcount(type));
+      ast_t* elem_type = ast_child(type);
+      while (elem_type != NULL)
+      {
+        construct_object_hygienic_name(buf, opt, elem_type);
+        elem_type = ast_sibling(elem_type);
+      }
+      return;
+    }
+
+    default:
+      pony_assert(false);
+      return;
+  }
+
+}
+
+// generate a hygienic name for an object of a given type
+const char* object_hygienic_name(pass_opt_t* opt, ast_t* type)
+{
+  printbuf_t* buf = printbuf_new();
+  construct_object_hygienic_name(buf, opt, type);
+  const char* r = stringtab(buf->m);
+  printbuf_free(buf);
+  return r;
+}

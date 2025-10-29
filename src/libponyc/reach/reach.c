@@ -1396,8 +1396,13 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
     case TK_COMPTIME:
     {
       reach_comptime(opt, astp);
+      add_type(r, ast_type(*astp), opt);
       return;
     }
+
+    case TK_CONSTANT_OBJECT:
+      add_type(r, ast_type(ast), opt);
+      break;
 
     default: {}
   }

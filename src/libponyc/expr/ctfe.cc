@@ -22,17 +22,6 @@ extern "C" bool expr_comptime(pass_opt_t* opt, ast_t** astp)
   if(is_typecheck_error(ast_type(expression)))
     return false;
 
-  // See if we can recover the expression to val capability
-  if(!is_type_literal(expr_type))
-  {
-    expr_type = recover_type(expr_type, TK_VAL);
-    if(expr_type == NULL)
-    {
-      ast_error(opt->check.errors, expression,
-        "can't recover compile-time object to val capability");
-      return false;
-    }
-  }
   ast_settype(ast, expr_type);
 
   return true;

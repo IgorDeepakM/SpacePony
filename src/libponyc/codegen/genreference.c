@@ -723,3 +723,149 @@ LLVMValueRef gen_valueformalparamref(compile_t* c, ast_t* ast)
 
   return ret;
 }
+
+static LLVMValueRef gen_copy_constant_object(compile_t* c, reach_type_t* t, ast_t* ast)
+{
+  ast_t* members = ast_childidx(ast, 1);
+
+  ast_t* underlying_type = (ast_t*)ast_data(t->ast);
+
+  uint32_t field_count = t->field_count;
+  size_t member_index = 0;
+  if(ast_id(underlying_type) == TK_CLASS)
+  {
+    field_count++;
+    member_index++;
+  }
+
+  compile_type_t* c_t = (compile_type_t*)t->c_type;
+
+  const char* obj_name = ast_name(ast_child(ast));
+  LLVMValueRef const_struct = LLVMGetNamedGlobal(c->module, obj_name);
+  pony_assert(const_struct != NULL);
+
+  LLVMValueRef heap_allocated = gen_constructor_receiver(c, t, ast);
+  LLVMValueRef initialized = LLVMGetInitializer(const_struct);
+  LLVMBuildStore(c->builder, initialized, heap_allocated);
+
+  // TODO: this needs attention so that conversion to stack allocation also works
+  // with constant objects.
+  //LLVMValueRef md = LLVMMDNodeInContext(c->context, NULL, 0);
+  //LLVMSetMetadataStr(call_site, "pony.newcall", md);
+
+  size_t reach_index = 0;
+
+  for(ast_t* member = ast_child(members); member != NULL; member = ast_sibling(member))
+  {
+    if(member_index < field_count)
+    {
+      ast_t* member_obj = ast_child(member);
+      if(ast_id(member_obj) == TK_CONSTANT_OBJECT && ast_id(member) != TK_EMBED)
+      {
+        ast_t* member_underlying_type = (ast_t*)ast_data(ast_type(member_obj));
+        if(ast_id(member_underlying_type) == TK_STRUCT ||
+           ast_id(underlying_type) == TK_CLASS)
+        {
+          ast_t* member_type = t->fields[reach_index].ast;
+
+          token_id dest_cap = ast_id(ast_childidx(member_type, 3));
+          if(dest_cap != TK_VAL && dest_cap != TK_BOX)
+          {
+            LLVMValueRef allocated = gen_copy_constant_object(c, t->fields[reach_index].type, member_obj);
+            LLVMValueRef elem_ptr = LLVMBuildStructGEP2(c->builder, c_t->structure, heap_allocated,
+              (unsigned int)member_index, "");
+            LLVMBuildStore(c->builder, allocated, elem_ptr);
+          }
+        }
+      }
+    }
+    else
+    {
+      pony_assert(false);
+    }
+
+    member_index++;
+    reach_index++;
+  }
+
+  return heap_allocated;
+}
+
+LLVMValueRef gen_constant_object(compile_t* c, ast_t* ast)
+{
+  ast_t* members = ast_childidx(ast, 1);
+
+  ast_t* r_type = deferred_reify(c->frame->reify, ast_type(ast), c->opt);
+  reach_type_t* t = reach_type(c->reach, r_type, c->opt);
+  ast_t* underlying_type = (ast_t*)ast_data(r_type);
+  ast_free_unattached(r_type);
+
+  compile_type_t* c_t = (compile_type_t*)t->c_type;
+  uint32_t field_count = t->field_count;
+  if(ast_id(underlying_type) == TK_CLASS)
+  {
+    field_count++;
+  }
+
+  size_t buf_size = sizeof(LLVMValueRef) * field_count;
+  LLVMValueRef* args = (LLVMValueRef*)ponyint_pool_alloc_size(buf_size);
+
+  size_t member_index = 0;
+  if(ast_id(underlying_type) == TK_CLASS)
+  {
+    args[member_index] = c_t->desc;
+    member_index++;
+  }
+
+  for(ast_t* member = ast_child(members); member != NULL; member = ast_sibling(member))
+  {
+    if(member_index < field_count)
+    {
+      args[member_index] = gen_expr(c, ast_child(member));
+    }
+    else
+    {
+      pony_assert(false);
+    }
+    member_index++;
+  }
+
+  LLVMValueRef inst = LLVMConstNamedStruct(c_t->structure, args, field_count);
+  ponyint_pool_free_size(buf_size, args);
+
+  ast_t* parent = ast_parent(ast);
+  if(ast_id(parent) == TK_EMBED)
+  {
+    return inst;
+  }
+
+  const char* obj_name = ast_name(ast_child(ast));
+  LLVMValueRef ret = LLVMGetNamedGlobal(c->module, obj_name);
+  if(ret == NULL)
+  {
+    LLVMValueRef g_inst = LLVMAddGlobal(c->module, c_t->structure, obj_name);
+    LLVMSetInitializer(g_inst, inst);
+    LLVMSetGlobalConstant(g_inst, true);
+    LLVMSetLinkage(g_inst, LLVMPrivateLinkage);
+
+    ret = g_inst;
+  }
+
+  // if the parent is TK_FVAR or TK_FLET, then this constant object is a member
+  // in another struct.
+  if(ast_id(parent) != TK_FVAR && ast_id(parent) != TK_FLET)
+  {
+    ast_t* parent_type = ast_type(ast_parent(ast));
+    pony_assert(ast_id(parent_type) == TK_NOMINAL &&
+      is_subtype_ignore_cap(parent_type, t->ast, NULL, c->opt));
+    token_id dest_cap = ast_id(ast_childidx(ast_type(ast_parent(ast)), 3));
+
+    // If the destination is not a val or box, then we must copy the struct
+    if(dest_cap != TK_VAL && dest_cap != TK_BOX)
+    {
+      ret = gen_copy_constant_object(c, t, ast);
+    }
+  }
+
+  return ret;
+}

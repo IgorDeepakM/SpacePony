@@ -21,6 +21,8 @@ public:
   bool get_value(const std::string& name, CtfeValue& value) const;
   ast_t* get_type_ast() const { return m_type; }
 
+  ast_t* create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors, ast_t* from);
+
   void write_to_memory(uint8_t* ptr) const;
   static CtfeValueStruct* read_from_memory(uint8_t* ptr);
 };

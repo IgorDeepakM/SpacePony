@@ -2,6 +2,9 @@
 
 #include <algorithm>
 
+#include "../ast/astbuild.h"
+#include "../codegen/genname.h"
+
 
 using namespace std;
 
@@ -67,4 +70,62 @@ CtfeValueStruct* CtfeValueStruct::read_from_memory(uint8_t* ptr)
   CtfeValueStruct* r = nullptr;
   memcpy(&r, ptr, sizeof(CtfeValueStruct*));
   return r;
+}
+
+
+ast_t* CtfeValueStruct::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
+  ast_t* from)
+{
+  ast_t* underlying_type = (ast_t*)ast_data(m_type);
+  ast_t* members = ast_childidx(underlying_type, 4);
+
+  ast_t* obj = ast_blank(TK_CONSTANT_OBJECT);
+  ast_t* name_node = ast_blank(TK_ID);
+
+  const char* obj_name = object_hygienic_name(opt, m_type);
+  ast_set_name(name_node, obj_name);
+
+  ast_append(obj, name_node);
+  ast_t* members_node = ast_blank(TK_MEMBERS);
+  ast_append(obj, members_node);
+
+  ast_t* obj_members = ast_childidx(obj, 1);
+
+  ast_t* member = ast_child(members);
+  while(member != NULL)
+  {
+    switch(ast_id(member))
+    {
+      case TK_FVAR:
+      case TK_FLET:
+      case TK_EMBED:
+      {
+        const char* var_name = ast_name(ast_child(member));
+
+        CtfeValue var;
+        if(!get_value(var_name, var))
+        {
+          pony_assert(false);
+        }
+
+        ast_t* var_node = ast_blank(ast_id(member));
+        ast_settype(var_node, ast_type(member));
+        ast_t* lit_node = var.create_ast_literal_node(opt, errors, from);
+        ast_settype(lit_node, ast_type(member));
+        ast_append(var_node, lit_node);
+        ast_append(obj_members, var_node);
+
+        break;
+      }
+
+      default:
+        break;
+    }
+
+    member = ast_sibling(member);
+  }
+
+  ast_settype(obj, ast_dup(m_type));
+
+  return obj;
 }

@@ -312,6 +312,7 @@ static const lextoken_t abstract[] =
   { "funapp", TK_FUNAPP },
   { "bechain", TK_BECHAIN },
   { "funchain", TK_FUNCHAIN },
+  { "constant_object", TK_CONSTANT_OBJECT },
 
   { "annotation", TK_ANNOTATION },
 

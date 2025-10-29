@@ -42,6 +42,8 @@ void gencall_lifetime_start(compile_t* c, LLVMValueRef ptr, LLVMTypeRef type);
 
 void gencall_lifetime_end(compile_t* c, LLVMValueRef ptr, LLVMTypeRef type);
 
+LLVMValueRef gen_constructor_receiver(compile_t* c, reach_type_t* t, ast_t* call);
+
 PONY_EXTERN_C_END
 
 #endif

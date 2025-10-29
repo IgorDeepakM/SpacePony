@@ -26,6 +26,7 @@ public:
   static bool is_struct(ast_t* ast);
   static bool is_interface(ast_t* ast);
   static bool is_tuple(ast_t* ast) { return ast_id(ast) == TK_TUPLETYPE; };
+  static bool is_nominal(ast_t* ast) { return ast_id(ast) == TK_NOMINAL; };
   static bool is_machine_word(ast_t* ast) { return ::is_machine_word(ast); }
 
   static void initialize(pass_opt_t* opt);
