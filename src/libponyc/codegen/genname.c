@@ -268,7 +268,7 @@ static void construct_object_hygienic_name(printbuf_t* buf,
     }
 
     default:
-      assert(0);
+      pony_assert(false);
       return;
   }
 

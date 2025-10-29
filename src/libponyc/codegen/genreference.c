@@ -746,7 +746,7 @@ static LLVMValueRef gen_copy_constant_object(compile_t* c, reach_type_t* t, ast_
 
   LLVMValueRef heap_allocated = gen_constructor_receiver(c, t, ast);
   LLVMValueRef initialized = LLVMGetInitializer(const_struct);
-  LLVMValueRef call_site = LLVMBuildStore(c->builder, initialized, heap_allocated);
+  LLVMBuildStore(c->builder, initialized, heap_allocated);
 
   // TODO: this needs attention so that conversion to stack allocation also works
   // with constant objects.
@@ -773,7 +773,7 @@ static LLVMValueRef gen_copy_constant_object(compile_t* c, reach_type_t* t, ast_
           {
             LLVMValueRef allocated = gen_copy_constant_object(c, t->fields[reach_index].type, member_obj);
             LLVMValueRef elem_ptr = LLVMBuildStructGEP2(c->builder, c_t->structure, heap_allocated,
-              member_index, "");
+              (unsigned int)member_index, "");
             LLVMBuildStore(c->builder, allocated, elem_ptr);
           }
         }

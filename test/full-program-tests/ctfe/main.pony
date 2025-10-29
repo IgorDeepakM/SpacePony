@@ -678,8 +678,8 @@ actor Main
 
     if (d1.x != 2020) or (d2.x != 2020) or
        (d1.y != 3030) or (d2.y != 3030)
-       (c1.z.em != 1010) or (c2.z.em != 1010) or
-       (c1.z2.em != 1010) or (c2.z2.em != 1010) then
+       (d1.z.em != 1010) or (d2.z.em != 1010) or
+       (d1.z2.em != 1010) or (d2.z2.em != 1010) then
       @pony_exitcode(exit_add + 2)
     end
 
