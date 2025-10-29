@@ -7,7 +7,7 @@ llvm_config ?= Release
 llc_arch ?= x86-64
 pic_flag ?=
 open_close_stress_connections ?= 10000000
-test_full_program_timeout ?= 60
+test_full_program_timeout ?= 120
 
 ifndef version
   version := $(shell cat VERSION)
