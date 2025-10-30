@@ -32,4 +32,6 @@ public:
   static void initialize(pass_opt_t* opt);
   static uint8_t get_long_size() { return m_long_size; }
   static uint8_t get_size_size() { return m_size_size; }
+
+  static uint64_t ast_hash(ast_t* ast);
 };
