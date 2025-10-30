@@ -8,6 +8,10 @@
 
 using namespace std;
 
+
+map<uint64_t, std::string> CtfeValueStruct::m_stored_obj_names;
+
+
 CtfeValueStruct::CtfeValueStruct(ast_t *type):
   m_type{ast_dup(type)}
 {
@@ -82,9 +86,6 @@ ast_t* CtfeValueStruct::create_ast_literal_node(pass_opt_t* opt, errorframe_t* e
   ast_t* obj = ast_blank(TK_CONSTANT_OBJECT);
   ast_t* name_node = ast_blank(TK_ID);
 
-  const char* obj_name = object_hygienic_name(opt, m_type);
-  ast_set_name(name_node, obj_name);
-
   ast_append(obj, name_node);
   ast_t* members_node = ast_blank(TK_MEMBERS);
   ast_append(obj, members_node);
@@ -126,6 +127,22 @@ ast_t* CtfeValueStruct::create_ast_literal_node(pass_opt_t* opt, errorframe_t* e
   }
 
   ast_settype(obj, ast_dup(m_type));
+
+  uint64_t ast_hash = CtfeAstType::ast_hash(obj);
+  const char* obj_name = NULL;
+
+  auto it = m_stored_obj_names.find(ast_hash);
+  if(it != m_stored_obj_names.end())
+  {
+    obj_name = it->second.c_str();
+  }
+  else
+  {
+    obj_name = object_hygienic_name(opt, m_type);
+    m_stored_obj_names.insert({ast_hash, string(obj_name)});
+  }
+
+  ast_set_name(name_node, obj_name);
 
   return obj;
 }

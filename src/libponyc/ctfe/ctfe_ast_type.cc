@@ -167,3 +167,56 @@ bool CtfeAstType::is_interface(ast_t* ast)
   return false;
 }
 
+
+uint64_t CtfeAstType::ast_hash(ast_t* ast)
+{
+  uint64_t hashtype = 0;
+
+  ast_t* type = ast_type(ast);
+  if(type != NULL)
+  {
+    hashtype = ast_hash(type);
+  }
+
+  switch(ast_id(ast))
+  {
+    case TK_ID:
+    case TK_STRING:
+    {
+      const char* name = ast_name(ast);
+      if(name != NULL)
+      {
+        return ponyint_hash_str(ast_name(ast)) ^ hashtype;
+      }
+
+      return 0;
+    }
+
+    case TK_INT:
+    {
+      lexint_t* val = ast_int(ast);
+      return val->low ^ val->high ^ (val->is_negative ? 1 : 0) ^ hashtype;
+    }
+
+    case TK_FLOAT:
+      return (uint64_t)ast_float(ast) ^ hashtype;
+
+    case TK_CONSTANT_OBJECT:
+      return ast_hash(ast_child(ast)) ^ hashtype;
+
+    default:
+      break;
+  }
+
+  size_t hash = ast_id(ast);
+  ast_t* child = ast_child(ast);
+
+  while(child)
+  {
+    hash ^= ast_hash(child);
+    child = ast_sibling(child);
+  }
+
+  return hash;
+}
+

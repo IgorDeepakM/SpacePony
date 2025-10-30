@@ -10,6 +10,8 @@
 
 class CtfeValueStruct
 {
+  static std::map<uint64_t, std::string> m_stored_obj_names;
+
   std::map<std::string, CtfeValue> m_vars;
   ast_t* m_type;
 
