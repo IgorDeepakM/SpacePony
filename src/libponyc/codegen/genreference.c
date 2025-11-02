@@ -727,7 +727,7 @@ LLVMValueRef gen_valueformalparamref(compile_t* c, ast_t* ast)
 }
 
 
-static LLVMValueRef gen_copy_constant_array(compile_t* c, reach_type_t* t, ast_t* ast)
+static LLVMValueRef gen_copy_constant_array(compile_t* c, ast_t* ast)
 {
   const char* obj_name = ast_name(ast_child(ast));
   LLVMValueRef const_array = LLVMGetNamedGlobal(c->module, obj_name);
@@ -807,7 +807,7 @@ static LLVMValueRef gen_copy_constant_object(compile_t* c, reach_type_t* t, ast_
         token_id dest_cap = ast_id(ast_childidx(member_type, 3));
         if(dest_cap != TK_VAL && dest_cap != TK_BOX)
         {
-          LLVMValueRef allocated = gen_copy_constant_array(c, t->fields[reach_index].type, member_obj);
+          LLVMValueRef allocated = gen_copy_constant_array(c, member_obj);
           LLVMValueRef elem_ptr = LLVMBuildStructGEP2(c->builder, c_t->structure, heap_allocated,
             (unsigned int)member_index, "");
           LLVMBuildStore(c->builder, allocated, elem_ptr);
