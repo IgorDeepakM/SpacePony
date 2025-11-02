@@ -8,9 +8,13 @@
 #include <algorithm>
 
 #include "../ast/ast.h"
+#include "../codegen/genname.h"
 
 
 using namespace std;
+
+
+map<uint64_t, string> CtfeValuePointer::m_stored_obj_names;
 
 
 CtfeValuePointer::CtfeValuePointer(ast_t* pointer_type):
@@ -321,4 +325,92 @@ bool CtfeValuePointer::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
   }
 
   return false;
+}
+
+
+ast_t* CtfeValuePointer::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
+  ast_t* from, size_t array_size)
+{
+  if(m_size == 0)
+  {
+    ast_error_frame(errors, from,
+      "Constant object creation from raw pointers is currently not supported, "
+      "only when the pointer is allocated as an array.");
+  }
+
+  size_t size = m_size;
+  if(array_size != 0)
+  {
+    size = array_size;
+  }
+
+  bool homogeneous_array = true;
+
+  CtfeValue first = CtfeValue::read_from_memory(get_pointer_elem_type_ast(), &m_array[0]);
+  for(size_t i = 1; i < size; i++)
+  {
+    CtfeValue e = CtfeValue::read_from_memory(get_pointer_elem_type_ast(), &m_array[i * m_elem_size]);
+    if(first != e)
+    {
+      homogeneous_array = false;
+      break;
+    }
+  }
+
+  ast_t* obj = ast_blank(TK_CONSTANT_ARRAY);
+  ast_t* name_node = ast_blank(TK_ID);
+  ast_append(obj, name_node);
+
+  ast_t* homogeneous_node = ast_blank(homogeneous_array ? TK_TRUE : TK_FALSE);
+  ast_append(obj, homogeneous_node);
+
+  ast_t* repeat_node = ast_blank(TK_INT);
+  lexint_t n = lexint_zero();
+  n.low = size;
+  ast_set_int(repeat_node, &n);
+  ast_append(obj, repeat_node);
+
+  ast_t* elem_size_node = ast_blank(TK_INT);
+  lexint_t e = lexint_zero();
+  e.low = m_elem_size;
+  ast_set_int(elem_size_node, &e);
+  ast_append(obj, elem_size_node);
+
+  ast_t* members_node = ast_blank(TK_MEMBERS);
+  ast_append(obj, members_node);
+
+  if(homogeneous_array)
+  {
+    ast_t* member_node = first.create_ast_literal_node(opt, errors, from);
+    ast_append(members_node, member_node);
+  }
+  else
+  {
+    for(size_t i = 0; i < size; i++)
+    {
+      CtfeValue e = CtfeValue::read_from_memory(get_pointer_elem_type_ast(), &m_array[i * m_elem_size]);
+      ast_t* member_node = e.create_ast_literal_node(opt, errors, from);
+      ast_append(members_node, member_node);
+    }
+  }
+
+  ast_settype(obj, ast_dup(m_pointer_type));
+
+  uint64_t ast_hash = CtfeAstType::ast_hash(obj);
+  const char* obj_name = NULL;
+
+  auto it = m_stored_obj_names.find(ast_hash);
+  if(it != m_stored_obj_names.end())
+  {
+    obj_name = it->second.c_str();
+  }
+  else
+  {
+    obj_name = object_hygienic_name(opt, m_pointer_type);
+    m_stored_obj_names.insert({ast_hash, string(obj_name)});
+  }
+
+  ast_set_name(name_node, obj_name);
+
+  return obj;
 }

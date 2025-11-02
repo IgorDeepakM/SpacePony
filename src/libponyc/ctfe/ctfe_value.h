@@ -71,6 +71,10 @@ public:
 
   CtfeValue& operator=(CtfeValue val);
 
+  bool operator==(const CtfeValue& b) const;
+  bool operator!=(const CtfeValue& b) const;
+  CtfeValueBool eq(const CtfeValue& b) const;
+
   ast_t* get_type_ast() const { return m_type; }
   void set_type_ast(ast_t* new_type);
 

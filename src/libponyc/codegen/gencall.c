@@ -1710,7 +1710,7 @@ LLVMValueRef gencall_allocstruct(compile_t* c, reach_type_t* t)
 {
   // We explicitly want a boxed version.
   // Allocate the object.
-  LLVMValueRef args[3];
+  LLVMValueRef args[2];
   args[0] = codegen_ctx(c);
 
   LLVMValueRef result;
@@ -1740,6 +1740,36 @@ LLVMValueRef gencall_allocstruct(compile_t* c, reach_type_t* t)
 
   return result;
 }
+
+
+LLVMValueRef gencall_pony_alloc(compile_t* c, size_t rq_size)
+{
+  // We explicitly want a boxed version.
+  // Allocate the object.
+  LLVMValueRef args[2];
+  args[0] = codegen_ctx(c);
+
+  LLVMValueRef result;
+
+  size_t size = rq_size;
+  if(size == 0)
+    size = 1;
+
+  if(size <= HEAP_MAX)
+  {
+    uint32_t index = ponyint_heap_index(size);
+    args[1] = LLVMConstInt(c->i32, index, false);
+    result = gencall_runtime(c, "pony_alloc_small", args, 2, "");
+  }
+  else
+  {
+    args[1] = LLVMConstInt(c->intptr, size, false);
+    result = gencall_runtime(c, "pony_alloc_large", args, 2, "");
+  }
+
+  return result;
+}
+
 
 void gencall_error(compile_t* c)
 {

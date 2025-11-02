@@ -9,11 +9,13 @@
 #include "gentype.h"
 #include "genvaluepass.h"
 #include "../expr/literal.h"
+#include "../pass/expr.h"
 #include "../reach/subtype.h"
 #include "../type/cap.h"
 #include "../type/subtype.h"
 #include "../type/viewpoint.h"
 #include "../../libponyrt/mem/pool.h"
+#include "../../libponyrt/mem/heap.h"
 #include "ponyassert.h"
 #include <string.h>
 
@@ -724,6 +726,26 @@ LLVMValueRef gen_valueformalparamref(compile_t* c, ast_t* ast)
   return ret;
 }
 
+
+static LLVMValueRef gen_copy_constant_array(compile_t* c, reach_type_t* t, ast_t* ast)
+{
+  const char* obj_name = ast_name(ast_child(ast));
+  LLVMValueRef const_array = LLVMGetNamedGlobal(c->module, obj_name);
+  pony_assert(const_array != NULL);
+
+  const lexint_t* size_lex = ast_int(ast_childidx(ast, 2));
+  const lexint_t* elem_size_lex = ast_int(ast_childidx(ast, 3));
+
+  size_t array_size = size_lex->low * elem_size_lex->low;
+
+  LLVMValueRef heap_allocated = gencall_pony_alloc(c, array_size);
+  LLVMValueRef initializer = LLVMGetInitializer(const_array);
+  LLVMBuildStore(c->builder, initializer, heap_allocated);
+
+  return heap_allocated;
+}
+
+
 static LLVMValueRef gen_copy_constant_object(compile_t* c, reach_type_t* t, ast_t* ast)
 {
   ast_t* members = ast_childidx(ast, 1);
@@ -745,8 +767,8 @@ static LLVMValueRef gen_copy_constant_object(compile_t* c, reach_type_t* t, ast_
   pony_assert(const_struct != NULL);
 
   LLVMValueRef heap_allocated = gen_constructor_receiver(c, t, ast);
-  LLVMValueRef initialized = LLVMGetInitializer(const_struct);
-  LLVMBuildStore(c->builder, initialized, heap_allocated);
+  LLVMValueRef initializer = LLVMGetInitializer(const_struct);
+  LLVMBuildStore(c->builder, initializer, heap_allocated);
 
   // TODO: this needs attention so that conversion to stack allocation also works
   // with constant objects.
@@ -778,6 +800,19 @@ static LLVMValueRef gen_copy_constant_object(compile_t* c, reach_type_t* t, ast_
           }
         }
       }
+      else if (ast_id(member_obj) == TK_CONSTANT_ARRAY)
+      {
+        ast_t* member_type = t->fields[reach_index].ast;
+
+        token_id dest_cap = ast_id(ast_childidx(member_type, 3));
+        if(dest_cap != TK_VAL && dest_cap != TK_BOX)
+        {
+          LLVMValueRef allocated = gen_copy_constant_array(c, t->fields[reach_index].type, member_obj);
+          LLVMValueRef elem_ptr = LLVMBuildStructGEP2(c->builder, c_t->structure, heap_allocated,
+            (unsigned int)member_index, "");
+          LLVMBuildStore(c->builder, allocated, elem_ptr);
+        }
+      }
     }
     else
     {
@@ -800,49 +835,43 @@ LLVMValueRef gen_constant_object(compile_t* c, ast_t* ast)
   ast_t* underlying_type = (ast_t*)ast_data(r_type);
   ast_free_unattached(r_type);
 
-  compile_type_t* c_t = (compile_type_t*)t->c_type;
-  uint32_t field_count = t->field_count;
-  if(ast_id(underlying_type) == TK_CLASS)
-  {
-    field_count++;
-  }
-
-  size_t buf_size = sizeof(LLVMValueRef) * field_count;
-  LLVMValueRef* args = (LLVMValueRef*)ponyint_pool_alloc_size(buf_size);
-
-  size_t member_index = 0;
-  if(ast_id(underlying_type) == TK_CLASS)
-  {
-    args[member_index] = c_t->desc;
-    member_index++;
-  }
-
-  for(ast_t* member = ast_child(members); member != NULL; member = ast_sibling(member))
-  {
-    if(member_index < field_count)
-    {
-      args[member_index] = gen_expr(c, ast_child(member));
-    }
-    else
-    {
-      pony_assert(false);
-    }
-    member_index++;
-  }
-
-  LLVMValueRef inst = LLVMConstNamedStruct(c_t->structure, args, field_count);
-  ponyint_pool_free_size(buf_size, args);
-
-  ast_t* parent = ast_parent(ast);
-  if(ast_id(parent) == TK_EMBED)
-  {
-    return inst;
-  }
-
   const char* obj_name = ast_name(ast_child(ast));
   LLVMValueRef ret = LLVMGetNamedGlobal(c->module, obj_name);
   if(ret == NULL)
   {
+    compile_type_t* c_t = (compile_type_t*)t->c_type;
+    uint32_t field_count = t->field_count;
+    if(ast_id(underlying_type) == TK_CLASS)
+    {
+      field_count++;
+    }
+
+    size_t buf_size = sizeof(LLVMValueRef) * field_count;
+    LLVMValueRef* args = (LLVMValueRef*)ponyint_pool_alloc_size(buf_size);
+
+    size_t member_index = 0;
+    if(ast_id(underlying_type) == TK_CLASS)
+    {
+      args[member_index] = c_t->desc;
+      member_index++;
+    }
+
+    for(ast_t* member = ast_child(members); member != NULL; member = ast_sibling(member))
+    {
+      if(member_index < field_count)
+      {
+        args[member_index] = gen_expr(c, ast_child(member));
+      }
+      else
+      {
+        pony_assert(false);
+      }
+      member_index++;
+    }
+
+    LLVMValueRef inst = LLVMConstNamedStruct(c_t->structure, args, field_count);
+    ponyint_pool_free_size(buf_size, args);
+
     LLVMValueRef g_inst = LLVMAddGlobal(c->module, c_t->structure, obj_name);
     LLVMSetInitializer(g_inst, inst);
     LLVMSetGlobalConstant(g_inst, true);
@@ -851,20 +880,91 @@ LLVMValueRef gen_constant_object(compile_t* c, ast_t* ast)
     ret = g_inst;
   }
 
+  ast_t* parent = ast_parent(ast);
+  if(ast_id(parent) == TK_EMBED)
+  {
+    return LLVMGetInitializer(ret);
+  }
+
   // if the parent is TK_FVAR or TK_FLET, then this constant object is a member
   // in another struct.
   if(ast_id(parent) != TK_FVAR && ast_id(parent) != TK_FLET)
   {
-    ast_t* parent_type = ast_type(ast_parent(ast));
-    pony_assert(ast_id(parent_type) == TK_NOMINAL &&
-      is_subtype_ignore_cap(parent_type, t->ast, NULL, c->opt));
-    token_id dest_cap = ast_id(ast_childidx(ast_type(ast_parent(ast)), 3));
+    bool is_recovered = false;
+    ast_t* dest_type = find_antecedent_type(c->opt, ast, &is_recovered);
+
+    pony_assert(ast_id(dest_type) == TK_NOMINAL &&
+      is_subtype_ignore_cap(dest_type, t->ast, NULL, c->opt));
+
+    token_id dest_cap = ast_id(ast_childidx(dest_type, 3));
 
     // If the destination is not a val or box, then we must copy the struct
     if(dest_cap != TK_VAL && dest_cap != TK_BOX)
     {
       ret = gen_copy_constant_object(c, t, ast);
     }
+  }
+
+  return ret;
+}
+
+
+LLVMValueRef gen_constant_array(compile_t* c, ast_t* ast)
+{
+  ast_t* type = ast_type(ast);
+  pony_assert(is_literal(type, "Pointer"));
+
+  const char* obj_name = ast_name(ast_child(ast));
+  LLVMValueRef ret = LLVMGetNamedGlobal(c->module, obj_name);
+  if(ret == NULL)
+  {
+    AST_GET_CHILDREN(ast, id, homogeneous_node, size_node, elem_size_node, members_node);
+
+    const lexint_t* size_lex = ast_int(size_node);
+
+    size_t array_size = size_lex->low;
+    size_t buf_size = sizeof(LLVMValueRef) * array_size;
+    LLVMValueRef *args = (LLVMValueRef*)ponyint_pool_alloc_size(buf_size);
+
+    // Check if the array is homogeneous
+    if(ast_id(ast_childidx(ast, 1)) == TK_TRUE)
+    {
+      ast_t* member = ast_child(members_node);
+      LLVMValueRef elem = gen_expr(c, member);
+
+      for(size_t i = 0; i < array_size; i++)
+      {
+        args[i] = elem;
+      }
+    }
+    else
+    {
+      ast_t* member = ast_child(members_node);
+      for(size_t i = 0; i < array_size; i++)
+      {
+        args[i] = gen_expr(c, member);
+
+        member = ast_sibling(member);
+      }
+    }
+
+    ast_t* pointer_type = ast_child(ast_childidx(type, 2));
+    ast_t* r_type = deferred_reify(c->frame->reify, pointer_type, c->opt);
+    reach_type_t* t_elem = reach_type(c->reach, r_type, c->opt);
+    ast_free_unattached(r_type);
+
+    compile_type_t* c_t = (compile_type_t*)t_elem->c_type;
+
+    LLVMValueRef inst = LLVMConstArray2(c_t->use_type, args, array_size);
+    ponyint_pool_free_size(buf_size, args);
+
+    LLVMTypeRef array_type = LLVMArrayType2(c_t->use_type, array_size);
+    LLVMValueRef g_inst = LLVMAddGlobal(c->module, array_type, obj_name);
+    LLVMSetInitializer(g_inst, inst);
+    LLVMSetGlobalConstant(g_inst, true);
+    LLVMSetLinkage(g_inst, LLVMPrivateLinkage);
+
+    ret = g_inst;
   }
 
   return ret;
