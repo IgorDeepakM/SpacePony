@@ -50,6 +50,7 @@ actor Main
     test_string(240)
     test_value_type_param_expr(260)
     test_constant_object(280)
+    test_constant_array(300)
 
   fun test_literal_int(exit_add: I32) =>
     // Test shift with negative numbers
@@ -695,3 +696,69 @@ actor Main
 
   fun create_constant_struct(): S2 =>
     S2
+
+  fun test_constant_array(exit_add: I32) =>
+    let c1: Array[USize] val = comptime [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11] end
+
+    var i: USize = 1
+    for c_elem in c1.values() do
+      if c_elem != i then
+        @pony_exitcode(exit_add + 1)
+      end
+      i = i + 1
+    end
+
+    let d1: Array[USize] = comptime [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11] end
+
+    i = 1
+    for c_elem in d1.values() do
+      if c_elem != i then
+        @pony_exitcode(exit_add + 2)
+      end
+      i = i + 1
+    end
+
+    i = 0
+    for c_elem in d1.values() do
+      try
+        d1.update(i, c_elem + 1000)?
+      else
+        @pony_exitcode(exit_add + 3)
+      end
+      i = i + 1
+    end
+
+    i = 1001
+    for c_elem in d1.values() do
+      if c_elem != i then
+        @pony_exitcode(exit_add + 4)
+      end
+      i = i + 1
+    end
+
+    // Test homogeneous array
+    let e1: Array[USize] val = comptime [33; 33; 33; 33; 33; 33; 33; 33; 33; 33; 33] end
+
+    for c_elem in e1.values() do
+      if c_elem != 33 then
+        @pony_exitcode(exit_add + 5)
+      end
+    end
+
+    var f1 = comptime big_generated_array(5000) end
+    i = 0
+    for c_elem in f1.values() do
+      if c_elem.usize() != i then
+        @pony_exitcode(exit_add + 6)
+      end
+      i = i + 1
+    end
+
+  fun big_generated_array(size: USize): Array[U32] val =>
+    var ar: Array[U32] iso = Array[U32]
+
+    for i in Range[U32](0, size.u32()) do
+      ar.push(i)
+    end
+
+    ar

@@ -218,6 +218,10 @@ LLVMValueRef gen_expr(compile_t* c, ast_t* ast)
       ret = gen_constant_object(c, ast);
       break;
 
+    case TK_CONSTANT_ARRAY:
+      ret = gen_constant_array(c, ast);
+      break;
+
     case TK_VALUEFORMALPARAMREF:
       ret = gen_valueformalparamref(c, ast);
       break;

@@ -9,7 +9,7 @@
 using namespace std;
 
 
-map<uint64_t, std::string> CtfeValueStruct::m_stored_obj_names;
+map<uint64_t, string> CtfeValueStruct::m_stored_obj_names;
 
 
 CtfeValueStruct::CtfeValueStruct(ast_t *type):
@@ -80,6 +80,8 @@ CtfeValueStruct* CtfeValueStruct::read_from_memory(uint8_t* ptr)
 ast_t* CtfeValueStruct::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
   ast_t* from)
 {
+  bool is_array = CtfeAstType::is_array(m_type);
+
   ast_t* underlying_type = (ast_t*)ast_data(m_type);
   ast_t* members = ast_childidx(underlying_type, 4);
 
@@ -90,8 +92,6 @@ ast_t* CtfeValueStruct::create_ast_literal_node(pass_opt_t* opt, errorframe_t* e
   ast_t* members_node = ast_blank(TK_MEMBERS);
   ast_append(obj, members_node);
 
-  ast_t* obj_members = ast_childidx(obj, 1);
-
   ast_t* member = ast_child(members);
   while(member != NULL)
   {
@@ -101,7 +101,7 @@ ast_t* CtfeValueStruct::create_ast_literal_node(pass_opt_t* opt, errorframe_t* e
       case TK_FLET:
       case TK_EMBED:
       {
-        const char* var_name = ast_name(ast_child(member));
+        string var_name = ast_name(ast_child(member));
 
         CtfeValue var;
         if(!get_value(var_name, var))
@@ -111,10 +111,30 @@ ast_t* CtfeValueStruct::create_ast_literal_node(pass_opt_t* opt, errorframe_t* e
 
         ast_t* var_node = ast_blank(ast_id(member));
         ast_settype(var_node, ast_type(member));
-        ast_t* lit_node = var.create_ast_literal_node(opt, errors, from);
-        ast_settype(lit_node, ast_type(member));
+
+        ast_t* lit_node = NULL;
+
+        // Special case for Array because the allocated size in the pointer doesn't
+        // necessarily correspond to to the size of the Array, it could be smaller.
+        // Therefore we must extract the size from the _size member first.
+        if(is_array && var_name == "_ptr")
+        {
+          CtfeValue array_size;
+          if(!get_value("_size", array_size))
+          {
+            pony_assert(false);
+          }
+          lit_node = var.get_pointer().create_ast_literal_node(opt, errors, from,
+            array_size.to_uint64());
+        }
+        else
+        {
+          lit_node = var.create_ast_literal_node(opt, errors, from);
+          ast_settype(lit_node, ast_type(member));
+        }
+
         ast_append(var_node, lit_node);
-        ast_append(obj_members, var_node);
+        ast_append(members_node, var_node);
 
         break;
       }

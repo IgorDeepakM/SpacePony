@@ -201,9 +201,6 @@ uint64_t CtfeAstType::ast_hash(ast_t* ast)
     case TK_FLOAT:
       return (uint64_t)ast_float(ast) ^ hashtype;
 
-    case TK_CONSTANT_OBJECT:
-      return ast_hash(ast_child(ast)) ^ hashtype;
-
     default:
       break;
   }

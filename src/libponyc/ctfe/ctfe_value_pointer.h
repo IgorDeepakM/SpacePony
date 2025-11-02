@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 #include <memory>
-#include <variant>
+#include <map>
 
 #include "../pass/pass.h"
 
@@ -15,6 +15,8 @@ class CtfeRunner;
 
 class CtfeValuePointer
 {
+  static std::map<uint64_t, std::string> m_stored_obj_names;
+
   uint8_t* m_array;
   size_t m_size;
   size_t m_elem_size;
@@ -48,4 +50,7 @@ public:
   static bool run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
     CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
     CtfeValue& result, CtfeRunner &ctfeRunner);
+
+  ast_t* create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors, ast_t* from,
+    size_t array_size = 0);
 };

@@ -361,10 +361,9 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
     }
     else if(CtfeAstType::is_struct(m_type))
     {
-      CtfeValueStruct* s = get_struct_ref();
-
       if(CtfeAstType::get_type_name(m_type) == "String")
       {
+        CtfeValueStruct* s = get_struct_ref();
         new_node = ast_blank(TK_STRING);
         CtfeValue string;
         s->get_value("_ptr", string);
@@ -372,6 +371,7 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
       }
       else
       {
+        CtfeValueStruct* s = get_struct_ref();
         new_node = s->create_ast_literal_node(opt, errors, from);
         // We don't take the type from CtfeValue but rather CtfeValueStruct type
         return new_node;
@@ -885,4 +885,142 @@ CtfeValue CtfeValue::read_from_memory(ast_t* type, uint8_t* ptr)
   }
 
   return CtfeValue();
+}
+
+
+bool CtfeValue::operator==(const CtfeValue& b) const
+{
+  return eq(b).get_value();
+}
+
+
+bool CtfeValue::operator!=(const CtfeValue& b) const
+{
+  return !eq(b).get_value();
+}
+
+
+CtfeValueBool CtfeValue::eq(const CtfeValue& b) const
+{
+  if(CtfeAstType::ast_hash(m_type) != CtfeAstType::ast_hash(b.m_type))
+  {
+    return CtfeValueBool(false);
+  }
+
+  CtfeValueBool ret;
+
+  if(CtfeAstType::is_nominal(m_type))
+  {
+    const string pony_type = CtfeAstType::get_type_name(m_type);
+
+    if(pony_type == "Bool")
+    {
+      return CtfeValueBool(
+        get<CtfeValueBool>(m_val).get_value() == get<CtfeValueBool>(b.m_val).get_value());
+    }
+    else if(pony_type == "I8")
+    {
+      return get<CtfeValueTypedInt<int8_t>>(m_val).eq(get<CtfeValueTypedInt<int8_t>>(b.m_val));
+    }
+    else if(pony_type == "U8")
+    {
+      return get<CtfeValueTypedInt<uint8_t>>(m_val).eq(get<CtfeValueTypedInt<uint8_t>>(b.m_val));
+    }
+    else if(pony_type == "I16")
+    {
+      return get<CtfeValueTypedInt<int16_t>>(m_val).eq(get<CtfeValueTypedInt<int16_t>>(b.m_val));
+    }
+    else if(pony_type == "U16")
+    {
+      return get<CtfeValueTypedInt<uint16_t>>(m_val).eq(get<CtfeValueTypedInt<uint16_t>>(b.m_val));
+    }
+    else if(pony_type == "I32")
+    {
+      return get<CtfeValueTypedInt<int32_t>>(m_val).eq(get<CtfeValueTypedInt<int32_t>>(b.m_val));
+    }
+    else if(pony_type == "U32")
+    {
+      return get<CtfeValueTypedInt<uint32_t>>(m_val).eq(get<CtfeValueTypedInt<uint32_t>>(b.m_val));
+    }
+    else if(pony_type == "I64")
+    {
+      return get<CtfeValueTypedInt<int64_t>>(m_val).eq(get<CtfeValueTypedInt<int64_t>>(b.m_val));
+    }
+    else if(pony_type == "U64")
+    {
+      return get<CtfeValueTypedInt<uint64_t>>(m_val).eq(get<CtfeValueTypedInt<uint64_t>>(b.m_val));
+    }
+    else if(pony_type == "I128")
+    {
+      return get<CtfeValueTypedInt<CtfeI128Type>>(m_val).eq(get<CtfeValueTypedInt<CtfeI128Type>>(b.m_val));
+    }
+    else if(pony_type == "U128")
+    {
+      return get<CtfeValueTypedInt<CtfeU128Type>>(m_val).eq(get<CtfeValueTypedInt<CtfeU128Type>>(b.m_val));
+    }
+    else if(pony_type == "ILong")
+    {
+      if(get_long_size() == 4)
+      {
+        return get<CtfeValueTypedInt<int32_t>>(m_val).eq(get<CtfeValueTypedInt<int32_t>>(b.m_val));
+      }
+      else if(get_long_size() == 8)
+      {
+        return get<CtfeValueTypedInt<int64_t>>(m_val).eq(get<CtfeValueTypedInt<int64_t>>(b.m_val));
+      }
+      else
+      {
+        pony_assert(false);
+      }
+    }
+    else if(pony_type == "ULong")
+    {
+      if(get_long_size() == 4)
+      {
+        return get<CtfeValueTypedInt<uint32_t>>(m_val).eq(get<CtfeValueTypedInt<uint32_t>>(b.m_val));
+      }
+      else if(get_long_size() == 8)
+      {
+        return get<CtfeValueTypedInt<uint64_t>>(m_val).eq(get<CtfeValueTypedInt<uint64_t>>(b.m_val));
+      }
+      else
+      {
+        pony_assert(false);
+      }
+    }
+    else if(pony_type == "ISize")
+    {
+      if(get_size_size() == 4)
+      {
+        return get<CtfeValueTypedInt<int32_t>>(m_val).eq(get<CtfeValueTypedInt<int32_t>>(b.m_val));
+      }
+      else if(get_size_size() == 8)
+      {
+        return get<CtfeValueTypedInt<int64_t>>(m_val).eq(get<CtfeValueTypedInt<int64_t>>(b.m_val));
+      }
+      else
+      {
+        pony_assert(false);
+      }
+    }
+    else if(pony_type == "USize")
+    {
+      if(get_size_size() == 4)
+      {
+        return get<CtfeValueTypedInt<uint32_t>>(m_val).eq(get<CtfeValueTypedInt<uint32_t>>(b.m_val));
+      }
+      else if(get_size_size() == 8)
+      {
+        return get<CtfeValueTypedInt<uint64_t>>(m_val).eq(get<CtfeValueTypedInt<uint64_t>>(b.m_val));
+      }
+      else
+      {
+        pony_assert(false);
+      }
+    }
+  }
+
+  pony_assert(false);
+
+  return CtfeValueBool(false);
 }

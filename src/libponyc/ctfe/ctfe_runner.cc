@@ -1130,9 +1130,7 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
   //ast_setconstant(ast);
   //ast_t* expression = ast;
 
-  ast_t* expression = ast;
-
-  if(contains_valueparamref(expression))
+  if(contains_valueparamref(ast))
   {
     return true;
   }
@@ -1153,7 +1151,7 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
 
   try
   {
-    CtfeValue evaluated = evaluate(opt, &errors, expression, 0);
+    CtfeValue evaluated = evaluate(opt, &errors, ast, 0);
     ast_t* new_literal = evaluated.create_ast_literal_node(opt, &errors, ast);
     if(new_literal != nullptr)
     {
@@ -1172,9 +1170,9 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
 
   if(failed)
   {
-    if(ast_type(expression) != nullptr)
+    if(ast_type(ast) != nullptr)
     {
-      ast_settype(ast, ast_from(ast_type(expression), TK_ERRORTYPE));
+      ast_settype(ast, ast_from(ast_type(ast), TK_ERRORTYPE));
     }
     else
     {

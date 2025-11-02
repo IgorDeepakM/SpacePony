@@ -19,6 +19,7 @@ public:
   static const std::string get_type_name(ast_t *ast);
   static size_t get_size_of_type(ast_t* type);
   static bool is_pointer(ast_t* type) { return ::is_pointer(type); }
+  static bool is_array(ast_t* type) { return ::is_literal(type, "Array"); }
   static bool is_typed_int(ast_t* type) { return ::is_integer(type); }
   static bool is_int_literal(ast_t* type) { return ast_id(type) == TK_LITERAL; }
   static bool is_bool(ast_t* type) { return ::is_bool(type); }
