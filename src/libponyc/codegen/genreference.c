@@ -770,11 +770,6 @@ static LLVMValueRef gen_copy_constant_object(compile_t* c, reach_type_t* t, ast_
   LLVMValueRef initializer = LLVMGetInitializer(const_struct);
   LLVMBuildStore(c->builder, initializer, heap_allocated);
 
-  // TODO: this needs attention so that conversion to stack allocation also works
-  // with constant objects.
-  //LLVMValueRef md = LLVMMDNodeInContext(c->context, NULL, 0);
-  //LLVMSetMetadataStr(call_site, "pony.newcall", md);
-
   size_t reach_index = 0;
 
   for(ast_t* member = ast_child(members); member != NULL; member = ast_sibling(member))
