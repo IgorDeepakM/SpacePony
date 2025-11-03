@@ -26,6 +26,7 @@ PONY_EXTERN_C_BEGIN
 #define OS_LITTLEENDIAN_NAME "littleendian"
 #define OS_RUNTIMESTATS_NAME "runtimestats"
 #define OS_RUNTIMESTATSMESSAGES_NAME "runtimestatsmessages"
+#define OS_SPACEPONY_NAME "spacepony"
 
 bool os_is_target(const char* attribute, bool release, bool* out_is_target, pass_opt_t* options);
 

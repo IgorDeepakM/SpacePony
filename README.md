@@ -32,6 +32,18 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 ## List of changes.
 
+### Identify SpacePony
+
+* Added a build flag `spacepony` in order to identify SpacePony.
+
+  ```pony
+  ifdef spacepony then
+    env.out.print("This is spacepony")
+  else
+    env.out.print("This is not spacepony")
+  end
+  ```
+
 ### Pointer
 
 * The Pointer type can be used **everywhere** not only as FFI function arguments.
@@ -39,52 +51,52 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 * It can be initialized using from_usize(addr: USize) in order to initialize a Pointer with any desired number.
 
   ```pony
-    var my_ptr = Pointer[None].from_usize(0x12345678)
+  var my_ptr = Pointer[None].from_usize(0x12345678)
   ```
 
 * It is possible to obtain the Pointer value as a USize with the usize method. Useful for printing the pointer value for example.
 
   ```pony
-    env.out.print("Address is " + Format.int[USize](ptr.usize(), FormatHex))
+  env.out.print("Address is " + Format.int[USize](ptr.usize(), FormatHex))
   ```
 
 * The convert method is made public in order to make it possible to cast one pointer type to another.
 
   ```pony
-    var ptr1: Pointer[MyStruct1] = ...
-    var ptr2: Pointer[MyStruct2] = ptr1.convert[MyStruct2]()
+  var ptr1: Pointer[MyStruct1] = ...
+  var ptr2: Pointer[MyStruct2] = ptr1.convert[MyStruct2]()
   ```
 
 * Added to_reftype method to convert the Pointer to the underlying reference type. This is equivalent to the apply method of the NullablePointer type.
 
   ```pony
-    var ptr: Pointer[MyStruct] = ...
-    var my_struct: MyStruct = MyStruct_
-    try
-      my_struct_: MyStruct = ptr.to_reftype()?
-    else
-      ...
-    end
+  var ptr: Pointer[MyStruct] = ...
+  var my_struct: MyStruct = MyStruct_
+  try
+    my_struct_: MyStruct = ptr.to_reftype()?
+  else
+    ...
+  end
   ```
 
 * Added to_reftype_no_check method to convert the Pointer to the underlying reference type without any null pointer check.
 
   ```pony
-    var ptr: Pointer[MyStruct] = ...
-    var my_struct: MyStruct = ptr.to_reftype_no_check()
+  var ptr: Pointer[MyStruct] = ...
+  var my_struct: MyStruct = ptr.to_reftype_no_check()
   ```
 
 * Added pointer_at_index method in order to obtain a pointer at a specific index. Note that this depends on the type of Pointer.
 
   ```pony
-    var ptr: Pointer[U32] = ...
-    var ptr2 = ptr.pointer_at_index(3) // Gives a new pointer with a byte offset of ptr + 4 * 3
+  var ptr: Pointer[U32] = ...
+  var ptr2 = ptr.pointer_at_index(3) // Gives a new pointer with a byte offset of ptr + 4 * 3
   ```
 
 * Added from_any constructor in order to create a pointer from anything of the desired type. This is like a cast assign.
 
   ```pony
-    var ptr: Pointer[U32].from_any[MyStruct](my_struct)
+  var ptr: Pointer[U32].from_any[MyStruct](my_struct)
   ```
 
 ### addressof
@@ -94,11 +106,12 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 * It is possible to use addressof of an FFI function. The type is a bare lambda. This is useful for populating bare lambdas in structs to emulate C++ abstract classes if it is necessary to initialize them in Pony.
 
   ```pony
-    use @FFI_Func[None](x: I32, y: I32)
-    ...
-    var f = addressof @FFI_Func
-    f(3, 7)
+  use @FFI_Func[None](x: I32, y: I32)
 
+  ...
+
+  var f = addressof @FFI_Func
+    f(3, 7)
   ```
 
 ### Constant values in generics

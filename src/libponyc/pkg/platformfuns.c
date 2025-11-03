@@ -113,6 +113,12 @@ bool os_is_target(const char* attribute, bool release, bool* out_is_target, pass
     return true;
   }
 
+  if(!strcmp(attribute, OS_SPACEPONY_NAME))
+  {
+    *out_is_target = true; // Always true because this is spacepony
+    return true;
+  }
+
   if(!strcmp(attribute, OS_RUNTIMESTATS_NAME))
   {
 #if defined(USE_RUNTIMESTATS) || defined(USE_RUNTIMESTATS_MESSAGES)
