@@ -1744,30 +1744,12 @@ LLVMValueRef gencall_allocstruct(compile_t* c, reach_type_t* t)
 
 LLVMValueRef gencall_pony_alloc(compile_t* c, size_t rq_size)
 {
-  // We explicitly want a boxed version.
-  // Allocate the object.
   LLVMValueRef args[2];
+
   args[0] = codegen_ctx(c);
+  args[1] = LLVMConstInt(c->intptr, rq_size, false);
 
-  LLVMValueRef result;
-
-  size_t size = rq_size;
-  if(size == 0)
-    size = 1;
-
-  if(size <= HEAP_MAX)
-  {
-    uint32_t index = ponyint_heap_index(size);
-    args[1] = LLVMConstInt(c->i32, index, false);
-    result = gencall_runtime(c, "pony_alloc_small", args, 2, "");
-  }
-  else
-  {
-    args[1] = LLVMConstInt(c->intptr, size, false);
-    result = gencall_runtime(c, "pony_alloc_large", args, 2, "");
-  }
-
-  return result;
+  return gencall_runtime(c, "pony_alloc", args, 2, "");
 }
 
 
