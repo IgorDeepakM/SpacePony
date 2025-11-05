@@ -22,17 +22,11 @@ class CtfeValuePointer
   size_t m_elem_size;
   ast_t *m_pointer_type;
 
-  friend void swap(CtfeValuePointer& a, CtfeValuePointer& b);
-
 public:
   CtfeValuePointer(ast_t* pointer_type);
   CtfeValuePointer(size_t size, ast_t* pointer_typ, CtfeRunner &ctfeRunner);
   CtfeValuePointer(uint8_t *array, size_t size, ast_t* pointer_type);
   CtfeValuePointer(void *ptr, ast_t* pointer_type);
-  CtfeValuePointer(const CtfeValuePointer& other);
-  CtfeValuePointer(CtfeValuePointer&& other) noexcept;
-  ~CtfeValuePointer();
-  CtfeValuePointer& operator=(CtfeValuePointer other);
   CtfeValuePointer realloc(size_t size, size_t copy_len, CtfeRunner &ctfeRunner);
   CtfeValue apply(size_t i) const;
   CtfeValue update(size_t i, const CtfeValue& val);

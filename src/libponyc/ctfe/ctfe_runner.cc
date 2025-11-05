@@ -33,7 +33,83 @@ CtfeRunner::~CtfeRunner()
       }
     }
   }
+
+  for (auto& elem : m_cached_ast)
+  {
+    ast_free_unattached(elem.second);
+  }
 }
+
+
+ast_t* CtfeRunner::get_reified_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast_pos,
+  ast_t* recv_type, ast_t* typeargs, const char* method_name)
+{
+  uint64_t type_hash = CtfeAstType::ast_hash(recv_type);
+  uint64_t hash = ponyint_hash_str(method_name) ^ type_hash;
+  if(typeargs != nullptr)
+  {
+    hash ^= CtfeAstType::ast_hash(typeargs);
+  }
+
+  auto it = m_cached_ast.find(hash);
+  if(it == m_cached_ast.end())
+  {
+    deferred_reification_t* looked_up = lookup_try(opt, ast_pos, recv_type, method_name, true);
+    if(looked_up == nullptr)
+    {
+      ast_error_frame(errors, ast_pos,
+        "CTFE: could not find the method '%s'", method_name);
+      throw CtfeFailToEvaluateException();
+    }
+
+    ast_t* looked_up_ast = looked_up->ast;
+    ast_t* reified_lookedup_ast = nullptr;
+
+    if(typeargs != nullptr)
+    {
+      ast_t* typeparams = ast_childidx(looked_up_ast, 2);
+      deferred_reify_add_method_typeparams(looked_up, typeparams, typeargs, opt);
+    }
+
+    if(looked_up->method_typeargs != nullptr || looked_up->type_typeargs != nullptr ||
+        looked_up->thistype != nullptr)
+    {
+      reified_lookedup_ast = deferred_reify(looked_up, looked_up_ast, opt);
+    }
+    else
+    {
+      reified_lookedup_ast = ast_dup(looked_up_ast);
+    }
+
+    deferred_reify_free(looked_up);
+
+    m_cached_ast.insert({hash, reified_lookedup_ast});
+    return reified_lookedup_ast;
+  }
+  else
+  {
+    return it->second;
+  }
+}
+
+
+ast_t* CtfeRunner::get_builtin_type(pass_opt_t* opt, ast_t* ast_pos, const char* type_name)
+{
+  uint64_t hash = ponyint_hash_str(type_name);
+  auto it = m_cached_ast.find(hash);
+  if(it == m_cached_ast.end())
+  {
+    ast_t* type_ast = type_builtin(opt, ast_pos, "Bool");
+    m_cached_ast.insert({hash, type_ast});
+
+    return type_ast;
+  }
+  else
+  {
+    return it->second;
+  }
+}
+
 
 void CtfeRunner::add_allocated_reference(const CtfeValue& ref)
 {
@@ -132,31 +208,9 @@ CtfeValue CtfeRunner::call_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
     }
   }
 
-  deferred_reification_t* looked_up = lookup_try(opt, ast_pos, recv_type, method_name, true);
-  if(looked_up == nullptr)
-  {
-    ast_error_frame(errors, ast_pos,
-      "CTFE: could not find the method '%s'", method_name);
-    throw CtfeFailToEvaluateException();
-  }
-
-  ast_t* looked_up_ast = looked_up->ast;
-  ast_t* reified_lookedup_ast = nullptr;
-  bool ctfe_frame_pop = false;
   bool failed = false;
 
-  if(typeargs != nullptr)
-  {
-    ast_t* typeparams = ast_childidx(looked_up_ast, 2);
-    deferred_reify_add_method_typeparams(looked_up, typeparams, typeargs, opt);
-  }
-
-  if(looked_up->method_typeargs != nullptr || looked_up->type_typeargs != nullptr ||
-      looked_up->thistype != nullptr)
-  {
-    reified_lookedup_ast = deferred_reify(looked_up, looked_up_ast, opt);
-    looked_up_ast = reified_lookedup_ast;
-  }
+  ast_t* looked_up_ast = get_reified_method(opt, errors, ast_pos, recv_type, typeargs, method_name);
 
   m_frames.push_frame();
 
@@ -193,11 +247,6 @@ CtfeValue CtfeRunner::call_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
     catch(const CtfeException& e)
     {
       m_frames.pop_frame();
-      if(reified_lookedup_ast != nullptr)
-      {
-        ast_free_unattached(reified_lookedup_ast);
-      }
-      deferred_reify_free(looked_up);
       throw;
     }
   }
@@ -217,13 +266,6 @@ CtfeValue CtfeRunner::call_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
   }
 
   m_frames.pop_frame();
-
-  if(reified_lookedup_ast != nullptr)
-  {
-    ast_free_unattached(reified_lookedup_ast);
-  }
-
-  deferred_reify_free(looked_up);
 
   if(failed)
   {
@@ -394,9 +436,8 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       }
       else
       {
-        bool_type = type_builtin(opt, expression, "Bool");
+        bool_type = get_builtin_type(opt, expression, "Bool");
         ret = CtfeValue(CtfeValueBool(val), bool_type);
-        ast_free_unattached(bool_type);
       }
 
       return ret;
@@ -1088,12 +1129,10 @@ bool CtfeRunner::match_eq_element(pass_opt_t* opt, errorframe_t* errors, ast_t* 
 
     vector<CtfeValue> args = { evaluated_pattern };
 
-    ast_t* res_type = type_builtin(opt, the_case, "Bool");
+    ast_t* res_type = get_builtin_type(opt, the_case, "Bool");
 
     CtfeValue equal = call_method(opt, errors, ast_pos, res_type, stringtab("eq"),
       match.get_type_ast(), match, args, nullptr, depth + 1);
-
-    ast_free_unattached(res_type);
 
     pony_assert(equal.is_bool());
 

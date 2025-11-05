@@ -21,7 +21,7 @@ CtfeValuePointer::CtfeValuePointer(ast_t* pointer_type):
   m_array{nullptr},
   m_size{0},
   m_elem_size{0},
-  m_pointer_type{ast_dup(pointer_type)}
+  m_pointer_type{pointer_type}
 {
   m_elem_size = CtfeAstType::get_size_of_type(ast_child(ast_childidx(pointer_type, 2)));
 }
@@ -31,7 +31,7 @@ CtfeValuePointer::CtfeValuePointer(size_t size, ast_t* pointer_type, CtfeRunner 
   m_array{nullptr},
   m_size{size},
   m_elem_size{0},
-  m_pointer_type{ast_dup(pointer_type)}
+  m_pointer_type{pointer_type}
 {
   m_elem_size = CtfeAstType::get_size_of_type(ast_child(ast_childidx(pointer_type, 2)));
 
@@ -51,7 +51,7 @@ CtfeValuePointer::CtfeValuePointer(uint8_t *array, size_t size, ast_t* pointer_t
   m_array{array},
   m_size{size},
   m_elem_size{0},
-  m_pointer_type{ast_dup(pointer_type)}
+  m_pointer_type{pointer_type}
 {
   m_elem_size = CtfeAstType::get_size_of_type(ast_child(ast_childidx(pointer_type, 2)));
 }
@@ -61,56 +61,9 @@ CtfeValuePointer::CtfeValuePointer(void *ptr, ast_t* pointer_type):
   m_array{reinterpret_cast<uint8_t*>(ptr)},
   m_size{0},
   m_elem_size{0},
-  m_pointer_type{ast_dup(pointer_type)}
+  m_pointer_type{pointer_type}
 {
   m_elem_size = CtfeAstType::get_size_of_type(ast_child(ast_childidx(pointer_type, 2)));
-}
-
-
-CtfeValuePointer::~CtfeValuePointer()
-{
-  if(m_pointer_type != nullptr)
-  {
-    ast_free_unattached(m_pointer_type);
-    m_pointer_type = nullptr;
-  }
-}
-
-
-void swap(CtfeValuePointer& a, CtfeValuePointer& b)
-{
-  swap(a.m_array, b.m_array);
-  swap(a.m_size, b.m_size);
-  swap(a.m_elem_size, b.m_elem_size);
-  swap(a.m_pointer_type, b.m_pointer_type);
-}
-
-
-CtfeValuePointer::CtfeValuePointer(const CtfeValuePointer &other):
-  m_array{other.m_array},
-  m_size{other.m_size},
-  m_elem_size{other.m_elem_size},
-  m_pointer_type{ast_dup(other.m_pointer_type)}
-{
-
-}
-
-
-CtfeValuePointer::CtfeValuePointer(CtfeValuePointer&& other) noexcept:
-  m_array{nullptr},
-  m_size{0},
-  m_elem_size{0},
-  m_pointer_type{nullptr}
-{
-  swap(*this, other);
-}
-
-
-CtfeValuePointer& CtfeValuePointer::operator=(CtfeValuePointer other)
-{
-  swap(*this, other);
-
-  return *this;
 }
 
 
