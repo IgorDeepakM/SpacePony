@@ -13,19 +13,9 @@ map<uint64_t, string> CtfeValueStruct::m_stored_obj_names;
 
 
 CtfeValueStruct::CtfeValueStruct(ast_t *type):
-  m_type{ast_dup(type)}
+  m_type{type}
 {
 
-}
-
-
-CtfeValueStruct::~CtfeValueStruct()
-{
-  if(m_type != nullptr)
-  {
-    ast_free_unattached(m_type);
-    m_type = nullptr;
-  }
 }
 
 

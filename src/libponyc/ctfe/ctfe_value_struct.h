@@ -17,7 +17,6 @@ class CtfeValueStruct
 
 public:
   CtfeValueStruct(ast_t *type);
-  ~CtfeValueStruct();
   bool new_value(const std::string& name, const CtfeValue& value);
   bool update_value(const std::string& name, const CtfeValue& value);
   bool get_value(const std::string& name, CtfeValue& value) const;

@@ -53,14 +53,9 @@ private:
 
   void convert_from_int_literal_to_type(const CtfeValueIntLiteral& val, ast_t* type);
 
-  friend void swap(CtfeValue& a, CtfeValue& b);
-
 public:
   CtfeValue();
-  ~CtfeValue();
   CtfeValue(ast_t* type);
-  CtfeValue(const CtfeValue& val);
-  CtfeValue(CtfeValue&& val) noexcept;
   CtfeValue(const CtfeValueIntLiteral& val, ast_t* ast_type);
   template <typename T>
   CtfeValue(const CtfeValueTypedInt<T>& val, ast_t* ast_type);
@@ -68,8 +63,6 @@ public:
   CtfeValue(CtfeValueStruct* ref, ast_t* ast_type);
   CtfeValue(const CtfeValueTuple& val, ast_t* ast_type);
   CtfeValue(const CtfeValuePointer& p, ast_t* ast_type);
-
-  CtfeValue& operator=(CtfeValue val);
 
   bool operator==(const CtfeValue& b) const;
   bool operator!=(const CtfeValue& b) const;
@@ -126,7 +119,7 @@ public:
 
 template <typename T>
 CtfeValue::CtfeValue(const CtfeValueTypedInt<T>& val, ast_t* type):
-  m_type{ast_dup(type)},
+  m_type{type},
   m_ctrlFlow{ControlFlowModifier::None},
   m_val{val}
 {

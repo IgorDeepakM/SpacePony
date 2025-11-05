@@ -13,15 +13,6 @@
 using namespace std;
 
 
-void swap(CtfeValue& a, CtfeValue& b)
-{
-  swap(a.m_type, b.m_type);
-  swap(a.m_ctrlFlow, b.m_ctrlFlow);
-  swap(a.m_val, b.m_val);
-}
-
-
-
 CtfeValue::CtfeValue():
   m_type{nullptr},
   m_ctrlFlow{ControlFlowModifier::None}
@@ -30,46 +21,16 @@ CtfeValue::CtfeValue():
 }
 
 
-CtfeValue::~CtfeValue()
-{
-  if(m_type != nullptr)
-  {
-    ast_free_unattached(m_type);
-    m_type = nullptr;
-  }
-}
-
-
 CtfeValue::CtfeValue(ast_t* type):
-  m_type{ast_dup(type)},
+  m_type{type},
   m_ctrlFlow{ControlFlowModifier::None}
 {
 
-}
-
-
-CtfeValue::CtfeValue(const CtfeValue& val):
-  m_type{nullptr},
-  m_ctrlFlow{val.m_ctrlFlow},
-  m_val{val.m_val}
-{
-  if(val.m_type != nullptr)
-  {
-    m_type = ast_dup(val.m_type);
-  }
-}
-
-
-CtfeValue::CtfeValue(CtfeValue&& val) noexcept:
-  m_type{nullptr},
-  m_ctrlFlow{ControlFlowModifier::None}
-{
-  swap(*this, val);
 }
 
 
 CtfeValue::CtfeValue(const CtfeValueIntLiteral& val, ast_t* type):
-  m_type{ast_dup(type)},
+  m_type{type},
   m_ctrlFlow{ControlFlowModifier::None}
 {
   if(ast_id(type) != TK_LITERAL)
@@ -80,7 +41,7 @@ CtfeValue::CtfeValue(const CtfeValueIntLiteral& val, ast_t* type):
 
 
 CtfeValue::CtfeValue(CtfeValueStruct* ref, ast_t* type):
-  m_type{ast_dup(type)},
+  m_type{type},
   m_ctrlFlow{ControlFlowModifier::None},
   m_val{ref}
 {
@@ -89,7 +50,7 @@ CtfeValue::CtfeValue(CtfeValueStruct* ref, ast_t* type):
 
 
 CtfeValue::CtfeValue(const CtfeValueBool& val, ast_t* type):
-  m_type{ast_dup(type)},
+  m_type{type},
   m_ctrlFlow{ControlFlowModifier::None},
   m_val{val}
 {
@@ -98,7 +59,7 @@ CtfeValue::CtfeValue(const CtfeValueBool& val, ast_t* type):
 
 
 CtfeValue::CtfeValue(const CtfeValueTuple& val, ast_t* type):
-  m_type{ast_dup(type)},
+  m_type{type},
   m_ctrlFlow{ControlFlowModifier::None},
   m_val{val}
 {
@@ -107,7 +68,7 @@ CtfeValue::CtfeValue(const CtfeValueTuple& val, ast_t* type):
 
 
 CtfeValue::CtfeValue(const CtfeValuePointer& p, ast_t* type):
-  m_type{ast_dup(type)},
+  m_type{type},
   m_ctrlFlow{ControlFlowModifier::None},
   m_val{p}
 {
@@ -115,22 +76,9 @@ CtfeValue::CtfeValue(const CtfeValuePointer& p, ast_t* type):
 }
 
 
-CtfeValue& CtfeValue::operator=(CtfeValue val)
-{
-  swap(*this, val);
-
-  return *this;
-}
-
-
 void CtfeValue::set_type_ast(ast_t* new_type)
 {
-  if(m_type != nullptr)
-  {
-    ast_free_unattached(m_type);
-  }
-
-  m_type = ast_dup(new_type);
+  m_type = new_type;
 }
 
 

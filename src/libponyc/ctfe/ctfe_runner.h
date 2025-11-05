@@ -8,11 +8,13 @@
 #include "ctfe_exception.h"
 
 #include <vector>
+#include <map>
 
 class CtfeRunner
 {
   CtfeFrames m_frames;
   std::vector<CtfeValue> m_allocated;
+  std::map<uint64_t, ast_t*> m_cached_ast;
 
   CtfeValue call_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast_pos, ast_t* res_type,
     const char* method_name, ast_t* recv_type, CtfeValue& recv_val,
@@ -33,6 +35,10 @@ class CtfeRunner
   CtfeValue handle_llvm_ffi(pass_opt_t* opt, errorframe_t* errors,
     ast_t* ast, ast_t* return_type, const std::string& ffi_name,
     const std::vector<CtfeValue>& evaluated_args);
+
+  ast_t* get_reified_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast_pos,
+    ast_t* recv_type, ast_t* typeargs, const char* method_name);
+  ast_t* get_builtin_type(pass_opt_t* opt, ast_t* ast_pos, const char* type_name);
 
 public:
   CtfeRunner(pass_opt_t* opt);
