@@ -302,7 +302,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   ```pony
   var a: Atomic[U32] = Atomic[U32](10)
 
-  var r = a + 1 // same as a.fetch_add(1)
+  var r = a + 1 // same as a.add_fetch(1)
   ```
 
 ### Added an extra capability, nhb.
