@@ -599,10 +599,12 @@ bool expr_array(pass_opt_t* opt, ast_t** astp)
 
       BUILD(dot, ast, NODE(TK_DOT, TREE(qualify) ID("from_array_no_check")));
 
+      BUILD(arg_seq, ast, NODE(TK_SEQ, TREE(*astp)));
+
       BUILD(field_ptr, *astp,
       NODE(TK_CALL,
         TREE(dot)
-        NODE(TK_POSITIONALARGS, TREE(*astp))
+        NODE(TK_POSITIONALARGS, TREE(arg_seq))
         NONE
         NONE));
 
@@ -615,6 +617,7 @@ bool expr_array(pass_opt_t* opt, ast_t** astp)
         !refer_qualify(opt, qualify) ||
         !expr_typeref(opt, &qualify) ||
         !expr_dot(opt, &dot) ||
+        !expr_seq(opt, arg_seq) ||
         !expr_call(opt, &field_ptr)
         )
       {
