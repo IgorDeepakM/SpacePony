@@ -129,7 +129,9 @@ static void find_possible_element_types(pass_opt_t* opt, ast_t* ast,
       AST_GET_CHILDREN(ast, package, name, typeargs, cap, eph);
 
       // If it's an actual Array type, note it as a possibility and move on.
-      if(stringtab("Array") == ast_name(name))
+      const char* type_name = ast_name(name);
+      if(stringtab("Array") == type_name ||
+         stringtab("CFixedSizedArray") == type_name)
       {
         *list = astlist_push(*list, ast_child(typeargs));
         return;
@@ -529,6 +531,9 @@ bool expr_array(pass_opt_t* opt, ast_t** astp)
     )
     return false;
 
+  bool is_recovered = false;
+  ast_t* antecedent_type = find_antecedent_type(opt, ast, &is_recovered);
+
   ast_swap(ast, call);
   *astp = call;
 
@@ -553,6 +558,73 @@ bool expr_array(pass_opt_t* opt, ast_t** astp)
       !expr_call(opt, &append)
       )
       return false;
+  }
+
+  // This will add an additional call to CFixedSizedArray.from_array_no_check
+  // Essentially
+  // var cfa: CFixedSizedArray[U8, 3] = [1; 2; 3]
+  // will be lowered to
+  // var cfa: CFixedSizedArray[U8, 3] = CFixedSizedArray.from_array_no_check([[1; 2; 3]])
+  if(antecedent_type != NULL && ast_id(antecedent_type) == TK_NOMINAL)
+  {
+    AST_GET_CHILDREN(antecedent_type, package, name);
+
+    const char* type_name = ast_name(name);
+    if(stringtab("CFixedSizedArray") == type_name)
+    {
+      ast_t* cfixedarray_typeargs = ast_childidx(antecedent_type, 2);
+      const lexint_t* sizelex = ast_int(ast_child(ast_childidx(cfixedarray_typeargs, 1)));
+      size_t cfixed_size = sizelex->low;
+
+      if(size != cfixed_size)
+      {
+        ast_error(opt->check.errors, ast,
+          "When assigning an Array literal to a CFixedSizedArray, it must have exactly "
+          "the same size as the CFixedSizedArray.");
+
+        // Restore the old Array tree
+        ast_t* old = *astp;
+        ast_swap(old, ast);
+        *astp = ast;
+        ast_free_unattached(old);
+        return false;
+      }
+
+      BUILD(ref, ast, NODE(TK_REFERENCE, ID("CFixedSizedArray")));
+
+      BUILD(qualify, ast,
+        NODE(TK_QUALIFY,
+          TREE(ref)
+          TREE(cfixedarray_typeargs)));
+
+      BUILD(dot, ast, NODE(TK_DOT, TREE(qualify) ID("from_array_no_check")));
+
+      BUILD(field_ptr, *astp,
+      NODE(TK_CALL,
+        TREE(dot)
+        NODE(TK_POSITIONALARGS, TREE(*astp))
+        NONE
+        NONE));
+
+      ast_t* replace_ast = *astp;
+      ast_swap(replace_ast, field_ptr);
+
+      ast_free_unattached(replace_ast);
+
+      if(!refer_reference(opt, &ref) ||
+        !refer_qualify(opt, qualify) ||
+        !expr_typeref(opt, &qualify) ||
+        !expr_dot(opt, &dot) ||
+        !expr_call(opt, &field_ptr)
+        )
+      {
+        return false;
+      }
+
+      ast_settype(field_ptr, antecedent_type);
+
+      *astp = field_ptr;
+    }
   }
 
   ast_free_unattached(ast);

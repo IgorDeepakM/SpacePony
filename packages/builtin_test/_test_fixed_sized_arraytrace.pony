@@ -27,7 +27,7 @@ actor _FixedSizedArrayTrace
   be two(h: TestHelper, s1: String, s2: String, s3: String) =>
     @pony_triggergc(@pony_ctx())
     try
-      let v = recover FixedSizedArray[String, 3].init([s1; s2; s3].values())? end
+      let v = recover FixedSizedArray[String, 3].from_iterator([s1; s2; s3].values())? end
       _FixedSizedArrayTrace.three(h, consume v)
     else
       h.fail()

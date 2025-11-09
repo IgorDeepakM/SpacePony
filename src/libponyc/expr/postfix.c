@@ -231,12 +231,13 @@ static bool type_access(pass_opt_t* opt, ast_t** astp)
       // Scan up in AST if this is a offsetof expression, then
       // handle differently
       ast_t* parent = ast_parent(ast);
-      while(ast_id(parent) == TK_DOT)
+      while(parent != NULL && ast_id(parent) == TK_DOT)
       {
         parent = ast_parent(parent);
       }
 
-      if(ast_id(parent) == TK_OFFSETOF || ast_id(parent) == TK_SIZEOF)
+      if(parent != NULL &&
+         (ast_id(parent) == TK_OFFSETOF || ast_id(parent) == TK_SIZEOF))
       {
         ast_t* typeref = ast_child(ast);
         pony_assert(ast_id(typeref) == TK_TYPEREF);

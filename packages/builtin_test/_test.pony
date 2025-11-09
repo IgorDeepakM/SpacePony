@@ -2896,7 +2896,7 @@ class \nodoc\ iso _TestCFixedSizedArray is UnitTest
   fun name(): String => "builtin/CFixedSizedArray"
 
   fun apply(h: TestHelper) ? =>
-    let vector1 = CFixedSizedArray[String, 4].init(["A"; "B"; "C"; "D"].values())?
+    let vector1: CFixedSizedArray[String, 4] = ["A"; "B"; "C"; "D"]
     h.assert_eq[USize](vector1.size(), 4)
 
     let array1 = ["A"; "B"; "C"; "D"]
@@ -2906,7 +2906,7 @@ class \nodoc\ iso _TestCFixedSizedArray is UnitTest
       i = i + 1
     end
 
-    let vector2 = CFixedSizedArray[String, 2].init(["E"; "F"].values())?
+    let vector2: CFixedSizedArray[String, 2] = ["E"; "F"]
     h.assert_eq[USize](vector2.size(), 2)
 
     let array2 = ["E"; "F"]
@@ -2919,18 +2919,18 @@ class \nodoc\ iso _TestCFixedSizedArray is UnitTest
 class \nodoc\ NestedCFixedSizedArray
   let vector: CFixedSizedArray[CFixedSizedArray[String, 2], 4]
 
-  new create() ? =>
-    let v1 = CFixedSizedArray[String, 2].init(["A"; "B"].values())?
-    let v2 = CFixedSizedArray[String, 2].init(["C"; "D"].values())?
-    let v3 = CFixedSizedArray[String, 2].init(["E"; "F"].values())?
-    let v4 = CFixedSizedArray[String, 2].init(["G"; "H"].values())?
-    vector = CFixedSizedArray[CFixedSizedArray[String, 2], 4].init([v1; v2; v3; v4].values())?
+  new create() =>
+    let v1: CFixedSizedArray[String, 2] = ["A"; "B"]
+    let v2: CFixedSizedArray[String, 2] = ["C"; "D"]
+    let v3: CFixedSizedArray[String, 2] = ["E"; "F"]
+    let v4: CFixedSizedArray[String, 2] = ["G"; "H"]
+    vector = [v1; v2; v3; v4]
 
 class \nodoc\ iso _TestNestedCFixedSizedArray is UnitTest
   fun name(): String => "builtin/NestedCFixedSizedArray"
 
   fun apply(h: TestHelper) ? =>
-    let nv = NestedCFixedSizedArray.create()?
+    let nv = NestedCFixedSizedArray.create()
     let array: Array[String] = ["A"; "B"; "C"; "D"; "E"; "F"; "G"; "H"]
     for (i, x) in nv.vector.pairs() do
       for (j, y) in x.pairs() do
@@ -2942,7 +2942,7 @@ class \nodoc\ iso _TestFixedSizedArray is UnitTest
   fun name(): String => "builtin/FixedSizedArray"
 
   fun apply(h: TestHelper) ? =>
-    let vector1 = FixedSizedArray[String, 4].init(["A"; "B"; "C"; "D"].values())?
+    let vector1 = FixedSizedArray[String, 4].from_iterator(["A"; "B"; "C"; "D"].values())?
     h.assert_eq[USize](vector1.size(), 4)
 
     let array1 = ["A"; "B"; "C"; "D"]
@@ -2952,7 +2952,7 @@ class \nodoc\ iso _TestFixedSizedArray is UnitTest
       i = i + 1
     end
 
-    let vector2 = FixedSizedArray[String, 2].init(["E"; "F"].values())?
+    let vector2 = FixedSizedArray[String, 2].from_iterator(["E"; "F"].values())?
     h.assert_eq[USize](vector2.size(), 2)
 
     let array2 = ["E"; "F"]
@@ -2966,11 +2966,11 @@ class \nodoc\ NestedFixedSizedArray
   let vector: FixedSizedArray[FixedSizedArray[String, 2], 4]
 
   new create() ? =>
-    let v1 = FixedSizedArray[String, 2].init(["A"; "B"].values())?
-    let v2 = FixedSizedArray[String, 2].init(["C"; "D"].values())?
-    let v3 = FixedSizedArray[String, 2].init(["E"; "F"].values())?
-    let v4 = FixedSizedArray[String, 2].init(["G"; "H"].values())?
-    vector = FixedSizedArray[FixedSizedArray[String, 2], 4].init([v1; v2; v3; v4].values())?
+    let v1 = FixedSizedArray[String, 2].from_iterator(["A"; "B"].values())?
+    let v2 = FixedSizedArray[String, 2].from_iterator(["C"; "D"].values())?
+    let v3 = FixedSizedArray[String, 2].from_iterator(["E"; "F"].values())?
+    let v4 = FixedSizedArray[String, 2].from_iterator(["G"; "H"].values())?
+    vector = FixedSizedArray[FixedSizedArray[String, 2], 4].from_iterator([v1; v2; v3; v4].values())?
 
 class \nodoc\ iso _TestNestedFixedSizedArray is UnitTest
   fun name(): String => "builtin/NestedFixedSizedArray"
