@@ -10,11 +10,11 @@ class FixedSizedArray[A: AnyNoCheck, _size: USize]
     """
     _array = CFixedSizedArray[A, _size](fill_with)
 
-  new init(from: Iterator[A^]) ? =>
+  new from_iterator(from: Iterator[A^]) ? =>
     """
     Create a FixedSizedArray, initialised from the given sequence.
     """
-    _array = CFixedSizedArray[A, _size].init(from)?
+    _array = CFixedSizedArray[A, _size].from_iterator(from)?
 
   fun cpointer(): Pointer[A] =>
     """

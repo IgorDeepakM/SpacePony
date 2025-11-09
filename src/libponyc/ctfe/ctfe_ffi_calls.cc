@@ -4,7 +4,6 @@
 #include "../ast/lexint.h"
 
 #include <cstring>
-#include <bit>
 
 
 using namespace std;

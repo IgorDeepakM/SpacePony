@@ -15,7 +15,7 @@ struct CFixedSizedArray[A: AnyNoCheck, _size: USize]
         p.update(i = i + 1, fill_with)
     end
 
-  new init(from: Iterator[A^]) ? =>
+  new from_iterator(from: Iterator[A^]) ? =>
     """
     Create a CFixedSizedArray, initialised from the given sequence.
     """
@@ -23,6 +23,42 @@ struct CFixedSizedArray[A: AnyNoCheck, _size: USize]
     var i: USize = 0
     while i < _size do
       p.update(i = i + 1, from.next()?)
+    end
+
+  new from_array(from: Array[A^]) ? =>
+    """
+    Create a CFixedSizedArray, initialised from the given array.
+    The size of the array must be equal or larger than the taget
+    CFixedSizedArray.
+    """
+
+    if from.size() < _size then
+      error
+    end
+
+    let p = cpointer().convert[A]()
+    var i: USize = 0
+    while i < _size do
+      p.update(i, from(i)?)
+      i = i + 1
+    end
+
+  new from_array_no_check(from: Array[A^]) =>
+    """
+    Create a CFixedSizedArray, initialised from the given array.
+    This function do no checks at all and might leave elements
+    uninitialized.
+    """
+
+    let p = cpointer().convert[A]()
+    var i: USize = 0
+    while i < _size do
+      try
+        p.update(i, from(i)?)
+      else
+        break
+      end
+      i = i + 1
     end
 
   new uninitialized() =>
