@@ -51,6 +51,7 @@ actor Main
     test_value_type_param_expr(260)
     test_constant_object(280)
     test_constant_array(300)
+    test_floating_point(320)
 
   fun test_literal_int(exit_add: I32) =>
     // Test shift with negative numbers
@@ -762,3 +763,11 @@ actor Main
     end
 
     ar
+
+  fun test_floating_point(exit_add: I32) =>
+    var x1: F64 = comptime (((-((3.0 + (4.0 * -6.0)) / 2.111)) * 33) / -34.2) % 6.1 end
+    var x2: F64 = (((-((3.0 + (4.0 * -6.0)) / 2.111)) * 33) / -34.2) % 6.1
+
+    if x1 != x2 then
+      @pony_exitcode(exit_add + 1)
+    end

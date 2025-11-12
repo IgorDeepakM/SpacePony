@@ -1,6 +1,7 @@
 #include "ctfe_value.h"
 #include "ctfe_value_struct.h"
 #include "ctfe_value_typed_int_run_method.h"
+#include "ctfe_value_typed_float_run_method.h"
 #include "ctfe_exception.h"
 
 #include "ponyassert.h"
@@ -36,6 +37,10 @@ CtfeValue::CtfeValue(const CtfeValueIntLiteral& val, ast_t* type):
   if(ast_id(type) != TK_LITERAL)
   {
     convert_from_int_literal_to_type(val, type);
+  }
+  else
+  {
+    pony_assert(false);
   }
 }
 
@@ -187,6 +192,14 @@ void CtfeValue::convert_from_int_literal_to_type(const CtfeValueIntLiteral& val,
       pony_assert(false);
     }
   }
+  else if(pony_type == "F32")
+  {
+    m_val = CtfeValueTypedFloat<float>(val);
+  }
+  else if(pony_type == "F64")
+  {
+    m_val = CtfeValueTypedFloat<double>(val);
+  }
 }
 
 
@@ -245,7 +258,7 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
     }
     else if(pony_type == "U128")
     {
-        new_node =  get<CtfeValueTypedInt<CtfeU128Type>>(m_val).create_ast_literal_node();
+      new_node = get<CtfeValueTypedInt<CtfeU128Type>>(m_val).create_ast_literal_node();
     }
     else if(pony_type == "ILong")
     {
@@ -306,6 +319,14 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
       {
         pony_assert(false);
       }
+    }
+    else if(pony_type == "F32")
+    {
+      new_node =  get<CtfeValueTypedFloat<float>>(m_val).create_ast_literal_node();
+    }
+    else if(pony_type == "F64")
+    {
+      new_node = get<CtfeValueTypedFloat<double>>(m_val).create_ast_literal_node();
     }
     else if(CtfeAstType::is_struct(m_type))
     {
@@ -464,6 +485,14 @@ bool CtfeValue::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, as
       {
         pony_assert(false);
       }
+    }
+    else if(type_name == "F32")
+    {
+      return CtfeValueTypedFloat<float>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
+    }
+    else if(type_name == "F64")
+    {
+      return CtfeValueTypedFloat<double>::run_method(opt, errors, ast, res_type, recv, args, method_name, result);
     }
   }
   else if(CtfeAstType::is_pointer(recv.get_type_ast()))
@@ -694,6 +723,14 @@ void CtfeValue::write_to_memory(uint8_t* ptr) const
       pony_assert(false);
     }
   }
+  else if (type_name == "F32")
+  {
+    get<CtfeValueTypedFloat<float>>(m_val).write_to_memory(ptr);
+  }
+  else if (type_name == "F64")
+  {
+    get<CtfeValueTypedFloat<double>>(m_val).write_to_memory(ptr);
+  }
   else if(CtfeAstType::is_struct(m_type) || CtfeAstType::is_interface(m_type))
   {
     get_struct_ref()->write_to_memory(ptr);
@@ -812,6 +849,14 @@ CtfeValue CtfeValue::read_from_memory(ast_t* type, uint8_t* ptr)
     {
       pony_assert(false);
     }
+  }
+  else if (type_name == "F32")
+  {
+    return CtfeValue(CtfeValueTypedFloat<float>::read_from_memory(ptr), type);
+  }
+  else if (type_name == "F64")
+  {
+    return CtfeValue(CtfeValueTypedFloat<double>::read_from_memory(ptr), type);
   }
   else if(CtfeAstType::is_struct(type) || CtfeAstType::is_interface(type))
   {
@@ -965,6 +1010,14 @@ CtfeValueBool CtfeValue::eq(const CtfeValue& b) const
       {
         pony_assert(false);
       }
+    }
+    else if (pony_type == "F32")
+    {
+      return get<CtfeValueTypedFloat<float>>(m_val).eq(get<CtfeValueTypedFloat<float>>(b.m_val));
+    }
+    else if (pony_type == "F64")
+    {
+      return get<CtfeValueTypedFloat<double>>(m_val).eq(get<CtfeValueTypedFloat<double>>(b.m_val));
     }
   }
 

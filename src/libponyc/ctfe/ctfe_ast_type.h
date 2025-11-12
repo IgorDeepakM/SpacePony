@@ -21,6 +21,7 @@ public:
   static bool is_pointer(ast_t* type) { return ::is_pointer(type); }
   static bool is_array(ast_t* type) { return ::is_literal(type, "Array"); }
   static bool is_typed_int(ast_t* type) { return ::is_integer(type); }
+  static bool is_typed_float(ast_t* type) { return ::is_float(type); }
   static bool is_int_literal(ast_t* type) { return ast_id(type) == TK_LITERAL; }
   static bool is_bool(ast_t* type) { return ::is_bool(type); }
   static bool is_none(ast_t* type) { return ::is_none(type); }
