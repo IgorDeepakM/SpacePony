@@ -166,15 +166,16 @@ switch ($Command.ToLower())
         }
 
         $libsSrcDir = Join-Path -Path $srcDir -ChildPath "lib"
+		$numCpus = [Environment]::ProcessorCount
         Write-Output "Configuring libraries..."
         if ($Arch.Length -gt 0)
         {
-            & cmake.exe -B "$libsBuildDir" -S "$libsSrcDir" -G "$Generator" -A $Arch -Thost="$Thost" -DCMAKE_INSTALL_PREFIX="$libsDir" -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="X86;ARM;AArch64;WebAssembly;RISCV" CMAKE_BUILD_PARALLEL_LEVEL=[Environment]::ProcessorCount
+            & cmake.exe -B "$libsBuildDir" -S "$libsSrcDir" -G "$Generator" -A $Arch -Thost="$Thost" -DCMAKE_INSTALL_PREFIX="$libsDir" -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="X86;ARM;AArch64;WebAssembly;RISCV" -DCMAKE_BUILD_PARALLEL_LEVEL=$numCpus
             $err = $LastExitCode
         }
         else
         {
-            & cmake.exe -B "$libsBuildDir" -S "$libsSrcDir" -G "$Generator" -Thost="$Thost" -DCMAKE_INSTALL_PREFIX="$libsDir" -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="X86;ARM;AArch64;WebAssembly;RISCV" CMAKE_BUILD_PARALLEL_LEVEL=[Environment]::ProcessorCount
+            & cmake.exe -B "$libsBuildDir" -S "$libsSrcDir" -G "$Generator" -Thost="$Thost" -DCMAKE_INSTALL_PREFIX="$libsDir" -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="X86;ARM;AArch64;WebAssembly;RISCV" -DCMAKE_BUILD_PARALLEL_LEVEL=$numCpus
             $err = $LastExitCode
         }
         if ($err -ne 0) { throw "Error: exit code $err" }

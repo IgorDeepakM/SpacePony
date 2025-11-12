@@ -446,6 +446,25 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     // Literal cases where we can return the value
     case TK_INT:
       return CtfeValue(CtfeValueIntLiteral(*ast_int(expression)), ast_type(expression));
+
+    case TK_FLOAT:
+    {
+      ast_t* type = ast_type(expression);
+      if(::is_literal(type, "F32"))
+      {
+        return CtfeValue(CtfeValueTypedFloat<float>(ast_float(expression)), type);
+      }
+      else if(::is_literal(type, "F64"))
+      {
+        return CtfeValue(CtfeValueTypedFloat<double>(ast_float(expression)), type);
+      }
+      else
+      {
+        pony_assert(false);
+      }
+
+      break;
+    }
     case TK_STRING:
     {
       ast_t* string_type = ast_type(expression);

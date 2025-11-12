@@ -804,6 +804,11 @@ void ast_set_int(ast_t* ast, lexint_t* val)
   token_set_int(ast->t, val);
 }
 
+void ast_set_float(ast_t* ast, double val)
+{
+  token_set_float(ast->t, val);
+}
+
 ast_t* ast_type(ast_t* ast)
 {
   pony_assert(ast != NULL);

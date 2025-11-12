@@ -17,7 +17,7 @@
 
 
 class CtfeValue;
-class CtfeValueInt;
+template <typename T> class CtfeValueTypedFloat;
 
 
 template <typename T>
@@ -60,6 +60,10 @@ public:
 
   template<typename V>
   CtfeValueTypedInt<V> cast_to() const { return CtfeValueTypedInt<V>(static_cast<V>(m_val)); }
+  template<typename V>
+  CtfeValueTypedFloat<V> cast_to_float() const;
+  template<typename V>
+  CtfeValueTypedFloat<V> cast_to_float_saturate() const;
 
   T get_value() const { return m_val; }
   uint64_t to_uint64() const { return static_cast<uint64_t>(m_val); }

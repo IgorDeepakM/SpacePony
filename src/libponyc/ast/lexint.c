@@ -447,6 +447,10 @@ double lexint_double(lexint_t const* i)
   }
 
   uint64_t raw_bits = ((exponent + 1023) << 52) | (mantissa & 0xFFFFFFFFFFFFF);
+  if(i->is_negative)
+  {
+    raw_bits |= (uint64_t)1 << 63;
+  }
   double* fp_bits = (double*)&raw_bits;
   return *fp_bits;
 }
