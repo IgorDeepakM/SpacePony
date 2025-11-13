@@ -581,7 +581,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       if (!m_frames.get_value(var_name, found_value))
       {
         ast_error_frame(errors, expression,
-          "Symbol %s was not found because it was not previously created", var_name);
+          "Symbol '%s' was not found because it was not previously created", var_name);
         throw CtfeFailToEvaluateException();
       }
       return found_value;

@@ -102,17 +102,35 @@ V CtfeValueFloat<T>::saturation_convert() const
 {
   double to_max{};
   double to_min{};
-  
-  
+
   if constexpr (std::is_same<V, CtfeI128Type>::value ||
                 std::is_same<V, CtfeU128Type>::value)
   {
     lexint_t v_min = lexint_zero();
     V min_val = std::numeric_limits<V>::lowest();
+
+    V tmp_min = min_val;
+
+    if constexpr (std::is_same<V, CtfeI128Type>::value)
+    {
+      if(min_val < 0)
+      {
+        tmp_min = -tmp_min;
+      }
+    }
+
     v_min.low = static_cast<uint64_t>(min_val);
     v_min.high = static_cast<uint64_t>(min_val >> 64);
 
     to_min = lexint_double(&v_min);
+
+    if constexpr (std::is_same<V, CtfeI128Type>::value)
+    {
+      if(min_val < 0)
+      {
+        to_min = -to_min;
+      }
+    }
 
     lexint_t v_max = lexint_zero();
     V max_val = std::numeric_limits<V>::max();
@@ -123,8 +141,8 @@ V CtfeValueFloat<T>::saturation_convert() const
   }
   else
   {
-    to_min = std::numeric_limits<V>::lowest();
-    to_max = std::numeric_limits<V>::max();
+    to_min = static_cast<double>(std::numeric_limits<V>::lowest());
+    to_max = static_cast<double>(std::numeric_limits<V>::max());
   }
 
   if(m_val < to_min)

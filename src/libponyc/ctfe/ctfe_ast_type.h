@@ -30,6 +30,7 @@ public:
   static bool is_tuple(ast_t* ast) { return ast_id(ast) == TK_TUPLETYPE; };
   static bool is_nominal(ast_t* ast) { return ast_id(ast) == TK_NOMINAL; };
   static bool is_machine_word(ast_t* ast) { return ::is_machine_word(ast); }
+  static bool is_signed(ast_t* ast) { return ::is_signed(ast); }
 
   static void initialize(pass_opt_t* opt);
   static uint8_t get_long_size() { return m_long_size; }
