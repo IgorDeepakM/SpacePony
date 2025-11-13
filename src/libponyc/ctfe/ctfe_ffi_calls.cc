@@ -141,7 +141,7 @@ CtfeValue CtfeRunner::handle_ffi_ptr_ptr_size(pass_opt_t* opt, errorframe_t* err
   if(ffi_name == "@memcmp")
   {
     int ret = memcmp(ptr1, ptr2, size);
-    return CtfeValue(CtfeValueIntLiteral(ret), return_type);
+    return CtfeValue(ret, return_type);
   }
   else if(ffi_name == "@memmove")
   {
@@ -209,7 +209,7 @@ CtfeValue CtfeRunner::handle_llvm_ffi(pass_opt_t* opt, errorframe_t* errors,
         low_count = count_leading_zeros(low);
       }
 
-      return CtfeValue(CtfeValueIntLiteral(high_count + low_count), return_type);
+      return CtfeValue(high_count + low_count, return_type);
     }
     else
     {
@@ -218,22 +218,22 @@ CtfeValue CtfeRunner::handle_llvm_ffi(pass_opt_t* opt, errorframe_t* errors,
       if(ffi_name == "@llvm.ctlz.i64")
       {
         int ret = count_leading_zeros(src);
-        return CtfeValue(CtfeValueIntLiteral(ret), return_type);
+        return CtfeValue(ret, return_type);
       }
       else if(ffi_name == "@llvm.ctlz.i32")
       {
         int ret = count_leading_zeros(src << 32);
-        return CtfeValue(CtfeValueIntLiteral(ret > 32 ? 32 : ret), return_type);
+        return CtfeValue(ret > 32 ? 32 : ret, return_type);
       }
       else if(ffi_name == "@llvm.ctlz.i16")
       {
         int ret = count_leading_zeros(src << (32 + 16));
-        return CtfeValue(CtfeValueIntLiteral(ret > 16 ? 16 : ret), return_type);
+        return CtfeValue(ret > 16 ? 16 : ret, return_type);
       }
       else if(ffi_name == "@llvm.ctlz.i8")
       {
         int ret = count_leading_zeros(src << (32 + 16 + 8));
-        return CtfeValue(CtfeValueIntLiteral(ret > 8 ? 8 : ret), return_type);
+        return CtfeValue(ret > 8 ? 8 : ret, return_type);
       }
     }
   }

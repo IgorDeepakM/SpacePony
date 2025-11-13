@@ -293,18 +293,6 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
 
   switch(ast_id(receiver))
   {
-    case TK_DOT:
-    {
-      // Dot support was mostly when running the CTFE runner in the expr pass
-      // where the literals yet haven't been coerced.
-      ast_t* lh = ast_child(receiver);
-      rec_val = evaluate(opt, errors, lh, depth + 1);
-      ast_t* rh = ast_childidx(receiver, 1);
-      method_name = ast_name(rh);
-      recv_type = ast_type(lh);
-
-      break;
-    }
     case TK_NEWREF:
     case TK_NEWBEREF:
     {
@@ -346,6 +334,12 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
       else if(ast_id(underlying_type) == TK_PRIMITIVE)
       {
         rec_val = CtfeValue(recv_type);
+      }
+      else if(ast_id(underlying_type) == TK_ACTOR)
+      {
+        ast_error_frame(errors, ast,
+          "Calling actor behaviours is not supported in CTFE.");
+        throw CtfeFailToEvaluateException();
       }
       else
       {
@@ -445,18 +439,18 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
 
     // Literal cases where we can return the value
     case TK_INT:
-      return CtfeValue(CtfeValueIntLiteral(*ast_int(expression)), ast_type(expression));
+      return CtfeValue(*ast_int(expression), ast_type(expression));
 
     case TK_FLOAT:
     {
       ast_t* type = ast_type(expression);
       if(::is_literal(type, "F32"))
       {
-        return CtfeValue(CtfeValueTypedFloat<float>(ast_float(expression)), type);
+        return CtfeValue(CtfeValueFloat<float>(ast_float(expression)), type);
       }
       else if(::is_literal(type, "F64"))
       {
-        return CtfeValue(CtfeValueTypedFloat<double>(ast_float(expression)), type);
+        return CtfeValue(CtfeValueFloat<double>(ast_float(expression)), type);
       }
       else
       {
@@ -479,8 +473,8 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       CtfeValueStruct* s = new CtfeValueStruct(string_type);
 
       size_t len = ast_name_len(expression);
-      s->new_value("_size", CtfeValue(CtfeValueIntLiteral(len), size_var_type));
-      s->new_value("_alloc", CtfeValue(CtfeValueIntLiteral(len + 1), alloc_var_type));
+      s->new_value("_size", CtfeValue(len, size_var_type));
+      s->new_value("_alloc", CtfeValue(len + 1, alloc_var_type));
       s->new_value("_ptr", CtfeValue(CtfeValuePointer(
           reinterpret_cast<uint8_t*>(const_cast<char*>(ast_name(expression))),
           len + 1,

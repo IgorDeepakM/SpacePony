@@ -9,16 +9,9 @@ typedef struct lexint_t
 {
   uint64_t low;
   uint64_t high;
-
-  // is_negative is used to determine whether a
-  // lexint represents a negative value in the
-  // evaluation of compile time literals.
-  bool is_negative;
 } lexint_t;
 
 lexint_t lexint_zero();
-
-lexint_t lexint_minusone();
 
 int lexint_cmp(lexint_t const* a, lexint_t const* b);
 
@@ -69,10 +62,6 @@ lexint_t lexint_xor(lexint_t const* a, lexint_t const* b);
 lexint_t lexint_xor64(lexint_t const* a, uint64_t b);
 
 lexint_t lexint_not(lexint_t const* src);
-
-lexint_t lexint_negate(lexint_t const* src);
-
-bool lexint_is_negative(lexint_t const* v);
 
 PONY_EXTERN_C_END
 

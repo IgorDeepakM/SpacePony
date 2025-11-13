@@ -175,11 +175,6 @@ const char* token_print(token_t* token)
     case TK_INT:
     {
       lexint_t value = token->integer;
-      bool is_negative = lexint_is_negative(&value);
-      if(is_negative)
-      {
-        value = lexint_negate(&value);
-      }
 
       const int size = 64;
       if (token->printed == NULL)
@@ -187,17 +182,13 @@ const char* token_print(token_t* token)
         token->printed = (char*)ponyint_pool_alloc_size(size);
       }
 
-      if (value.high == 0 && !lexint_is_negative(&value))
+      if (value.high == 0)
       {
         snprintf(token->printed, size, "%llu", (unsigned long long)value.low);
       }
       else
       {
         char* start = token->printed;
-        if(is_negative)
-        {
-          *(start++) = '-';
-        }
         char* digit = start;
 
         lexint_t t = value;

@@ -450,7 +450,7 @@ ast_t* ast_from_int(ast_t* ast, uint64_t value)
   token_t* t = token_dup(ast->t);
   token_set_id(t, TK_INT);
 
-  lexint_t lexint = {value, 0, false};
+  lexint_t lexint = {value, 0};
   token_set_int(t, &lexint);
 
   ast_t* new_ast = ast_token(t);
