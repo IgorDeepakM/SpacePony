@@ -26,22 +26,22 @@ static struct
   bool neg_plus_one;    // Is a negated value allowed to be 1 bigger
 } const _str_uif_types[UIF_COUNT] =
 {
-  { "U8", {0x100, 0, false}, false },
-  { "U16", {0x10000, 0, false}, false },
-  { "U32", {0x100000000LL, 0, false}, false },
-  { "U64", {0, 1, false}, false },
-  { "U128", {0, 0, false}, false },  // Limit checked by lexer
-  { "ULong", {0, 1, false}, false }, // Limited to 64 bits
-  { "USize", {0, 1, false}, false }, // Limited to 64 bits
-  { "I8", {0x80, 0, false}, true },
-  { "I16", {0x8000, 0, false}, true },
-  { "I32", {0x80000000, 0, false}, true },
-  { "I64", {0x8000000000000000ULL, 0, false}, true },
-  { "I128", {0, 0x8000000000000000ULL, false}, true },
-  { "ILong", {0x8000000000000000ULL, 0, false}, true }, // Limited to 64 bits
-  { "ISize", {0x8000000000000000ULL, 0, false}, true }, // Limited to 64 bits
-  { "F32", {0, 0, false}, false },
-  { "F64", {0, 0, false}, false }
+  { "U8", {0x100, 0}, false },
+  { "U16", {0x10000, 0}, false },
+  { "U32", {0x100000000LL, 0}, false },
+  { "U64", {0, 1}, false },
+  { "U128", {0, 0}, false },  // Limit checked by lexer
+  { "ULong", {0, 1}, false }, // Limited to 64 bits
+  { "USize", {0, 1}, false }, // Limited to 64 bits
+  { "I8", {0x80, 0}, true },
+  { "I16", {0x8000, 0}, true },
+  { "I32", {0x80000000, 0}, true },
+  { "I64", {0x8000000000000000ULL, 0}, true },
+  { "I128", {0, 0x8000000000000000ULL}, true },
+  { "ILong", {0x8000000000000000ULL, 0}, true }, // Limited to 64 bits
+  { "ISize", {0x8000000000000000ULL, 0}, true }, // Limited to 64 bits
+  { "F32", {0, 0}, false },
+  { "F64", {0, 0}, false }
 };
 
 
@@ -594,20 +594,6 @@ static bool uif_type_from_chain(pass_opt_t* opt, ast_t* literal,
 
       lexint_t* actual = ast_int(literal);
       int test = lexint_cmp(actual, &_str_uif_types[i].limit);
-
-      // if the value has the negative bit set from evaluation
-      // then we need to check the positive value
-      if(lexint_is_negative(actual))
-      {
-        lexint_t t = lexint_zero();
-        t = lexint_sub(&t, actual);
-        test = lexint_cmp(&t, &_str_uif_types[i].limit);
-        neg_plus_one = true;
-      }
-      else
-      {
-        test = lexint_cmp(actual, &_str_uif_types[i].limit);
-      }
 
       if((test > 0) || (!neg_plus_one && (test == 0)))
       {

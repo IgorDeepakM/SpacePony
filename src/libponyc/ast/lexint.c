@@ -6,15 +6,7 @@
 
 lexint_t lexint_zero()
 {
-  lexint_t ret = { 0, 0, false };
-
-  return ret;
-}
-
-
-lexint_t lexint_minusone()
-{
-  lexint_t ret = { UINT64_MAX, UINT64_MAX, true };
+  lexint_t ret = { 0, 0 };
 
   return ret;
 }
@@ -22,12 +14,6 @@ lexint_t lexint_minusone()
 
 int lexint_cmp(lexint_t const* a, lexint_t const* b)
 {
-  if(a->is_negative && !b->is_negative)
-    return -1;
-
-  if(!a->is_negative && b->is_negative)
-    return 1;
-
   if(a->high > b->high)
     return 1;
 
@@ -45,9 +31,6 @@ int lexint_cmp(lexint_t const* a, lexint_t const* b)
 
 int lexint_cmp64(lexint_t const* a, uint64_t b)
 {
-  if(a->is_negative)
-    return -1;
-
   if(a->high > 0)
     return 1;
 
@@ -63,8 +46,6 @@ int lexint_cmp64(lexint_t const* a, uint64_t b)
 lexint_t lexint_shl(lexint_t const* a, uint64_t b)
 {
   lexint_t ret = lexint_zero();
-
-  ret.is_negative = a->is_negative;
 
   if(b >= 128)
   {
@@ -91,8 +72,6 @@ lexint_t lexint_shr(lexint_t const* a, uint64_t b)
 {
   lexint_t ret = lexint_zero();
 
-  ret.is_negative = a->is_negative;
-
   if(b >= 128)
   {
     ret.high = 0;
@@ -109,21 +88,6 @@ lexint_t lexint_shr(lexint_t const* a, uint64_t b)
   } else {
     ret.high = a->high;
     ret.low = a->low;
-  }
-
-  // If negative we need to shift down the value from the 129's bit (is_signed)
-  if(a->is_negative && b > 0)
-  {
-    int64_t high_shift = 0x8000000000000000;
-    high_shift >>= (b - 1);
-
-    ret.high |= (uint64_t)high_shift;
-    if (b > 64)
-    {
-      int64_t low_shift = 0x8000000000000000;
-      low_shift >>= (b - 64 - 1);
-      ret.low |= (uint64_t)low_shift;
-    }
   }
 
   return ret;
@@ -153,21 +117,6 @@ lexint_t lexint_add(lexint_t const* a, lexint_t const* b)
 {
   lexint_t ret = lexint_zero();
 
-  if(a->is_negative && !b->is_negative)
-  {
-    lexint_t t = lexint_negate(a);
-    ret.is_negative = lexint_cmp(&t, b) > 0;
-  }
-  else if(!a->is_negative && b->is_negative)
-  {
-    lexint_t t = lexint_negate(b);
-    ret.is_negative = lexint_cmp(a, &t) < 0;
-  }
-  else
-  {
-    ret.is_negative = a->is_negative;
-  }
-
   ret.high = a->high + b->high + ((a->low + b->low) < a->low);
   ret.low = a->low + b->low;
 
@@ -177,16 +126,6 @@ lexint_t lexint_add(lexint_t const* a, lexint_t const* b)
 lexint_t lexint_add64(lexint_t const* a, uint64_t b)
 {
   lexint_t ret = lexint_zero();
-
-  if(a->is_negative)
-  {
-    lexint_t t = lexint_negate(a);
-    ret.is_negative = lexint_cmp64(&t, b) > 0;
-  }
-  else
-  {
-    ret.is_negative = false;
-  }
 
   ret.high = a->high + ((a->low + b) < a->low);
   ret.low = a->low + b;
@@ -198,11 +137,6 @@ lexint_t lexint_sub(lexint_t const* a, lexint_t const* b)
 {
   lexint_t ret = lexint_zero();
 
-  if(a->is_negative == b->is_negative)
-    ret.is_negative = lexint_cmp(a, b) < 0;
-  else
-    ret.is_negative = a->is_negative;
-
   ret.high = a->high - b->high - ((a->low - b->low) > a->low);
   ret.low = a->low - b->low;
 
@@ -213,7 +147,6 @@ lexint_t lexint_sub64(lexint_t const* a, uint64_t b)
 {
   lexint_t ret = lexint_zero();
 
-  ret.is_negative = lexint_cmp64(a, b) < 0;
   ret.high = a->high - ((a->low - b) > a->low);
   ret.low = a->low - b;
 
@@ -228,11 +161,6 @@ lexint_t lexint_mul(lexint_t const* a, lexint_t const* b)
   // If the multiplier is negative, negate both operands then multiply.
   lexint_t lt = *a;
   lexint_t rt = *b;
-  if(rt.is_negative)
-  {
-    lt = lexint_negate(&lt);
-    rt = lexint_negate(&rt);
-  }
 
   assert(rt.high == 0);
   ret = lexint_mul64(&lt, rt.low);
@@ -243,9 +171,6 @@ lexint_t lexint_mul(lexint_t const* a, lexint_t const* b)
 lexint_t lexint_mul64(lexint_t const* a, uint64_t b)
 {
   lexint_t ret = lexint_zero();
-
-  ret.is_negative = a->is_negative;
-
   lexint_t t = *a;
 
   while(b > 0)
@@ -269,40 +194,15 @@ lexint_t lexint_div(lexint_t const* a, lexint_t const* b)
 
   lexint_t lt = *a;
   lexint_t rt = *b;
-  bool negate = lt.is_negative ^ rt.is_negative;
-
-  // take the absolute value of both operands and then divide
-  if(lt.is_negative)
-  {
-    lt = lexint_negate(&lt);
-  }
-
-  if(rt.is_negative)
-  {
-    rt = lexint_negate(&rt);
-  }
 
   assert(rt.high == 0);
   ret = lexint_div64(&lt, rt.low);
-
-  ret.is_negative = false;
-  if(negate)
-  {
-    ret = lexint_negate(&ret);
-  }
 
   return ret;
 }
 
 lexint_t lexint_div64(lexint_t const* a, uint64_t b)
 {
-  bool negate = a->is_negative;
-  if(a->is_negative)
-  {
-    lexint_t t = lexint_negate(a);
-    a = &t;
-  }
-
   lexint_t o = *a;
   lexint_t ret = lexint_zero();
 
@@ -330,12 +230,6 @@ lexint_t lexint_div64(lexint_t const* a, uint64_t b)
       r = lexint_sub64(&r, b);
       ret = lexint_setbit(&ret, i);
     }
-  }
-
-  ret.is_negative = false;
-  if(negate)
-  {
-    ret = lexint_negate(&ret);
   }
 
   return ret;
@@ -447,10 +341,6 @@ double lexint_double(lexint_t const* i)
   }
 
   uint64_t raw_bits = ((exponent + 1023) << 52) | (mantissa & 0xFFFFFFFFFFFFF);
-  if(i->is_negative)
-  {
-    raw_bits |= (uint64_t)1 << 63;
-  }
   double* fp_bits = (double*)&raw_bits;
   return *fp_bits;
 }
@@ -523,15 +413,4 @@ lexint_t lexint_not(lexint_t const* src)
   ret.low =~ src->low;
 
   return ret;
-}
-
-lexint_t lexint_negate(lexint_t const* src)
-{
-  lexint_t t = lexint_zero();
-  return lexint_sub(&t, src);
-}
-
-bool lexint_is_negative(lexint_t const* v)
-{
-  return v->is_negative;
 }

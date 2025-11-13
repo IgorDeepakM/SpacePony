@@ -1,9 +1,8 @@
 #pragma once
 
 #include "ctfe_types.h"
-#include "ctfe_value_int_literal.h"
-#include "ctfe_value_typed_int.h"
-#include "ctfe_value_typed_float.h"
+#include "ctfe_value_int.h"
+#include "ctfe_value_float.h"
 #include "ctfe_value_bool.h"
 #include "ctfe_value_tuple.h"
 #include "ctfe_value_pointer.h"
@@ -37,33 +36,33 @@ private:
 
   std::variant<
     CtfeValueBool,
-    CtfeValueIntLiteral,
-    CtfeValueTypedInt<int8_t>,
-    CtfeValueTypedInt<uint8_t>,
-    CtfeValueTypedInt<int16_t>,
-    CtfeValueTypedInt<uint16_t>,
-    CtfeValueTypedInt<int32_t>,
-    CtfeValueTypedInt<uint32_t>,
-    CtfeValueTypedInt<int64_t>,
-    CtfeValueTypedInt<uint64_t>,
-    CtfeValueTypedInt<CtfeI128Type>,
-    CtfeValueTypedInt<CtfeU128Type>,
-    CtfeValueTypedFloat<float>,
-    CtfeValueTypedFloat<double>,
+    CtfeValueInt<int8_t>,
+    CtfeValueInt<uint8_t>,
+    CtfeValueInt<int16_t>,
+    CtfeValueInt<uint16_t>,
+    CtfeValueInt<int32_t>,
+    CtfeValueInt<uint32_t>,
+    CtfeValueInt<int64_t>,
+    CtfeValueInt<uint64_t>,
+    CtfeValueInt<CtfeI128Type>,
+    CtfeValueInt<CtfeU128Type>,
+    CtfeValueFloat<float>,
+    CtfeValueFloat<double>,
     CtfeValueStruct*,
     CtfeValueTuple,
     CtfeValuePointer> m_val;
 
-  void convert_from_int_literal_to_type(const CtfeValueIntLiteral& val, ast_t* type);
+  void convert_from_int_literal_to_type(const lexint_t& val, ast_t* type);
 
 public:
   CtfeValue();
   CtfeValue(ast_t* type);
-  CtfeValue(const CtfeValueIntLiteral& val, ast_t* ast_type);
+  CtfeValue(const lexint_t& val, ast_t* ast_type);
+  CtfeValue(uint64_t val, ast_t* ast_type);
   template <typename T>
-  CtfeValue(const CtfeValueTypedInt<T>& val, ast_t* ast_type);
+  CtfeValue(const CtfeValueInt<T>& val, ast_t* ast_type);
   template <typename T>
-  CtfeValue(const CtfeValueTypedFloat<T>& val, ast_t* ast_type);
+  CtfeValue(const CtfeValueFloat<T>& val, ast_t* ast_type);
   CtfeValue(const CtfeValueBool& val, ast_t* ast_type);
   CtfeValue(CtfeValueStruct* ref, ast_t* ast_type);
   CtfeValue(const CtfeValueTuple& val, ast_t* ast_type);
@@ -86,16 +85,14 @@ public:
   bool is_struct() const { return CtfeAstType::is_struct(m_type); }
   bool is_tuple() const { return CtfeAstType::is_tuple(m_type); }
 
-  CtfeValueIntLiteral& get_int_literal() { return std::get<CtfeValueIntLiteral>(m_val); };
-  template <typename T> CtfeValueTypedInt<T>& get_typed_int();
-  template <typename T> CtfeValueTypedFloat<T>& get_typed_float();
+  template <typename T> CtfeValueInt<T>& get_typed_int();
+  template <typename T> CtfeValueFloat<T>& get_typed_float();
   CtfeValueBool& get_bool() { return std::get<CtfeValueBool>(m_val); }
   CtfeValueTuple& get_tuple() { return std::get<CtfeValueTuple>(m_val); }
   CtfeValuePointer& get_pointer() { return std::get<CtfeValuePointer>(m_val); }
 
-  const CtfeValueIntLiteral& get_int_literal() const { return std::get<CtfeValueIntLiteral>(m_val); };
-  template <typename T> const CtfeValueTypedInt<T>& get_typed_int() const;
-  template <typename T> const CtfeValueTypedFloat<T>& get_typed_float() const;
+  template <typename T> const CtfeValueInt<T>& get_typed_int() const;
+  template <typename T> const CtfeValueFloat<T>& get_typed_float() const;
   const CtfeValueBool& get_bool() const { return std::get<CtfeValueBool>(m_val); }
   const CtfeValueTuple& get_tuple() const { return std::get<CtfeValueTuple>(m_val); }
   const CtfeValuePointer& get_pointer() const { return std::get<CtfeValuePointer>(m_val); }
@@ -126,7 +123,7 @@ public:
 
 
 template <typename T>
-CtfeValue::CtfeValue(const CtfeValueTypedInt<T>& val, ast_t* type):
+CtfeValue::CtfeValue(const CtfeValueInt<T>& val, ast_t* type):
   m_type{type},
   m_ctrlFlow{ControlFlowModifier::None},
   m_val{val}
@@ -136,7 +133,7 @@ CtfeValue::CtfeValue(const CtfeValueTypedInt<T>& val, ast_t* type):
 
 
 template <typename T>
-CtfeValue::CtfeValue(const CtfeValueTypedFloat<T>& val, ast_t* type):
+CtfeValue::CtfeValue(const CtfeValueFloat<T>& val, ast_t* type):
   m_type{type},
   m_ctrlFlow{ControlFlowModifier::None},
   m_val{val}
@@ -146,38 +143,38 @@ CtfeValue::CtfeValue(const CtfeValueTypedFloat<T>& val, ast_t* type):
 
 
 template <typename T>
-CtfeValueTypedInt<T>& CtfeValue::get_typed_int()
+CtfeValueInt<T>& CtfeValue::get_typed_int()
 {
   if(!is_typed_int())
   {
     pony_assert(false);
   }
 
-  return std::get<CtfeValueTypedInt<T>>(m_val);
+  return std::get<CtfeValueInt<T>>(m_val);
 }
 
 
 template <typename T>
-CtfeValueTypedFloat<T>& CtfeValue::get_typed_float()
+CtfeValueFloat<T>& CtfeValue::get_typed_float()
 {
   if(!is_typed_float())
   {
     pony_assert(false);
   }
 
-  return std::get<CtfeValueTypedFloat<T>>(m_val);
+  return std::get<CtfeValueFloat<T>>(m_val);
 }
 
 
 template <typename T>
-const CtfeValueTypedInt<T>& CtfeValue::get_typed_int() const
+const CtfeValueInt<T>& CtfeValue::get_typed_int() const
 {
-  return const_cast<const CtfeValueTypedInt<T>&>(const_cast<CtfeValue*>(this)->get_typed_int<T>());
+  return const_cast<const CtfeValueInt<T>&>(const_cast<CtfeValue*>(this)->get_typed_int<T>());
 }
 
 
 template <typename T>
-const CtfeValueTypedFloat<T>& CtfeValue::get_typed_float() const
+const CtfeValueFloat<T>& CtfeValue::get_typed_float() const
 {
-  return const_cast<const CtfeValueTypedFloat<T>&>(const_cast<CtfeValue*>(this)->get_typed_float<T>());
+  return const_cast<const CtfeValueFloat<T>&>(const_cast<CtfeValue*>(this)->get_typed_float<T>());
 }

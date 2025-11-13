@@ -195,7 +195,7 @@ uint64_t CtfeAstType::ast_hash(ast_t* ast)
     case TK_INT:
     {
       lexint_t* val = ast_int(ast);
-      return val->low ^ val->high ^ (val->is_negative ? 1 : 0) ^ hashtype;
+      return val->low ^ val->high ^ hashtype;
     }
 
     case TK_FLOAT:
