@@ -239,7 +239,7 @@ bool CtfeValueInt<T>::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* a
         }
         else
         {
-          const CtfeValueInt<std::make_unsigned<T>::type>& first_arg = args[0].get_int<std::make_unsigned<T>::type>();
+          const CtfeValueInt<typename std::make_unsigned<T>::type>& first_arg = args[0].get_int<typename std::make_unsigned<T>::type>();
           shift_amount = first_arg.to_uint64();
         }
       }
@@ -267,7 +267,7 @@ bool CtfeValueInt<T>::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* a
         }
         else
         {
-          const CtfeValueInt<std::make_unsigned<T>::type>& first_arg = args[0].get_int<std::make_unsigned<T>::type>();
+          const CtfeValueInt<typename std::make_unsigned<T>::type>& first_arg = args[0].get_int<typename std::make_unsigned<T>::type>();
           shift_amount = first_arg.to_uint64();
         }
       }
