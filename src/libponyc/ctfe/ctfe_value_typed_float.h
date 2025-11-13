@@ -108,7 +108,7 @@ V CtfeValueTypedFloat<T>::saturation_convert() const
                 std::is_same<V, CtfeU128Type>::value)
   {
     lexint_t v_min = lexint_zero();
-    V min_val = std::numeric_limits<V>::min();
+    V min_val = std::numeric_limits<V>::lowest();
     v_min.low = static_cast<uint64_t>(min_val);
     v_min.high = static_cast<uint64_t>(min_val >> 64);
 
@@ -139,13 +139,13 @@ V CtfeValueTypedFloat<T>::saturation_convert() const
   }
   else
   {
-    to_min = std::numeric_limits<V>::min();
+    to_min = std::numeric_limits<V>::lowest();
     to_max = std::numeric_limits<V>::max();
   }
 
   if(m_val < to_min)
   {
-    return std::numeric_limits<V>::min();
+    return std::numeric_limits<V>::lowest();
   }
   else if(m_val > to_max)
   {

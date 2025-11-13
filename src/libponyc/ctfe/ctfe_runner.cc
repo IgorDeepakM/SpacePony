@@ -257,10 +257,10 @@ CtfeValue CtfeRunner::call_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
       // This means that we haven't found the proper virtual method
       pony_assert(false);
     }
-    else if(ast_id(ast_child(seq)) != TK_COMPILE_INTRINSIC)
+    else if(ast_id(ast_child(seq)) == TK_COMPILE_INTRINSIC)
     {
       ast_error_frame(errors, ast_pos,
-        "Unsupported compiler intrinsic function");
+        "Unsupported compiler intrinsic function '%s", method_name);
     }
     failed = true;
   }
