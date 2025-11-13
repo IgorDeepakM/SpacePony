@@ -171,36 +171,70 @@ CtfeValue CtfeRunner::handle_llvm_ffi(pass_opt_t* opt, errorframe_t* errors,
 
     CtfeValue arg1 = evaluated_args[0];
 
-    if(arg1.is_typed_int())
-    {
-      src = arg1.to_uint64();
-    }
-    else
+    if(!arg1.is_typed_int())
     {
       ast_error_frame(errors, ast,
         "Incompatible argument 1 in CTFE calling %s", ffi_name.c_str());
       throw CtfeFailToEvaluateException();
     }
 
-    if(ffi_name == "@llvm.ctlz.i64")
+    if(ffi_name == "@llvm.ctlz.i128")
     {
-      int ret = count_leading_zeros(src);
-      return CtfeValue(CtfeValueIntLiteral(ret), return_type);
+      uint64_t high = 0;
+      uint64_t low = 0;
+
+      if(arg1.get_type_name() == "I128")
+      {
+        CtfeI128Type v = arg1.get_typed_int<CtfeI128Type>().get_value();
+
+        high = static_cast<uint64_t>(v >> 64);
+        low = static_cast<uint64_t>(v);
+      }
+      else if(arg1.get_type_name() == "U128")
+      {
+        CtfeU128Type v = arg1.get_typed_int<CtfeU128Type>().get_value();
+
+        high = static_cast<uint64_t>(v >> 64);
+        low = static_cast<uint64_t>(v);
+      }
+      else
+      {
+        pony_assert(false);
+      }
+
+      int low_count = 0;
+      int high_count = count_leading_zeros(high);
+      if(high_count == 64)
+      {
+        low_count = count_leading_zeros(low);
+      }
+
+      return CtfeValue(CtfeValueIntLiteral(high_count + low_count), return_type);
     }
-    else if(ffi_name == "@llvm.ctlz.i32")
+    else
     {
-      int ret = count_leading_zeros(src << 32);
-      return CtfeValue(CtfeValueIntLiteral(ret > 32 ? 32 : ret), return_type);
-    }
-    else if(ffi_name == "@llvm.ctlz.i16")
-    {
-      int ret = count_leading_zeros(src << (32 + 16));
-      return CtfeValue(CtfeValueIntLiteral(ret > 16 ? 16 : ret), return_type);
-    }
-    else if(ffi_name == "@llvm.ctlz.i8")
-    {
-      int ret = count_leading_zeros(src << (32 + 16 + 8));
-      return CtfeValue(CtfeValueIntLiteral(ret > 8 ? 8 : ret), return_type);
+      uint64_t src = arg1.to_uint64();
+
+      if(ffi_name == "@llvm.ctlz.i64")
+      {
+        int ret = count_leading_zeros(src);
+        return CtfeValue(CtfeValueIntLiteral(ret), return_type);
+      }
+      else if(ffi_name == "@llvm.ctlz.i32")
+      {
+        int ret = count_leading_zeros(src << 32);
+        return CtfeValue(CtfeValueIntLiteral(ret > 32 ? 32 : ret), return_type);
+      }
+      else if(ffi_name == "@llvm.ctlz.i16")
+      {
+        int ret = count_leading_zeros(src << (32 + 16));
+        return CtfeValue(CtfeValueIntLiteral(ret > 16 ? 16 : ret), return_type);
+      }
+      else if(ffi_name == "@llvm.ctlz.i8")
+      {
+        int ret = count_leading_zeros(src << (32 + 16 + 8));
+        return CtfeValue(CtfeValueIntLiteral(ret > 8 ? 8 : ret), return_type);
+      }
     }
   }
 

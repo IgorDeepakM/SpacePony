@@ -42,14 +42,13 @@ template<typename T>
 template<typename V>
 CtfeValueTypedFloat<V> CtfeValueTypedInt<T>::cast_to_float_saturate() const
 {
-
   if(std::is_same<V, float>::value)
   {
     double v = cast_to_float<V>().get_value();
 
-    if (v < std::numeric_limits<V>::min())
+    if (v < std::numeric_limits<V>::lowest())
     {
-      return std::numeric_limits<V>::min();
+      return std::numeric_limits<V>::lowest();
     }
     else if (v > std::numeric_limits<V>::max())
     {
@@ -443,34 +442,34 @@ bool CtfeValueTypedInt<T>::run_method(pass_opt_t* opt, errorframe_t* errors, ast
       }
       return true;
     }
-  }
-  else if(method_name == "f32")
-  {
-    const CtfeValueTypedInt<T>& rec_val = recv.get_typed_int<T>();
-    CtfeValueTypedFloat<float> r = rec_val.cast_to_float_saturate<float>();
-    result = CtfeValue(r, res_type);
-    return true;
-  }
-  else if(method_name == "f32_unsafe")
-  {
-    const CtfeValueTypedInt<T>& rec_val = recv.get_typed_int<T>();
-    CtfeValueTypedFloat<float> r = rec_val.cast_to_float<float>();
-    result = CtfeValue(r, res_type);
-    return true;
-  }
-  else if(method_name == "f64")
-  {
-    const CtfeValueTypedInt<T>& rec_val = recv.get_typed_int<T>();
-    CtfeValueTypedFloat<double> r = rec_val.cast_to_float_saturate<double>();
-    result = CtfeValue(r, res_type);
-    return true;
-  }
-  else if(method_name == "f64_unsafe")
-  {
-    const CtfeValueTypedInt<T>& rec_val = recv.get_typed_int<T>();
-    CtfeValueTypedFloat<double> r = rec_val.cast_to_float<double>();
-    result = CtfeValue(r, res_type);
-    return true;
+    /*else if (method_name == "f32")
+    {
+      const CtfeValueTypedInt<T>& rec_val = recv.get_typed_int<T>();
+      CtfeValueTypedFloat<float> r = rec_val.cast_to_float_saturate<float>();
+      result = CtfeValue(r, res_type);
+      return true;
+    }
+    else if (method_name == "f32_unsafe")
+    {
+      const CtfeValueTypedInt<T>& rec_val = recv.get_typed_int<T>();
+      CtfeValueTypedFloat<float> r = rec_val.cast_to_float<float>();
+      result = CtfeValue(r, res_type);
+      return true;
+    }
+    else if (method_name == "f64")
+    {
+      const CtfeValueTypedInt<T>& rec_val = recv.get_typed_int<T>();
+      CtfeValueTypedFloat<double> r = rec_val.cast_to_float_saturate<double>();
+      result = CtfeValue(r, res_type);
+      return true;
+    }
+    else if (method_name == "f64_unsafe")
+    {
+      const CtfeValueTypedInt<T>& rec_val = recv.get_typed_int<T>();
+      CtfeValueTypedFloat<double> r = rec_val.cast_to_float<double>();
+      result = CtfeValue(r, res_type);
+      return true;
+    }*/
   }
 
   return false;

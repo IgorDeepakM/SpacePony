@@ -106,6 +106,40 @@ bool CtfeValueTypedFloat<T>::run_method(pass_opt_t* opt, errorframe_t* errors, a
       result = CtfeValue(r, res_type);
       return true;
     }
+    else if(method_name == "from_bits")
+    {
+      if constexpr (std::is_same<T, double>::value)
+      {
+        const CtfeValueTypedInt<uint64_t>& arg_val = args[0].get_typed_int<uint64_t>();
+        uint64_t val = arg_val.get_value();
+        result = CtfeValue(CtfeValueTypedFloat<double>(reinterpret_cast<double&>(val)), res_type);
+        return true;
+      }
+      if constexpr (std::is_same<T, float>::value)
+      {
+        const CtfeValueTypedInt<uint32_t>& arg_val = args[0].get_typed_int<uint32_t>();
+        uint32_t val = arg_val.get_value();
+        result = CtfeValue(CtfeValueTypedFloat<float>(reinterpret_cast<float&>(val)), res_type);
+        return true;
+      }
+      else
+      {
+        return false;
+      }
+    }
+    else if(method_name == "_inf")
+    {
+      bool sign = args[0].get_bool().get_value();
+      if (sign)
+      {
+        result = CtfeValue(CtfeValueTypedFloat<T>(-std::numeric_limits<T>::infinity()), res_type);
+      }
+      else
+      {
+        result = CtfeValue(CtfeValueTypedFloat<T>(std::numeric_limits<T>::infinity()), res_type);
+      }
+      return true;
+    }
   }
   else if(args.size() == 0)
   {
@@ -398,6 +432,34 @@ bool CtfeValueTypedFloat<T>::run_method(pass_opt_t* opt, errorframe_t* errors, a
       }
       return true;
     }
+    else if(method_name == "f32")
+    {
+      const CtfeValueTypedFloat<T>& rec_val = recv.get_typed_float<T>();
+      CtfeValueTypedFloat<float> r = rec_val.saturation_convert<float>();
+      result = CtfeValue(r, res_type);
+      return true;
+      }
+    else if(method_name == "f32_unsafe")
+    {
+      const CtfeValueTypedFloat<T>& rec_val = recv.get_typed_float<T>();
+      CtfeValueTypedFloat<float> r = static_cast<float>(rec_val.m_val);
+      result = CtfeValue(r, res_type);
+      return true;
+    }
+    else if(method_name == "f64")
+    {
+      const CtfeValueTypedFloat<T>& rec_val = recv.get_typed_float<T>();
+      CtfeValueTypedFloat<double> r = rec_val.saturation_convert<double>();
+      result = CtfeValue(r, res_type);
+      return true;
+      }
+    else if(method_name == "f64_unsafe")
+    {
+      const CtfeValueTypedFloat<T>& rec_val = recv.get_typed_float<T>();
+      CtfeValueTypedFloat<double> r = static_cast<double>(rec_val.m_val);
+      result = CtfeValue(r, res_type);
+      return true;
+    }
     else if(method_name == "usize_unsafe")
     {
       const CtfeValueTypedFloat<T>& rec_val = recv.get_typed_float<T>();
@@ -416,6 +478,11 @@ bool CtfeValueTypedFloat<T>::run_method(pass_opt_t* opt, errorframe_t* errors, a
       {
         pony_assert(false);
       }
+      return true;
+    }
+    else if(method_name == "_inf")
+    {
+      result = CtfeValue(CtfeValueTypedFloat<T>(std::numeric_limits<T>::quiet_NaN()), res_type);
       return true;
     }
   }
