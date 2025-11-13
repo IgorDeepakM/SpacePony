@@ -21,14 +21,6 @@ CtfeValueFloat<V> CtfeValueInt<T>::cast_to_float() const
     v.low = static_cast<uint64_t>(m_val);
     v.high = static_cast<uint64_t>(m_val >> 64);
 
-    if constexpr (std::is_same<T, CtfeI128Type>::value)
-    {
-      if(m_val < 0)
-      {
-        v.is_negative = true;
-      }
-    }
-
     return static_cast<V>(lexint_double(&v));
   }
   else
