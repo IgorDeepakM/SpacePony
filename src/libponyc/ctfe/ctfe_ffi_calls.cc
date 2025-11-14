@@ -185,14 +185,14 @@ CtfeValue CtfeRunner::handle_llvm_ffi(pass_opt_t* opt, errorframe_t* errors,
 
       if(arg1.get_type_name() == "I128")
       {
-        CtfeI128Type v = arg1.get_typed_int<CtfeI128Type>().get_value();
+        CtfeI128Type v = arg1.get_int<CtfeI128Type>().get_value();
 
         high = static_cast<uint64_t>(v >> 64);
         low = static_cast<uint64_t>(v);
       }
       else if(arg1.get_type_name() == "U128")
       {
-        CtfeU128Type v = arg1.get_typed_int<CtfeU128Type>().get_value();
+        CtfeU128Type v = arg1.get_int<CtfeU128Type>().get_value();
 
         high = static_cast<uint64_t>(v >> 64);
         low = static_cast<uint64_t>(v);
