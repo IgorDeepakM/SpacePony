@@ -765,9 +765,86 @@ actor Main
     ar
 
   fun test_floating_point(exit_add: I32) =>
+    let x1 = floating_point_arithmetic_test()
+    if not x1 then
+      @pony_exitcode(exit_add + 1)
+    end
+
+    let x2 = floating_point_conversion_test()
+    if x2 != 0 then
+      @pony_exitcode(exit_add + 2 + x2)
+    end
+
+
+  fun floating_point_arithmetic_test(): Bool =>
     var x1: F64 = comptime (((-((3.0 + (4.0 * -6.0)) / 2.111)) * 33) / -34.2) % 6.1 end
     var x2: F64 = (((-((3.0 + (4.0 * -6.0)) / 2.111)) * 33) / -34.2) % 6.1
 
     if x1 != x2 then
-      @pony_exitcode(exit_add + 1)
+      return false
     end
+
+    true
+
+  fun floating_point_conversion_test(): I32 =>
+    var d2_1: F64 = comptime
+      var t2_1: I128 = 0x7FFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF
+      t2_1.f64()
+    end
+
+    var t1_1: I128 = 0x7FFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF
+    var d1_1: F64 = t1_1.f64()
+
+    if d1_1 != d2_1 then
+      return 1
+    end
+
+    var d2_2: F32 = comptime
+      var t2_2: I64 = 0x7FFFFFFF_FFFFFFFF
+      t2_2.f32()
+    end
+
+    var t1_2: I64 = 0x7FFFFFFF_FFFFFFFF
+    var d1_2: F32 = t1_2.f32()
+
+    if d1_2 != d2_2 then
+      return 2
+    end
+
+    var d2_3: I128 = comptime
+      var t2_3: F64 = 123456789.123456789
+      t2_3.i128()
+    end
+
+    var t1_3: F64 = 123456789.123456789
+    var d1_3: I128 = t1_3.i128()
+
+    if d1_3 != d2_3 then
+      return 3
+    end
+
+    var d2_4: I64 = comptime
+      var t2_4: F64 = 123456789.123456789
+      t2_4.i64()
+    end
+
+    var t1_4: F64 = 123456789.123456789
+    var d1_4: I64 = t1_4.i64()
+
+    if d1_4 != d2_4 then
+      return 4
+    end
+
+    var d2_5: U32 = comptime
+      var t2_5: F64 = 123456789.123456789
+      t2_5.u32()
+    end
+
+    var t1_5: F64 = 123456789.123456789
+    var d1_5: U32 = t1_5.u32()
+
+    if d1_5 != d2_5 then
+      return 5
+    end
+
+    0
