@@ -111,6 +111,23 @@ ast_t* CtfeRunner::get_builtin_type(pass_opt_t* opt, ast_t* ast_pos, const char*
 }
 
 
+ast_t* CtfeRunner::cache_and_get_built_type(ast_t* ast_type)
+{
+  uint64_t hash = CtfeAstType::ast_hash(ast_type);
+  auto it = m_cached_ast.find(hash);
+  if(it == m_cached_ast.end())
+  {
+    m_cached_ast.insert({ hash, ast_type });
+    return ast_type;
+  }
+  else
+  {
+    ast_free_unattached(ast_type);
+    return it->second;
+  }
+}
+
+
 void CtfeRunner::add_allocated_reference(const CtfeValue& ref)
 {
   m_allocated.push_back(ref);

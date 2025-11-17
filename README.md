@@ -367,7 +367,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 * The CTFE has taken some ideas and code from (https://github.com/lukecheeseman/ponyta) but most of the implementation is completely new. The `#postexpr` in ponyta will not be used at all and the `#` character can be used for future purposes instead.
 
-* It is possible to go really far with CTFE and the goal is to support as many expressions and types as possible. CTFE will be added to more places than only `comptime expression end`. It is also possible to try running CTFE at key places in the code. In the D language it is possible load files at compile time using `import("file.txt")` which can be used together with CTFE and similar functionality should be added to SpacePony as well.
+* It is possible to go really far with CTFE and the goal is to support as many expressions and types as possible. CTFE might be added to more places than only `comptime expression end`, which means it is also possible to try running CTFE at key places in the code. It is also possible to use CTFE in order to build up string mixins, self generating code. The D language has string mixins which can be used as a tool for meta-programming.
 
 * Note that the purpose of CTFE is not really optimizations but rather a guarantee that an expression can be evaluated at compile time. LLVM already does constant folding and can do the much of same job as CTFE. One important decision to add CTFE was to be able to have expressions in value type parameters in generics.
 
@@ -390,7 +390,34 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   Why having `=` in front of the expression and not the expression directly? Unfortunately it is a parsing technicality, the `=` is needed for making the parser selecting the correct rule that otherwise would ambiguous.
 
   One big problem with expressions in the type arguments is that there is no type check when they are used. Right now it just accept a type comparison as soon as an expression is encountered. The problem is that the type checks are done in passes prior to the reach pass where the CTFE is being run. Literals can be easily checked for equality, but not an expression that has not been reduced to a literal. Comparing an AST tree is too difficult, take the following example `C1[= a + b + c] is C1[= c + b + a]` which is potentially the same type but a different expression yields later in the reach pass the same result in the type argument. This was unresolved in ponyta and currently also unresolved in SpacePony. Hopefully there will be a solution to this in the future.
-  
+
+* It is possible to load and save file during compile time inside a `comptime` expression using `CompTime.load_file` and `CompTime.save_file`. What is loaded in compile time can be processed at compile time but also during runtime because the compiler can create constant object(s) of what is loaded. However, when saving data at compile time, the data must be processed at compile time for obvious reasons.
+
+  ```pony
+  comptime
+    CompTime.save_file("123456".array(), CompTimeOutputDirectory, "output.txt")
+  end
+  ```
+
+  ```pony
+  var loaded_array = comptime
+    CompTime.load_file(CompTimeWorkingDirectory, "input.txt") // This loads the data and creates a constant array object
+                                                              // Further processing can be made at compile time in order to   
+                                                              // make other constant objects based on the input data.
+  end
+  ```
+
+  ```pony
+  comptime
+    var array = CompTime.load_file(CompTimeWorkingDirectory, "input.txt") // Load the data
+
+    ... // do some processing
+
+    CompTime.save_file(array, CompTimeOutputDirectory, "output.txt") // Save processed data
+  end
+  ```
+
+
 ## Future directions
 
 ### Short term

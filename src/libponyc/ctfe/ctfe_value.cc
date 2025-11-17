@@ -3,10 +3,12 @@
 #include "ctfe_value_int_run_method.h"
 #include "ctfe_value_float_run_method.h"
 #include "ctfe_exception.h"
+#include "ctfe_comp_time_primitive.h"
 
 #include "ponyassert.h"
 #include "../pass/pass.h"
 #include "../ast/lexer.h"
+#include "../type/assemble.h"
 
 #include <algorithm>
 
@@ -226,7 +228,13 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
 {
   ast_t* new_node = NULL;
 
-  if(CtfeAstType::is_tuple(m_type))
+  if(is_empty())
+  {
+    new_node = ast_blank(TK_TRUE);
+    ast_settype(new_node, type_builtin(opt, from, "Bool"));
+    return new_node;
+  }
+  else if(CtfeAstType::is_tuple(m_type))
   {
     new_node = get_tuple().create_ast_literal_node(opt, errors, from);
   }
@@ -516,6 +524,16 @@ bool CtfeValue::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, as
   else if(CtfeAstType::is_pointer(recv.get_type_ast()))
   {
     return CtfeValuePointer::run_method(opt, errors, ast, res_type, recv, args, method_name, result, ctfeRunner);
+  }
+  else if(CtfeAstType::is_nominal(recv.get_type_ast()))
+  {
+    const string type_name = recv.get_type_name();
+
+    if(type_name == "CompTime")
+    {
+      return CtfeCompTimePrimitive::run_method(opt, errors, ast, res_type, recv, args, method_name, result,
+        ctfeRunner);
+    }
   }
 
   return false;
