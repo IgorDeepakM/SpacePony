@@ -45,4 +45,6 @@ public:
   ~CtfeRunner();
   bool run(pass_opt_t* opt, ast_t** astp);
   void add_allocated_reference(const CtfeValue& ref);
+
+  ast_t* cache_and_get_built_type(ast_t* ast_type);
 };

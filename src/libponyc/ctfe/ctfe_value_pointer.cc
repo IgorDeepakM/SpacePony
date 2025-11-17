@@ -270,9 +270,16 @@ bool CtfeValuePointer::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
       result = CtfeValue(cp, res_type);
       return true;
     }
-    if(method_name == "create")
+    else if(method_name == "create")
     {
       result = recv;
+      return true;
+    }
+    else if(method_name == "is_null")
+    {
+      CtfeValuePointer r = recv.get_pointer();
+      bool n = r.m_array == nullptr;
+      result = CtfeValue(CtfeValueBool(n), res_type);
       return true;
     }
   }

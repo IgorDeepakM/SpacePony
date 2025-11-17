@@ -1,4 +1,5 @@
 use "collections"
+use "files"
 
 use @pony_exitcode[None](code: I32)
 use @printf[I32](fmt: Pointer[U8] tag, ...)
@@ -34,7 +35,11 @@ class G1[T1: (Int & Real[T1] val), T2: (Int & Real[T2] val)]
     g1 + T1.from[T2](g2) + c + T1.from[T2](d)
 
 actor Main
+  var _env: Env
+
   new create(env: Env) =>
+    _env = env
+
     test_literal_int(0)
     test_repeat(20)
     test_while(40)
@@ -52,6 +57,7 @@ actor Main
     test_constant_object(280)
     test_constant_array(300)
     test_floating_point(320)
+    test_load_save_file(340)
 
   fun test_literal_int(exit_add: I32) =>
     // Test shift with negative numbers
@@ -848,3 +854,45 @@ actor Main
     end
 
     0
+
+  fun test_load_save_file(exit_add: I32) =>
+    comptime
+      var s11 = String.from_array(CompTime.load_file(CompTimeWorkingDirectory, "ctfe_test_file.txt"))
+      var s22: String = recover val s11.reverse() end
+      CompTime.save_file(s22.array(), CompTimeOutputDirectory, "ctfe_test_file_2.txt")
+    end
+
+    // Read the file again in runtime to verify its contents.
+    // The file that was created during comptime was written to the output
+    // directory of the executable and therefore we need the path to executable
+    // which is in the first command line argument.
+    var p: String = String
+    try
+      p = _env.args(0)?
+    end
+
+    var dir = Path.dir(p)
+
+    var file_path = "ctfe_test_file_2.txt"
+    if dir != p then
+      file_path = Path.join(dir, file_path)
+    end
+
+    var path = FilePath(FileAuth(_env.root), file_path)
+    try
+      with f = OpenFile(path) as File do
+        var ar: Array[U8] val = f.read(10)
+
+        if ar.size() != 10 then
+          @pony_exitcode(exit_add + 1)
+        end
+
+        var s33: String = String.from_array(ar)
+
+        if s33 != "9876543210" then
+          @pony_exitcode(exit_add + 2)
+        end
+      end
+    else
+      @pony_exitcode(exit_add + 3)
+    end

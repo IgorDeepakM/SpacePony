@@ -24,7 +24,7 @@ class CtfeValuePointer
 
 public:
   CtfeValuePointer(ast_t* pointer_type);
-  CtfeValuePointer(size_t size, ast_t* pointer_typ, CtfeRunner &ctfeRunner);
+  CtfeValuePointer(size_t size, ast_t* pointer_type, CtfeRunner &ctfeRunner);
   CtfeValuePointer(uint8_t *array, size_t size, ast_t* pointer_type);
   CtfeValuePointer(void *ptr, ast_t* pointer_type);
   CtfeValuePointer realloc(size_t size, size_t copy_len, CtfeRunner &ctfeRunner);
