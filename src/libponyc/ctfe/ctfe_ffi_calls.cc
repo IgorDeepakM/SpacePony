@@ -8,8 +8,7 @@
 
 using namespace std;
 
-CtfeValue CtfeRunner::handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
-    int depth)
+CtfeValue CtfeRunner::handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast_t* ast)
 {
   AST_GET_CHILDREN(ast, name, return_typeargs, args);
 
@@ -21,7 +20,7 @@ CtfeValue CtfeRunner::handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast
   ast_t* argument = ast_child(args);
   while(argument != NULL)
   {
-    CtfeValue evaluated_arg = evaluate(opt, errors, argument, depth + 1);
+    CtfeValue evaluated_arg = evaluate(opt, errors, argument);
 
     evaluated_args.push_back(evaluated_arg);
     argument = ast_sibling(argument);

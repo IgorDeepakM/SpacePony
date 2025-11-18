@@ -104,6 +104,8 @@ void pass_opt_init(pass_opt_t* options)
   options->verbosity = VERBOSITY_INFO;
   options->check.errors = errors_alloc();
   options->ast_print_width = 80;
+  options->ctfe_max_recursion = 50;
+  options->ctfe_max_duration = 120;
   frame_push(&options->check, NULL);
 }
 

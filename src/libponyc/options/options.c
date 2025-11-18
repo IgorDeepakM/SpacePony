@@ -47,6 +47,8 @@ enum
   OPT_LINKER,
   OPT_LINK_LDCMD,
   OPT_PLUGIN,
+  OPT_CTFE_MAX_RECURSION,
+  OPT_CTFE_MAX_DURATION,
 
   OPT_VERBOSE,
   OPT_PASSES,
@@ -94,6 +96,8 @@ static opt_arg_t std_args[] =
   {"linker", '\0', OPT_ARG_REQUIRED, OPT_LINKER},
   {"link-ldcmd", '\0', OPT_ARG_REQUIRED, OPT_LINK_LDCMD},
   {"plugin", '\0', OPT_ARG_REQUIRED, OPT_PLUGIN},
+  {"ctfe-max-recursion", '\0', OPT_ARG_REQUIRED, OPT_CTFE_MAX_RECURSION},
+  {"ctfe-max-duration", '\0', OPT_ARG_REQUIRED, OPT_CTFE_MAX_DURATION},
 
   {"verbose", 'V', OPT_ARG_REQUIRED, OPT_VERBOSE},
   {"pass", 'r', OPT_ARG_REQUIRED, OPT_PASSES},
@@ -170,6 +174,10 @@ static void usage(void)
     "  --plugin         Use the specified plugin(s).\n"
     "    =name\n"
     "  --define, -D     Set a compile time definition.\n"
+    "  --ctfe-max-recursion\n"
+    "    =nr\n          Sets the maximum CTFE recursion depth. (default = 50)\n"
+    "  --ctfe-max-duration\n"
+    "    =seconds\n     Sets the maximum duration of each CTFE run. (default = 120 seconds)\n"
 #ifndef NDEBUG
     "  --llvm-args      Pass LLVM-specific arguments.\n"
 #endif
@@ -342,6 +350,8 @@ ponyc_opt_process_t ponyc_opt_process(opt_state_t* s, pass_opt_t* opt,
           exit_code = EXIT_255;
         }
         break;
+      case OPT_CTFE_MAX_RECURSION: opt->ctfe_max_recursion = atoi(s->arg_val); break;
+      case OPT_CTFE_MAX_DURATION: opt->ctfe_max_duration = atoi(s->arg_val); break;
 
       case OPT_AST: *print_program_ast = true; break;
       case OPT_ASTPACKAGE: *print_package_ast = true; break;

@@ -156,6 +156,18 @@ bool CtfeAstType::is_struct(ast_t* ast)
 }
 
 
+bool CtfeAstType::is_primitive(ast_t* ast)
+{
+  ast_t* underlying_type = (ast_t*)ast_data(ast);
+  if(ast_id(underlying_type) == TK_PRIMITIVE)
+  {
+    return true;
+  }
+
+  return false;
+}
+
+
 bool CtfeAstType::is_interface(ast_t* ast)
 {
   ast_t* underlying_type = (ast_t*)ast_data(ast);
