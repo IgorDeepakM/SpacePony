@@ -175,9 +175,9 @@ static void usage(void)
     "    =name\n"
     "  --define, -D     Set a compile time definition.\n"
     "  --ctfe-max-recursion\n"
-    "    =nr\n          Sets the maximum CTFE recursion depth. (default = 50)\n"
+    "    =nr            Sets the maximum CTFE recursion depth. (default = 50)\n"
     "  --ctfe-max-duration\n"
-    "    =seconds\n     Sets the maximum duration of each CTFE run. (default = 120 seconds)\n"
+    "    =seconds       Sets the maximum duration of each CTFE run. (default = 120 seconds)\n"
 #ifndef NDEBUG
     "  --llvm-args      Pass LLVM-specific arguments.\n"
 #endif
