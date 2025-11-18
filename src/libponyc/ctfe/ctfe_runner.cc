@@ -399,7 +399,7 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors, ast
   if(m_current_recursion_depth >= m_max_recursion_depth)
   {
     ast_error_frame(errors, ast,
-      "compile time expression evaluation reached maximum method recursion depth of %d.",
+      "compile time expression evaluation reached maximum method recursion depth of %lu.",
       m_current_recursion_depth);
     throw CtfeFailToEvaluateException();
   }
@@ -434,7 +434,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
   if(m_max_duration_exceeded)
   {
     ast_error_frame(errors, expression,
-      "compile time expression evaluation exceeded the maximum duration of %d seconds",
+      "compile time expression evaluation exceeded the maximum duration of %lu seconds",
       opt->ctfe_max_duration);
     throw CtfeFailToEvaluateException();
   }
