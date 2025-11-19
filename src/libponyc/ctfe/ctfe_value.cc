@@ -228,13 +228,7 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
 {
   ast_t* new_node = NULL;
 
-  if(is_empty())
-  {
-    new_node = ast_blank(TK_TRUE);
-    ast_settype(new_node, type_builtin(opt, from, "Bool"));
-    return new_node;
-  }
-  else if(CtfeAstType::is_tuple(m_type))
+  if(CtfeAstType::is_tuple(m_type))
   {
     new_node = get_tuple().create_ast_literal_node(opt, errors, from);
   }
@@ -371,6 +365,17 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
         // We don't take the type from CtfeValue but rather CtfeValueStruct type
         return new_node;
       }
+    }
+    else if(CtfeAstType::is_primitive(m_type))
+    {
+      ast_t* obj = ast_blank(TK_CONSTANT_OBJECT);
+      ast_t* name_node = ast_blank(TK_ID);
+
+      ast_append(obj, name_node);
+      ast_t* members_node = ast_blank(TK_MEMBERS);
+      ast_append(obj, members_node);
+
+      new_node = obj;
     }
     else
     {

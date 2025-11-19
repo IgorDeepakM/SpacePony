@@ -8,10 +8,16 @@
 #include "../type/lookup.h"
 #include "../type/assemble.h"
 
+#include <thread>
+
 
 using namespace std;
 
-CtfeRunner::CtfeRunner(pass_opt_t* opt)
+CtfeRunner::CtfeRunner(pass_opt_t* opt):
+  m_max_recursion_depth{opt->ctfe_max_recursion},
+  m_current_recursion_depth{0},
+  m_max_duration_exceeded{false},
+  m_stop_thread{false}
 {
   CtfeAstType::initialize(opt);
 }
@@ -19,7 +25,7 @@ CtfeRunner::CtfeRunner(pass_opt_t* opt)
 
 CtfeRunner::~CtfeRunner()
 {
-  for (auto& elem : m_allocated)
+  for(auto& elem : m_allocated)
   {
     if(elem.is_struct())
     {
@@ -34,7 +40,7 @@ CtfeRunner::~CtfeRunner()
     }
   }
 
-  for (auto& elem : m_cached_ast)
+  for(auto& elem : m_cached_ast)
   {
     ast_free_unattached(elem.second);
   }
@@ -199,7 +205,7 @@ bool CtfeRunner::populate_struct_members(pass_opt_t* opt, errorframe_t* errors,
 
 CtfeValue CtfeRunner::call_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast_pos,
   ast_t* res_type, const char* method_name, ast_t* recv_type, CtfeValue& recv_val,
-  const vector<CtfeValue>& args, ast_t* typeargs, int depth)
+  const vector<CtfeValue>& args, ast_t* typeargs)
 {
   CtfeValue result;
   bool ret = CtfeValue::run_method(opt, errors, ast_pos, res_type, recv_val, args,
@@ -253,18 +259,10 @@ CtfeValue CtfeRunner::call_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
   ast_t* seq = ast_childidx(looked_up_ast, 6);
   if(ast_id(seq) != TK_NONE && ast_id(ast_child(seq)) != TK_COMPILE_INTRINSIC)
   {
-    try
+    return_value = evaluate(opt, errors, seq);
+    if(return_value.get_control_flow_modifier() == CtfeValue::ControlFlowModifier::Return)
     {
-      return_value = evaluate(opt, errors, seq, depth + 1);
-      if(return_value.get_control_flow_modifier() == CtfeValue::ControlFlowModifier::Return)
-      {
-        return_value.clear_control_flow_modifier();
-      }
-    }
-    catch(const CtfeException& e)
-    {
-      m_frames.pop_frame();
-      throw;
+      return_value.clear_control_flow_modifier();
     }
   }
   else
@@ -293,8 +291,7 @@ CtfeValue CtfeRunner::call_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
 }
 
 
-CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
-  ast_t* ast, int depth)
+CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast)
 {
   AST_GET_CHILDREN(ast, receiver, positional_args, named_args, question);
 
@@ -374,7 +371,7 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
       }
 
       ast_t* rec_expr = ast_child(receiver);
-      rec_val = evaluate(opt, errors, rec_expr, depth + 1);
+      rec_val = evaluate(opt, errors, rec_expr);
       method_name = ast_name(ast_sibling(rec_expr));
       recv_type = ast_type(rec_expr);
       break;
@@ -388,7 +385,7 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
   ast_t* argument = ast_child(positional_args);
   while(argument != nullptr)
   {
-    CtfeValue evaluated_arg = evaluate(opt, errors, argument, depth + 1);
+    CtfeValue evaluated_arg = evaluate(opt, errors, argument);
 
     args.push_back(evaluated_arg);
     argument = ast_sibling(argument);
@@ -398,8 +395,19 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
 
   ast_t* result_type = ast_type(ast);
 
+  m_current_recursion_depth++;
+  if(m_current_recursion_depth >= m_max_recursion_depth)
+  {
+    ast_error_frame(errors, ast,
+      "compile time expression evaluation reached maximum method recursion depth of %lu.",
+      m_current_recursion_depth);
+    throw CtfeFailToEvaluateException();
+  }
+
   return_value = call_method(opt, errors, ast, result_type, method_name, recv_type, rec_val, args,
-    typeargs, depth);
+    typeargs);
+
+  m_current_recursion_depth--;
 
   if(is_machine_word(result_type) || ::is_pointer(result_type))
   {
@@ -419,15 +427,17 @@ CtfeValue CtfeRunner::evaluate_method(pass_opt_t* opt, errorframe_t* errors,
   }
 }
 
-CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* expression, int depth)
+CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* expression)
 {
-  /*if(depth >= opt->evaluation_depth)
+  // When debugging you might want to comment this out because it is likely to time out
+  // during a debugging session.
+  if(m_max_duration_exceeded)
   {
     ast_error_frame(errors, expression,
-      "compile-time expression evaluation depth exceeds maximum of %d",
-       opt->evaluation_depth);
-    return NULL;
-  }*/
+      "compile time expression evaluation exceeded the maximum duration of %lu seconds",
+      opt->ctfe_max_duration);
+    throw CtfeFailToEvaluateException();
+  }
 
   switch(ast_id(expression))
   {
@@ -531,17 +541,17 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     }
 
     case TK_VALUEFORMALARG:
-      return evaluate(opt, errors, ast_child(expression), depth);
+      return evaluate(opt, errors, ast_child(expression));
 
     case TK_CALL:
-      return evaluate_method(opt, errors, expression, depth);
+      return evaluate_method(opt, errors, expression);
 
     case TK_SEQ:
     {
       CtfeValue evaluated;
       for(ast_t* p = ast_child(expression); p != nullptr; p = ast_sibling(p))
       {
-        evaluated = evaluate(opt, errors, p, depth + 1);
+        evaluated = evaluate(opt, errors, p);
 
         if(evaluated.get_control_flow_modifier() != CtfeValue::ControlFlowModifier::None)
         {
@@ -554,14 +564,14 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     case TK_IF:
     {
       AST_GET_CHILDREN(expression, condition, then_branch, else_branch);
-      CtfeValue condition_evaluated = evaluate(opt, errors, condition, depth + 1);
+      CtfeValue condition_evaluated = evaluate(opt, errors, condition);
 
       pony_assert(condition_evaluated.is_bool());
 
       m_frames.push_frame();
       CtfeValue ret = condition_evaluated.get_bool().get_value() ?
-            evaluate(opt, errors, then_branch, depth + 1):
-            evaluate(opt, errors, else_branch, depth + 1);
+            evaluate(opt, errors, then_branch):
+            evaluate(opt, errors, else_branch);
       m_frames.pop_frame();
 
       return ret;
@@ -570,7 +580,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     case TK_RETURN:
     {
       AST_GET_CHILDREN(expression, return_expr);
-      CtfeValue ret = evaluate(opt, errors, return_expr, depth + 1);
+      CtfeValue ret = evaluate(opt, errors, return_expr);
       ret.set_control_flow_modifier(CtfeValue::ControlFlowModifier::Return);
       return ret;
     }
@@ -609,7 +619,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     case TK_FLETREF:
     {
       AST_GET_CHILDREN(expression, receiver, id);
-      CtfeValue evaluated_receiver = evaluate(opt, errors, receiver, depth + 1);
+      CtfeValue evaluated_receiver = evaluate(opt, errors, receiver);
 
       if(evaluated_receiver.is_none())
       {
@@ -645,10 +655,10 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     {
       AST_GET_CHILDREN(expression, left, right);
 
-      CtfeValue left_value = evaluate(opt, errors, left, depth + 1);
-      CtfeValue right_value = evaluate(opt, errors, right, depth + 1);
+      CtfeValue left_value = evaluate(opt, errors, left);
+      CtfeValue right_value = evaluate(opt, errors, right);
 
-      left_side_assign(opt, errors, left, right_value, depth + 1);
+      left_side_assign(opt, errors, left, right_value);
 
       return left_value;
     }
@@ -657,7 +667,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     {
       AST_GET_CHILDREN(expression, cond, thenbody, elsebody);
 
-      CtfeValue evaluated_cond = evaluate(opt, errors, cond, depth + 1);
+      CtfeValue evaluated_cond = evaluate(opt, errors, cond);
 
       pony_assert(evaluated_cond.is_bool());
 
@@ -665,7 +675,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       // else
       if(evaluated_cond.get_bool().get_value() == false)
       {
-        return evaluate(opt, errors, elsebody, depth + 1);
+        return evaluate(opt, errors, elsebody);
       }
 
       // the condition held so evaluate the while returning the file iteration
@@ -674,7 +684,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       while(evaluated_cond.get_bool().get_value() == true)
       {
         m_frames.push_frame();
-        evaluated_while = evaluate(opt, errors, thenbody, depth + 1);
+        evaluated_while = evaluate(opt, errors, thenbody);
         m_frames.pop_frame();
 
         CtfeValue::ControlFlowModifier modifier = evaluated_while.get_control_flow_modifier();
@@ -693,7 +703,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
           evaluated_while.clear_control_flow_modifier();
         }
 
-        evaluated_cond = evaluate(opt, errors, cond, depth + 1);
+        evaluated_cond = evaluate(opt, errors, cond);
       }
 
       return evaluated_while;
@@ -709,7 +719,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     case TK_BREAK:
     {
       AST_GET_CHILDREN(expression, break_expr);
-      CtfeValue ret = evaluate(opt, errors, break_expr, depth + 1);
+      CtfeValue ret = evaluate(opt, errors, break_expr);
       ret.set_control_flow_modifier(CtfeValue::ControlFlowModifier::Break);
       return ret;
     }
@@ -725,10 +735,10 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     case TK_TRY_NO_CHECK:
     {
       AST_GET_CHILDREN(expression, trybody, elsebody);
-      CtfeValue evaluated_try = evaluate(opt, errors, trybody, depth + 1);
+      CtfeValue evaluated_try = evaluate(opt, errors, trybody);
       if(evaluated_try.get_control_flow_modifier() == CtfeValue::ControlFlowModifier::Error)
       {
-        evaluated_try = evaluate(opt, errors, elsebody, depth + 1);
+        evaluated_try = evaluate(opt, errors, elsebody);
       }
 
       return evaluated_try;
@@ -738,7 +748,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     {
       AST_GET_CHILDREN(expression, repeat_body, cond, elsebody);
 
-      CtfeValue evaluated_cond = evaluate(opt, errors, cond, depth + 1);
+      CtfeValue evaluated_cond = evaluate(opt, errors, cond);
 
       CtfeValue repeat_value;
       bool last_was_from_continue = false;
@@ -748,7 +758,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
         last_was_from_continue = false;
 
         m_frames.push_frame();
-        repeat_value = evaluate(opt, errors, repeat_body, depth + 1);
+        repeat_value = evaluate(opt, errors, repeat_body);
         m_frames.pop_frame();
 
         CtfeValue::ControlFlowModifier modifier = repeat_value.get_control_flow_modifier();
@@ -768,14 +778,14 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
           last_was_from_continue = true;
         }
 
-        evaluated_cond = evaluate(opt, errors, cond, depth + 1);
+        evaluated_cond = evaluate(opt, errors, cond);
 
       }while(evaluated_cond.get_bool().get_value() == false);
 
       if(last_was_from_continue)
       {
         m_frames.push_frame();
-        repeat_value = evaluate(opt, errors, elsebody, depth + 1);
+        repeat_value = evaluate(opt, errors, elsebody);
         m_frames.pop_frame();
       }
 
@@ -800,7 +810,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       size_t i = 0;
       while(elem != nullptr)
       {
-        CtfeValue evaluated_elem = evaluate(opt, errors, elem, depth + 1);
+        CtfeValue evaluated_elem = evaluate(opt, errors, elem);
 
         if(!tuple.update_value(i, evaluated_elem))
         {
@@ -820,7 +830,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     {
       AST_GET_CHILDREN(expression, receiver, nr);
 
-      CtfeValue evaluated_rec = evaluate(opt, errors, receiver, depth + 1);
+      CtfeValue evaluated_rec = evaluate(opt, errors, receiver);
 
       pony_assert(evaluated_rec.is_tuple());
 
@@ -843,13 +853,13 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     case TK_IFTYPE_SET:
     {
       AST_GET_CHILDREN(expression, iftype, else_clause);
-      CtfeValue ret = evaluate(opt, errors, iftype, depth + 1);
+      CtfeValue ret = evaluate(opt, errors, iftype);
       if(ret.is_empty())
       {
         if(!ret.get_bool().get_value())
         {
           m_frames.push_frame();
-          ret = evaluate(opt, errors, else_clause, depth + 1);
+          ret = evaluate(opt, errors, else_clause);
           m_frames.pop_frame();
         }
         else
@@ -869,7 +879,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       if(is_subtype(left, right, nullptr, opt))
       {
         m_frames.push_frame();
-        ret = evaluate(opt, errors, then, depth + 1);
+        ret = evaluate(opt, errors, then);
         m_frames.pop_frame();
       }
       else
@@ -882,12 +892,12 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     }
 
     case TK_FFICALL:
-      return handle_ffi_call(opt, errors, expression, depth + 1);
+      return handle_ffi_call(opt, errors, expression);
 
     case TK_RECOVER:
     case TK_CONSUME:
     {
-      CtfeValue ret = evaluate(opt, errors, ast_childidx(expression, 1), depth + 1);
+      CtfeValue ret = evaluate(opt, errors, ast_childidx(expression, 1));
       ret.set_type_ast(ast_type(expression));
       return ret;
     }
@@ -895,7 +905,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     case TK_MATCH:
     {
       AST_GET_CHILDREN(expression, matchref, cases, elsebody);
-      CtfeValue match = evaluate(opt, errors, matchref, depth + 1);
+      CtfeValue match = evaluate(opt, errors, matchref);
 
       CtfeValue ret;
 
@@ -946,8 +956,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
 
               ast_t* pattern_elem = ast_child(pattern_elem_seq);
 
-              if(!match_eq_element(opt, errors, expression, match_val, pattern_elem,
-                the_case, depth))
+              if(!match_eq_element(opt, errors, expression, match_val, pattern_elem, the_case))
               {
                 element_match = false;
                 break;
@@ -960,8 +969,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
           }
           else
           {
-            matched = match_eq_element(opt, errors, expression, match, pattern,
-              the_case, depth);
+            matched = match_eq_element(opt, errors, expression, match, pattern, the_case);
           }
 
           // if the pattern match proceed to check the guard
@@ -969,13 +977,13 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
           {
             if(ast_id(guard) != TK_NONE)
             {
-              CtfeValue eval_guard = evaluate(opt, errors, guard, depth + 1);
+              CtfeValue eval_guard = evaluate(opt, errors, guard);
 
               pony_assert(eval_guard.is_bool());
 
               if(eval_guard.get_bool().get_value())
               {
-                ret = evaluate(opt, errors, body, depth + 1);
+                ret = evaluate(opt, errors, body);
               }
               else
               {
@@ -984,7 +992,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
             }
             else
             {
-              ret = evaluate(opt, errors, body, depth + 1);
+              ret = evaluate(opt, errors, body);
             }
           }
 
@@ -997,7 +1005,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       if(!matched)
       {
         m_frames.push_frame();
-        ret = evaluate(opt, errors, elsebody, depth + 1);
+        ret = evaluate(opt, errors, elsebody);
         m_frames.pop_frame();
       }
 
@@ -1007,8 +1015,8 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     case TK_IS:
     {
       AST_GET_CHILDREN(expression, recv, that);
-      CtfeValue recv_value = evaluate(opt, errors, recv, depth + 1);
-      CtfeValue that_value = evaluate(opt, errors, that, depth + 1);
+      CtfeValue recv_value = evaluate(opt, errors, recv);
+      CtfeValue that_value = evaluate(opt, errors, that);
 
       bool is_sub = is_subtype(recv_value.get_type_ast(),
         that_value.get_type_ast(), nullptr, opt);
@@ -1021,7 +1029,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
         vector<CtfeValue> args = { that_value };
 
         CtfeValue equal = call_method(opt, errors, expression, ast_type(expression), stringtab("eq"),
-                recv_value.get_type_ast(), recv_value, args, nullptr, depth + 1);
+                recv_value.get_type_ast(), recv_value, args, nullptr);
 
         return equal;
       }
@@ -1031,7 +1039,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
 
     case TK_COMPTIME:
       // Comptime inside another comptime, no problem we just evaulate that as well
-      return evaluate(opt, errors, ast_child(expression), depth + 1);
+      return evaluate(opt, errors, ast_child(expression));
 
     default:
       ast_error_frame(errors, expression,
@@ -1044,8 +1052,8 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
 }
 
 
-void CtfeRunner::left_side_assign(pass_opt_t* opt, errorframe_t* errors,
-  ast_t* left, CtfeValue& right_val, int depth)
+void CtfeRunner::left_side_assign(pass_opt_t* opt, errorframe_t* errors, ast_t* left,
+  CtfeValue& right_val)
 {
   switch(ast_id(left))
   {
@@ -1069,7 +1077,7 @@ void CtfeRunner::left_side_assign(pass_opt_t* opt, errorframe_t* errors,
     case TK_FLETREF:
     {
       AST_GET_CHILDREN(left, receiver, id);
-      CtfeValue evaluated_receiver = evaluate(opt, errors, receiver, depth + 1);
+      CtfeValue evaluated_receiver = evaluate(opt, errors, receiver);
 
       const char* var_name = ast_name(id);
 
@@ -1112,7 +1120,7 @@ void CtfeRunner::left_side_assign(pass_opt_t* opt, errorframe_t* errors,
           throw CtfeFailToEvaluateException();
         }
 
-        left_side_assign(opt, errors, elem, right_tuple_value, depth + 1);
+        left_side_assign(opt, errors, elem, right_tuple_value);
 
         i++;
         seq_elem = ast_sibling(seq_elem);
@@ -1130,7 +1138,7 @@ void CtfeRunner::left_side_assign(pass_opt_t* opt, errorframe_t* errors,
 
 
 bool CtfeRunner::match_eq_element(pass_opt_t* opt, errorframe_t* errors, ast_t* ast_pos,
-  CtfeValue &match, ast_t* pattern, ast_t* the_case, int depth)
+  CtfeValue &match, ast_t* pattern, ast_t* the_case)
 {
   if(ast_id(pattern) == TK_DONTCAREREF)
   {
@@ -1155,14 +1163,14 @@ bool CtfeRunner::match_eq_element(pass_opt_t* opt, errorframe_t* errors, ast_t* 
   }
   else
   {
-    CtfeValue evaluated_pattern = evaluate(opt, errors, pattern, depth + 1);
+    CtfeValue evaluated_pattern = evaluate(opt, errors, pattern);
 
     vector<CtfeValue> args = { evaluated_pattern };
 
     ast_t* res_type = get_builtin_type(opt, the_case, "Bool");
 
     CtfeValue equal = call_method(opt, errors, ast_pos, res_type, stringtab("eq"),
-      match.get_type_ast(), match, args, nullptr, depth + 1);
+      match.get_type_ast(), match, args, nullptr);
 
     pony_assert(equal.is_bool());
 
@@ -1218,14 +1226,29 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
   errorframe_t errors = nullptr;
   bool failed = false;
 
+  // Start a thread with a condition variable that just sits and waits until a timeout
+  auto thread = std::thread([&]()
+  {
+    auto locked = unique_lock<mutex>(m_mutex);
+
+    while(!m_stop_thread)
+    {
+      auto result = m_terminate.wait_until(locked,
+        chrono::system_clock::now() + chrono::seconds(opt->ctfe_max_duration));
+
+      if(result == cv_status::timeout) {
+        m_max_duration_exceeded = true;
+      }
+    }
+  });
+
   try
   {
-    CtfeValue evaluated = evaluate(opt, &errors, ast, 0);
+    CtfeValue evaluated = evaluate(opt, &errors, ast);
     ast_t* new_literal = evaluated.create_ast_literal_node(opt, &errors, ast);
     if(new_literal != nullptr)
     {
       ast_replace(astp, new_literal);
-      return true;
     }
     else
     {
@@ -1235,6 +1258,16 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
   catch(const CtfeException& ex)
   {
     failed = true;
+  }
+
+  {
+    auto locked = unique_lock<mutex>(m_mutex);
+    m_stop_thread = true;
+  }
+  m_terminate.notify_one();
+  if(thread.joinable())
+  {
+    thread.join();
   }
 
   if(failed)
@@ -1295,5 +1328,5 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
   cache_ast(ast, evaluated);
   ast_replace(astp, evaluated);*/
 
-  return false;
+  return !failed;
 }

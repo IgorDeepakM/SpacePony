@@ -750,11 +750,9 @@ static LLVMValueRef gen_copy_constant_object(compile_t* c, reach_type_t* t, ast_
 {
   ast_t* members = ast_childidx(ast, 1);
 
-  ast_t* underlying_type = (ast_t*)ast_data(t->ast);
-
   uint32_t field_count = t->field_count;
   size_t member_index = 0;
-  if(ast_id(underlying_type) == TK_CLASS)
+  if(t->underlying == TK_CLASS)
   {
     field_count++;
     member_index++;
@@ -781,7 +779,7 @@ static LLVMValueRef gen_copy_constant_object(compile_t* c, reach_type_t* t, ast_
       {
         ast_t* member_underlying_type = (ast_t*)ast_data(ast_type(member_obj));
         if(ast_id(member_underlying_type) == TK_STRUCT ||
-           ast_id(underlying_type) == TK_CLASS)
+           t->underlying == TK_CLASS)
         {
           ast_t* member_type = t->fields[reach_index].ast;
 
@@ -827,16 +825,21 @@ LLVMValueRef gen_constant_object(compile_t* c, ast_t* ast)
 
   ast_t* r_type = deferred_reify(c->frame->reify, ast_type(ast), c->opt);
   reach_type_t* t = reach_type(c->reach, r_type, c->opt);
-  ast_t* underlying_type = (ast_t*)ast_data(r_type);
   ast_free_unattached(r_type);
+
+  compile_type_t* c_t = (compile_type_t*)t->c_type;
+
+  if(t->underlying == TK_PRIMITIVE)
+  {
+    return c_t->instance;
+  }
 
   const char* obj_name = ast_name(ast_child(ast));
   LLVMValueRef ret = LLVMGetNamedGlobal(c->module, obj_name);
   if(ret == NULL)
   {
-    compile_type_t* c_t = (compile_type_t*)t->c_type;
     uint32_t field_count = t->field_count;
-    if(ast_id(underlying_type) == TK_CLASS)
+    if(t->underlying == TK_CLASS)
     {
       field_count++;
     }
@@ -845,7 +848,7 @@ LLVMValueRef gen_constant_object(compile_t* c, ast_t* ast)
     LLVMValueRef* args = (LLVMValueRef*)ponyint_pool_alloc_size(buf_size);
 
     size_t member_index = 0;
-    if(ast_id(underlying_type) == TK_CLASS)
+    if(t->underlying == TK_CLASS)
     {
       args[member_index] = c_t->desc;
       member_index++;

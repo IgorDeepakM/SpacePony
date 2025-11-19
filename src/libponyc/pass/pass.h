@@ -292,6 +292,9 @@ typedef struct pass_opt_t
 
   verbosity_level verbosity;
 
+  size_t ctfe_max_recursion;
+  size_t ctfe_max_duration;
+
   size_t ast_print_width;
   bool allow_test_symbols;
   bool parse_trace;

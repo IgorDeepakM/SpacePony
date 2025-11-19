@@ -9,6 +9,8 @@
 
 #include <vector>
 #include <map>
+#include <chrono>
+#include <condition_variable>
 
 class CtfeRunner
 {
@@ -16,20 +18,27 @@ class CtfeRunner
   std::vector<CtfeValue> m_allocated;
   std::map<uint64_t, ast_t*> m_cached_ast;
 
+  size_t m_max_recursion_depth;
+  size_t m_current_recursion_depth;
+  volatile bool m_max_duration_exceeded;
+  std::condition_variable m_terminate;
+  std::mutex m_mutex;
+  volatile bool m_stop_thread;
+
   CtfeValue call_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast_pos, ast_t* res_type,
     const char* method_name, ast_t* recv_type, CtfeValue& recv_val,
-  const std::vector<CtfeValue>& args, ast_t* typeargs, int depth);
-  CtfeValue evaluate_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, int depth);
-  CtfeValue evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* expression, int depth);
+  const std::vector<CtfeValue>& args, ast_t* typeargs);
+  CtfeValue evaluate_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast);
+  CtfeValue evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* expression);
   bool populate_struct_members(pass_opt_t* opt, errorframe_t* errors, CtfeValueStruct* s,
     ast_t* members);
   void left_side_assign(pass_opt_t* opt, errorframe_t* errors, ast_t* left,
-    CtfeValue& right_val, int depth);
+    CtfeValue& right_val);
   bool match_eq_element(pass_opt_t* opt, errorframe_t* errors, ast_t* ast_pos,
-    CtfeValue &match, ast_t* pattern, ast_t* the_case, int depth);
+    CtfeValue &match, ast_t* pattern, ast_t* the_case);
   bool contains_valueparamref(ast_t* ast);
 
-  CtfeValue handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, int depth);
+  CtfeValue handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast_t* ast);
   CtfeValue handle_ffi_ptr_ptr_size(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
     ast_t* return_type, const std::string& ffi_name, const std::vector<CtfeValue>& evaluated_args);
   CtfeValue handle_llvm_ffi(pass_opt_t* opt, errorframe_t* errors,

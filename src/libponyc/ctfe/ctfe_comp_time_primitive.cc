@@ -156,6 +156,8 @@ bool CtfeCompTimePrimitive::run_method(pass_opt_t* opt, errorframe_t* errors, as
         throw CtfeFailToEvaluateException();
       }
 
+      // The result type is None from save_file so we need to return the primitive type
+      result = CtfeValue(res_type);
       return true;
     }
   }
