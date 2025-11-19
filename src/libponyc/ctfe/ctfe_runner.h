@@ -36,6 +36,8 @@ class CtfeRunner
     CtfeValue& right_val);
   bool match_eq_element(pass_opt_t* opt, errorframe_t* errors, ast_t* ast_pos,
     CtfeValue &match, ast_t* pattern, ast_t* the_case);
+  bool is_operator(pass_opt_t* opt, errorframe_t* errors, ast_t* ast_pos, CtfeValue& left,
+    const CtfeValue& right);
   bool contains_valueparamref(ast_t* ast);
 
   CtfeValue handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast_t* ast);

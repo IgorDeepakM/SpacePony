@@ -1018,24 +1018,9 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       CtfeValue recv_value = evaluate(opt, errors, recv);
       CtfeValue that_value = evaluate(opt, errors, that);
 
-      bool is_sub = is_subtype(recv_value.get_type_ast(),
-        that_value.get_type_ast(), nullptr, opt);
+      bool is_result = is_operator(opt, errors, expression, recv_value, that_value);
 
-      // A primitive can only be matched on type basis and has no value except the
-      // built in machine word types
-      if((!CtfeAstType::is_primitive(recv_value.get_type_ast()) ||
-          CtfeAstType::is_machine_word(recv_value.get_type_ast()))
-         && is_sub)
-      {
-        vector<CtfeValue> args = { that_value };
-
-        CtfeValue equal = call_method(opt, errors, expression, ast_type(expression), stringtab("eq"),
-                recv_value.get_type_ast(), recv_value, args, nullptr);
-
-        return equal;
-      }
-
-      return CtfeValue(CtfeValueBool(is_sub), ast_type(expression));
+      return CtfeValue(CtfeValueBool(is_result), ast_type(expression));
     }
 
     case TK_COMPTIME:
@@ -1177,6 +1162,134 @@ bool CtfeRunner::match_eq_element(pass_opt_t* opt, errorframe_t* errors, ast_t* 
 
     return equal.get_bool().get_value();
   }
+}
+
+
+bool CtfeRunner::is_operator(pass_opt_t* opt, errorframe_t* errors, ast_t* ast_pos,
+  CtfeValue& left, const CtfeValue& right)
+{
+  ast_t* left_type = left.get_type_ast();
+  ast_t* right_type = left.get_type_ast();
+
+  bool is_sub = is_subtype(left_type, right_type, nullptr, opt);
+
+  if(is_sub)
+  {
+    if(CtfeAstType::is_nominal(left_type))
+    {
+      if(CtfeAstType::is_primitive(left_type))
+      {
+        if(CtfeAstType::is_machine_word(left_type))
+        {
+          vector<CtfeValue> args = { right };
+
+          ast_t* bool_type_ast = type_builtin(opt, ast_pos, "Bool");
+          CtfeValue equal = call_method(opt, errors, ast_pos, bool_type_ast, stringtab("eq"),
+            left_type, left, args, nullptr);
+
+          return equal.get_bool().get_value();
+        }
+
+        // If we end up here that means it is a primitive and not machine word
+        // and the type comparison is the only thing we need and we can fall through
+        // to the last return.
+      }
+      else if(CtfeAstType::is_struct(left_type))
+      {
+        ast_t* underlying_left = (ast_t*)ast_data(left_type);
+        ast_t* underlying_right = (ast_t*)ast_data(right_type);
+
+        ast_t* members_left = ast_childidx(underlying_left, 4);
+        ast_t* members_right = ast_childidx(underlying_left, 4);
+
+        if(ast_childcount(members_left) != ast_childcount(members_right))
+        {
+          return false;
+        }
+
+        CtfeValueStruct* left_s = left.get_struct_ref();
+        CtfeValueStruct* right_s = right.get_struct_ref();
+
+        ast_t* member = ast_child(members_left);
+
+        while(member != nullptr)
+        {
+          switch(ast_id(member))
+          {
+          case TK_FVAR:
+          case TK_FLET:
+          case TK_EMBED:
+          {
+            const char* var_name = ast_name(ast_child(member));
+            CtfeValue left_val;
+            if(!left_s->get_value(var_name, left_val))
+            {
+              pony_assert(false);
+            }
+
+            CtfeValue right_val;
+            if(!right_s->get_value(var_name, right_val))
+            {
+              pony_assert(false);
+            }
+
+            if(!is_operator(opt, errors, ast_pos, left_val, right_val))
+            {
+              return false;
+            }
+
+            break;
+          }
+
+          default:
+            break;
+          }
+
+          member = ast_sibling(member);
+        }
+      }
+      else
+      {
+        pony_assert(false);
+      }
+    }
+    else if(CtfeAstType::is_tuple(left_type))
+    {
+      CtfeValueTuple left_tuple = left.get_tuple();
+      CtfeValueTuple right_tuple = right.get_tuple();
+
+      if(left_tuple.size() != right_tuple.size())
+      {
+        return false;
+      }
+
+      for(size_t i = 0; i < left_tuple.size(); i++)
+      {
+        CtfeValue left_val;
+        if(!left_tuple.get_value(i, left_val))
+        {
+          pony_assert(false);
+        }
+
+        CtfeValue right_val;
+        if(!right_tuple.get_value(i, right_val))
+        {
+          pony_assert(false);
+        }
+
+        if(!is_operator(opt, errors, ast_pos, left_val, right_val))
+        {
+          return false;
+        }
+      }
+    }
+    else
+    {
+      pony_assert(false);
+    }
+  }
+
+  return is_sub;
 }
 
 
