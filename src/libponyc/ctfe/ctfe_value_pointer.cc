@@ -176,7 +176,7 @@ CtfeValue CtfeValuePointer::_delete(size_t n, size_t len)
 }
 
 
-CtfeValuePointer CtfeValuePointer::copy_to(CtfeValuePointer& that, size_t len)
+CtfeValuePointer CtfeValuePointer::copy_to(CtfeValuePointer& that, size_t len) const
 {
   if(len > m_size || len > that.m_size)
   {
@@ -207,14 +207,14 @@ bool CtfeValuePointer::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
   {
     if(method_name == "update")
     {
-      CtfeValuePointer rec_val = recv.get_pointer();
+      CtfeValuePointer& rec_val = recv.get_pointer();
       uint64_t pos = args[0].to_uint64();
       result = rec_val.update(pos, args[1]);
       return true;
     }
     else if(method_name == "_copy_to")
     {
-      CtfeValuePointer rec_val = recv.get_pointer();
+      const CtfeValuePointer& rec_val = recv.get_pointer();
       CtfeValuePointer to = args[0].get_pointer();
       uint64_t len = args[1].to_uint64();
       CtfeValuePointer ptr = rec_val.copy_to(to, len);
@@ -223,7 +223,7 @@ bool CtfeValuePointer::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
     }
     else if(method_name == "realloc")
     {
-      CtfeValuePointer rec_val = recv.get_pointer();
+      CtfeValuePointer& rec_val = recv.get_pointer();
       uint64_t size = args[0].to_uint64();
       uint64_t copy_len = args[1].to_uint64();
       CtfeValuePointer ptr = rec_val.realloc(size, copy_len, ctfeRunner);
@@ -235,24 +235,71 @@ bool CtfeValuePointer::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
   {
     if(method_name == "alloc")
     {
-      CtfeValuePointer rec_val = recv.get_pointer();
       uint64_t size = args[0].to_uint64();
       result = CtfeValue(CtfeValuePointer(size, res_type, ctfeRunner), res_type);
       return true;
     }
     else if(method_name == "apply")
     {
-      CtfeValuePointer rec_val = recv.get_pointer();
+      const CtfeValuePointer& rec_val = recv.get_pointer();
       uint64_t pos = args[0].to_uint64();
       result = rec_val.apply(pos);
       return true;
     }
     else if(method_name == "pointer_at_index")
     {
-      CtfeValuePointer rec_val = recv.get_pointer();
+      const CtfeValuePointer& rec_val = recv.get_pointer();
       uint64_t pos = args[0].to_uint64();
       CtfeValuePointer ptr = rec_val.pointer_at_index(pos);
       result = CtfeValue(ptr, res_type);
+      return true;
+    }
+    else if(method_name == "eq")
+    {
+      const CtfeValuePointer& rec_val = recv.get_pointer();
+      const CtfeValuePointer& first_arg = args[0].get_pointer();
+      CtfeValueBool r = rec_val.eq(first_arg);
+      result = CtfeValue(r, res_type);
+      return true;
+    }
+    else if(method_name == "ne")
+    {
+      const CtfeValuePointer& rec_val = recv.get_pointer();
+      const CtfeValuePointer& first_arg = args[0].get_pointer();
+      CtfeValueBool r = rec_val.ne(first_arg);
+      result = CtfeValue(r, res_type);
+      return true;
+    }
+    else if(method_name == "lt")
+    {
+      const CtfeValuePointer& rec_val = recv.get_pointer();
+      const CtfeValuePointer& first_arg = args[0].get_pointer();
+      CtfeValueBool r = rec_val.lt(first_arg);
+      result = CtfeValue(r, res_type);
+      return true;
+    }
+    else if(method_name == "le")
+    {
+      const CtfeValuePointer& rec_val = recv.get_pointer();
+      const CtfeValuePointer& first_arg = args[0].get_pointer();
+      CtfeValueBool r = rec_val.le(first_arg);
+      result = CtfeValue(r, res_type);
+      return true;
+    }
+    else if(method_name == "gt")
+    {
+      const CtfeValuePointer& rec_val = recv.get_pointer();
+      const CtfeValuePointer& first_arg = args[0].get_pointer();
+      CtfeValueBool r = rec_val.gt(first_arg);
+      result = CtfeValue(r, res_type);
+      return true;
+    }
+    else if(method_name == "ge")
+    {
+      const CtfeValuePointer& rec_val = recv.get_pointer();
+      const CtfeValuePointer& first_arg = args[0].get_pointer();
+      CtfeValueBool r = rec_val.ge(first_arg);
+      result = CtfeValue(r, res_type);
       return true;
     }
   }
@@ -265,7 +312,7 @@ bool CtfeValuePointer::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
     }
     else if(method_name == "convert")
     {
-      CtfeValuePointer from = recv.get_pointer();
+      const CtfeValuePointer& from = recv.get_pointer();
       CtfeValuePointer cp = CtfeValuePointer(from.m_array, from.m_size, res_type);
       result = CtfeValue(cp, res_type);
       return true;
@@ -277,7 +324,7 @@ bool CtfeValuePointer::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
     }
     else if(method_name == "is_null")
     {
-      CtfeValuePointer r = recv.get_pointer();
+      const CtfeValuePointer& r = recv.get_pointer();
       bool n = r.m_array == nullptr;
       result = CtfeValue(CtfeValueBool(n), res_type);
       return true;
