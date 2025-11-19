@@ -1021,10 +1021,11 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       bool is_sub = is_subtype(recv_value.get_type_ast(),
         that_value.get_type_ast(), nullptr, opt);
 
-      ast_t* underlying_type = (ast_t*)ast_data(ast_type(recv));
-
-      // None can be matched on type basis, but has no value
-      if(!recv_value.is_none() && is_sub)
+      // A primitive can only be matched on type basis and has no value except the
+      // built in machine word types
+      if((!CtfeAstType::is_primitive(recv_value.get_type_ast()) ||
+          CtfeAstType::is_machine_word(recv_value.get_type_ast()))
+         && is_sub)
       {
         vector<CtfeValue> args = { that_value };
 
