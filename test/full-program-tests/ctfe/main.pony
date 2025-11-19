@@ -34,6 +34,8 @@ class G1[T1: (Int & Real[T1] val), T2: (Int & Real[T2] val)]
   fun compute[c: T1](d: T2): T1 =>
     g1 + T1.from[T2](g2) + c + T1.from[T2](d)
 
+primitive Something
+
 actor Main
   var _env: Env
 
@@ -58,6 +60,7 @@ actor Main
     test_constant_array(300)
     test_floating_point(320)
     test_load_save_file(340)
+    test_primitive_union(360)
 
   fun test_literal_int(exit_add: I32) =>
     // Test shift with negative numbers
@@ -895,4 +898,61 @@ actor Main
       end
     else
       @pony_exitcode(exit_add + 3)
+    end
+
+  fun test_primitive_union(exit_add: I32) =>
+    var c1 = comptime union_type_return(0) end
+
+    if match_union(c1) != 0 then
+      @pony_exitcode(exit_add + 1)
+    end
+
+    c1 = comptime union_type_return(1) end
+
+    if match_union(c1) != 1 then
+      @pony_exitcode(exit_add + 2)
+    end
+
+    c1 = comptime union_type_return(33) end
+
+    if match_union(c1) != 33 then
+      @pony_exitcode(exit_add + 3)
+    end
+
+    var d1 = comptime match_union(union_type_return(0)) end
+
+    if d1 != 0 then
+      @pony_exitcode(exit_add + 4)
+    end
+
+    d1 = comptime match_union(union_type_return(1)) end
+
+    if d1 != 1 then
+      @pony_exitcode(exit_add + 5)
+    end
+
+    d1 = comptime match_union(union_type_return(33)) end
+
+    if d1 != 33 then
+      @pony_exitcode(exit_add + 6)
+    end
+
+  fun union_type_return(x: I32): (None | Something | I32) =>
+    match x
+    | 0 => None
+    | 1 => Something
+    else
+      x
+    end
+
+  fun match_union(xx: (None | Something | I32)): I32 =>
+    match xx
+    | None => I32(0)
+    | Something => I32(1)
+    else
+      try
+        (xx as I32)
+      else
+        I32(0xffff)
+      end
     end
