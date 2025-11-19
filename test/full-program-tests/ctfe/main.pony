@@ -36,6 +36,12 @@ class G1[T1: (Int & Real[T1] val), T2: (Int & Real[T2] val)]
 
 primitive Something
 
+class Is1
+  var x: I32
+
+  new create(x': I32) =>
+    x = x'
+
 actor Main
   var _env: Env
 
@@ -61,6 +67,7 @@ actor Main
     test_floating_point(320)
     test_load_save_file(340)
     test_primitive_union(360)
+    test_is(380)
 
   fun test_literal_int(exit_add: I32) =>
     // Test shift with negative numbers
@@ -955,4 +962,55 @@ actor Main
       else
         I32(0xffff)
       end
+    end
+
+  fun test_is(exit_add: I32) =>
+    var d1: Bool = comptime
+      var e1 = S2
+      var e2 = S2
+      e1 is e2
+    end
+
+    if d1 != true then
+      @pony_exitcode(exit_add + 1)
+    end
+
+    d1 = comptime
+      var e1 = Is1(2)
+      var e2 = Is1(2)
+      e1 is e2
+    end
+
+    if d1 != true then
+      @pony_exitcode(exit_add + 2)
+    end
+
+    d1 = comptime
+      var e1 = Is1(1)
+      var e2 = Is1(2)
+      e1 is e2
+    end
+
+    if d1 != false then
+      @pony_exitcode(exit_add + 3)
+    end
+
+    d1 = comptime
+      var e1:(U32, I32) = (1, 2)
+      var e2:(U32, I32) = (1, 2)
+      e1 is e2
+    end
+
+    if d1 != true then
+      @pony_exitcode(exit_add + 4)
+    end
+
+    d1 = comptime
+      var e1:(U32, I32) = (2, 1)
+      var e2:(U32, I32) = (1, 2)
+      e1 is e2
+    end
+
+    if d1 != false then
+      @pony_exitcode(exit_add + 5)
     end
