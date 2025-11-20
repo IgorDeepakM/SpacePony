@@ -10,6 +10,9 @@
 #include <string>
 #include <limits>
 #include <type_traits>
+#include <map>
+#include <functional>
+#include <variant>
 
 #include <string.h>
 
@@ -26,7 +29,54 @@ class CtfeValueInt
                 std::is_same<T, CtfeI128Type>::value ||
                 std::is_same<T, CtfeU128Type>::value, "Only integer types are allowed");
 
+  using BinOpFunction = std::function<CtfeValueInt<T>(const CtfeValueInt<T>*, const CtfeValueInt<T>&)>;
+  using UnaryOpFunction = std::function<CtfeValueInt<T>(const CtfeValueInt<T>*)>;
+  using CmpOpFunction = std::function<CtfeValueBool(const CtfeValueInt<T>*, const CtfeValueInt<T>&)>;
+  using ShiftOpFunction = std::function<CtfeValueInt<T>(const CtfeValueInt<T>*, uint64_t)>;
+  using CastOpFunction = std::function<CtfeValue(const CtfeValueInt<T>*, ast_t*)>;
+
+  using OperationFunction = std::variant<
+    BinOpFunction,
+    UnaryOpFunction,
+    CmpOpFunction,
+    ShiftOpFunction,
+    CastOpFunction>;
+
+  struct IntCallbacks
+  {
+    std::function<bool(pass_opt_t*, errorframe_t*, ast_t*, ast_t*, CtfeValue&,
+      const std::vector<CtfeValue>&, const std::string&, CtfeValue&, const OperationFunction&)> unpack_function;
+    OperationFunction operation_function;
+  };
+
+  static const std::map<std::string, IntCallbacks> m_functions;
+
   T m_val;
+
+
+  static bool bin_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
+    CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
+    CtfeValue& result, const OperationFunction& op);
+  static bool unary_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
+    CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
+    CtfeValue& result, const OperationFunction& op);
+  static bool shift_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
+    CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
+    CtfeValue& result, const OperationFunction& op);
+  static bool cmp_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
+    CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
+    CtfeValue& result, const OperationFunction& op);
+  static bool divrem_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
+    CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
+    CtfeValue& result, const OperationFunction& op);
+  static bool unsafe_divrem_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
+    CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
+    CtfeValue& result, const OperationFunction& op);
+  static bool cast_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
+    CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
+    CtfeValue& result, const OperationFunction& op);
+
+  CtfeValue cast_target_specific_int(ast_t* res_type, uint8_t size, bool sign) const;
 
 public:
   CtfeValueInt(): m_val{0} {}

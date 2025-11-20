@@ -130,6 +130,9 @@ endif()
 if (MSVC)
     file(GLOB_RECURSE CFILES "${PROJECT_SOURCE_DIR}/*.c")
     set_source_files_properties(${CFILES} PROPERTIES LANGUAGE CXX)
+
+    # ctfe_value.cc is so heavily templated that it exceeds the standard number of sections limit
+    set_source_files_properties("ctfe/ctfe_value.cc" PROPERTIES COMPILE_FLAGS /bigobj)
 endif (MSVC)
 
 if (NOT MSVC)

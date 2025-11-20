@@ -16,12 +16,30 @@ class CtfeRunner;
 
 class CtfeValuePointer
 {
+  using CmpOpFunction = std::function<CtfeValueBool(const CtfeValuePointer*, const CtfeValuePointer&)>;
+
+  using OperationFunction = std::variant<
+    CmpOpFunction>;
+
+  struct PointerCallbacks
+  {
+    std::function<bool(pass_opt_t*, errorframe_t*, ast_t*, ast_t*, CtfeValue&,
+      const std::vector<CtfeValue>&, const std::string&, CtfeValue&, const OperationFunction&)> unpack_function;
+    OperationFunction operation_function;
+  };
+
+  static const std::map<std::string, PointerCallbacks> m_functions;
+
   static std::map<uint64_t, std::string> m_stored_obj_names;
 
   uint8_t* m_array;
   size_t m_size;
   size_t m_elem_size;
   ast_t *m_pointer_type;
+
+  static bool cmp_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
+    CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
+    CtfeValue& result, const OperationFunction& op);
 
 public:
   CtfeValuePointer(ast_t* pointer_type);

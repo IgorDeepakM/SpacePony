@@ -10,6 +10,9 @@
 #include <type_traits>
 #include <cstdint>
 #include <cmath>
+#include <map>
+#include <functional>
+#include <variant>
 
 #include <string.h>
 
@@ -23,7 +26,44 @@ class CtfeValueFloat
 {
   static_assert(std::is_floating_point<T>::value, "Only floating point types are allowed");
 
+  using BinOpFunction = std::function<CtfeValueFloat<T>(const CtfeValueFloat<T>*, const CtfeValueFloat<T>&)>;
+  using UnaryOpFunction = std::function<CtfeValueFloat<T>(const CtfeValueFloat<T>*)>;
+  using CmpOpFunction = std::function<CtfeValueBool(const CtfeValueFloat<T>*, const CtfeValueFloat<T>&)>;
+  using CastOpFunction = std::function<CtfeValue(const CtfeValueFloat<T>*, ast_t*)>;
+
+  using OperationFunction = std::variant<
+    BinOpFunction,
+    UnaryOpFunction,
+    CmpOpFunction,
+    CastOpFunction>;
+
+  struct FloatCallbacks
+  {
+    std::function<bool(pass_opt_t*, errorframe_t*, ast_t*, ast_t*, CtfeValue&,
+      const std::vector<CtfeValue>&, const std::string&, CtfeValue&, const OperationFunction&)> unpack_function;
+    OperationFunction operation_function;
+  };
+
+  static const std::map<std::string, FloatCallbacks> m_functions;
+
   T m_val;
+
+
+  static bool bin_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
+    CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
+    CtfeValue& result, const OperationFunction& op);
+  static bool unary_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
+    CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
+    CtfeValue& result, const OperationFunction& op);
+  static bool cmp_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
+    CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
+    CtfeValue& result, const OperationFunction& op);
+  static bool cast_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
+    CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
+    CtfeValue& result, const OperationFunction& op);
+
+  CtfeValue cast_target_specific_int(ast_t* res_type, uint8_t size, bool sign) const;
+  CtfeValue unsafe_cast_target_specific_int(ast_t* res_type, uint8_t size, bool sign) const;
 
 public:
   CtfeValueFloat(): m_val{0} {}
