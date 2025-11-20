@@ -12,6 +12,23 @@
 
 
 using namespace std;
+using namespace std::placeholders;
+
+const std::map<std::string, typename CtfeValuePointer::PointerCallbacks> CtfeValuePointer::m_functions {
+  { "eq", { std::bind(&CtfeValuePointer::cmp_op, _1, _2, _3, _4, _5, _6, _7, _8, _9),
+             CmpOpFunction(std::bind(&CtfeValuePointer::eq, _1, _2)) } },
+  { "ne", { std::bind(&CtfeValuePointer::cmp_op, _1, _2, _3, _4, _5, _6, _7, _8, _9),
+             CmpOpFunction(std::bind(&CtfeValuePointer::ne, _1, _2)) } },
+  { "lt", { std::bind(&CtfeValuePointer::cmp_op, _1, _2, _3, _4, _5, _6, _7, _8, _9),
+             CmpOpFunction(std::bind(&CtfeValuePointer::lt, _1, _2)) } },
+  { "le", { std::bind(&CtfeValuePointer::cmp_op, _1, _2, _3, _4, _5, _6, _7, _8, _9),
+             CmpOpFunction(std::bind(&CtfeValuePointer::le, _1, _2)) } },
+  { "gt", { std::bind(&CtfeValuePointer::cmp_op, _1, _2, _3, _4, _5, _6, _7, _8, _9),
+             CmpOpFunction(std::bind(&CtfeValuePointer::gt, _1, _2)) } },
+  { "ge", { std::bind(&CtfeValuePointer::cmp_op, _1, _2, _3, _4, _5, _6, _7, _8, _9),
+             CmpOpFunction(std::bind(&CtfeValuePointer::ge, _1, _2)) } }
+};
+
 
 
 map<uint64_t, string> CtfeValuePointer::m_stored_obj_names;
@@ -254,54 +271,6 @@ bool CtfeValuePointer::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
       result = CtfeValue(ptr, res_type);
       return true;
     }
-    else if(method_name == "eq")
-    {
-      const CtfeValuePointer& rec_val = recv.get_pointer();
-      const CtfeValuePointer& first_arg = args[0].get_pointer();
-      CtfeValueBool r = rec_val.eq(first_arg);
-      result = CtfeValue(r, res_type);
-      return true;
-    }
-    else if(method_name == "ne")
-    {
-      const CtfeValuePointer& rec_val = recv.get_pointer();
-      const CtfeValuePointer& first_arg = args[0].get_pointer();
-      CtfeValueBool r = rec_val.ne(first_arg);
-      result = CtfeValue(r, res_type);
-      return true;
-    }
-    else if(method_name == "lt")
-    {
-      const CtfeValuePointer& rec_val = recv.get_pointer();
-      const CtfeValuePointer& first_arg = args[0].get_pointer();
-      CtfeValueBool r = rec_val.lt(first_arg);
-      result = CtfeValue(r, res_type);
-      return true;
-    }
-    else if(method_name == "le")
-    {
-      const CtfeValuePointer& rec_val = recv.get_pointer();
-      const CtfeValuePointer& first_arg = args[0].get_pointer();
-      CtfeValueBool r = rec_val.le(first_arg);
-      result = CtfeValue(r, res_type);
-      return true;
-    }
-    else if(method_name == "gt")
-    {
-      const CtfeValuePointer& rec_val = recv.get_pointer();
-      const CtfeValuePointer& first_arg = args[0].get_pointer();
-      CtfeValueBool r = rec_val.gt(first_arg);
-      result = CtfeValue(r, res_type);
-      return true;
-    }
-    else if(method_name == "ge")
-    {
-      const CtfeValuePointer& rec_val = recv.get_pointer();
-      const CtfeValuePointer& first_arg = args[0].get_pointer();
-      CtfeValueBool r = rec_val.ge(first_arg);
-      result = CtfeValue(r, res_type);
-      return true;
-    }
   }
   else if(args.size() == 0)
   {
@@ -329,6 +298,14 @@ bool CtfeValuePointer::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
       result = CtfeValue(CtfeValueBool(n), res_type);
       return true;
     }
+  }
+
+  // The comparison methods are in the map in order to reduce boiler plate code
+  auto it = m_functions.find(method_name);
+  if(it != m_functions.end())
+  {
+    return it->second.unpack_function(opt, errors, ast, res_type, recv, args, method_name, result,
+      it->second.operation_function);
   }
 
   return false;
@@ -420,4 +397,17 @@ ast_t* CtfeValuePointer::create_ast_literal_node(pass_opt_t* opt, errorframe_t* 
   ast_set_name(name_node, obj_name);
 
   return obj;
+}
+
+
+bool CtfeValuePointer::cmp_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
+  CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
+  CtfeValue& result, const OperationFunction& op)
+{
+  const CtfeValuePointer& rec_val = recv.get_pointer();
+  const CtfeValuePointer& first_arg = args[0].get_pointer();
+  function f = get<CmpOpFunction>(op);
+  CtfeValueBool r = f(&rec_val, first_arg);
+  result = CtfeValue(r, res_type);
+  return true;
 }
