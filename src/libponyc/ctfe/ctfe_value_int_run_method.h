@@ -250,7 +250,7 @@ bool CtfeValueInt<T>::bin_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, 
 {
   const CtfeValueInt<T>& rec_val = recv.get_int<T>();
   const CtfeValueInt<T>& first_arg = args[0].get_int<T>();
-  function f = get<BinOpFunction>(op);
+  std::function f = std::get<BinOpFunction>(op);
   CtfeValueInt<T> r = f(&rec_val, first_arg);
   result = CtfeValue(r, res_type);
   return true;
@@ -263,7 +263,7 @@ bool CtfeValueInt<T>::unary_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast
   CtfeValue& result, const OperationFunction& op)
 {
   const CtfeValueInt<T>& rec_val = recv.get_int<T>();
-  function f = get<UnaryOpFunction>(op);
+  std::function f = std::get<UnaryOpFunction>(op);
   CtfeValueInt<T> r = f(&rec_val);
   result = CtfeValue(r, res_type);
   return true;
@@ -297,7 +297,7 @@ bool CtfeValueInt<T>::shift_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast
     shift_amount = first_arg.to_uint64();
   }
 
-  function f = get<ShiftOpFunction>(op);
+  std::function f = std::get<ShiftOpFunction>(op);
   CtfeValueInt<T> r = f(&rec_val, shift_amount);
   result = CtfeValue(r, res_type);
   return true;
@@ -311,7 +311,7 @@ bool CtfeValueInt<T>::cmp_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, 
 {
   const CtfeValueInt<T>& rec_val = recv.get_int<T>();
   const CtfeValueInt<T>& first_arg = args[0].get_int<T>();
-  function f = get<CmpOpFunction>(op);
+  std::function f = std::get<CmpOpFunction>(op);
   CtfeValueBool r = f(&rec_val, first_arg);
   result = CtfeValue(r, res_type);
   return true;
@@ -340,7 +340,7 @@ bool CtfeValueInt<T>::divrem_op(pass_opt_t* opt, errorframe_t* errors, ast_t* as
     }
   }
 
-  function f = get<BinOpFunction>(op);
+  std::function f = std::get<BinOpFunction>(op);
   CtfeValueInt<T> r = f(&rec_val, first_arg);
   result = CtfeValue(r, res_type);
   return true;
@@ -371,7 +371,7 @@ bool CtfeValueInt<T>::unsafe_divrem_op(pass_opt_t* opt, errorframe_t* errors, as
     }
   }
 
-  function f = get<BinOpFunction>(op);
+  std::function f = std::get<BinOpFunction>(op);
   CtfeValueInt<T> r = f(&rec_val, first_arg);
   result = CtfeValue(r, res_type);
   return true;
@@ -385,7 +385,7 @@ bool CtfeValueInt<T>::cast_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
 {
   const CtfeValueInt<T>& rec_val = recv.get_int<T>();
 
-  function f = get<CastOpFunction>(op);
+  std::function f = std::get<CastOpFunction>(op);
   result = f(&rec_val, res_type);
   return true;
 }

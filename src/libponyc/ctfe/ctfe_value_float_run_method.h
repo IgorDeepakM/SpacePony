@@ -224,7 +224,7 @@ bool CtfeValueFloat<T>::bin_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast
 {
   const CtfeValueFloat<T>& rec_val = recv.get_float<T>();
   const CtfeValueFloat<T>& first_arg = args[0].get_float<T>();
-  function f = get<BinOpFunction>(op);
+  std::function f = std::get<BinOpFunction>(op);
   CtfeValueFloat<T> r = f(&rec_val, first_arg);
   result = CtfeValue(r, res_type);
   return true;
@@ -237,7 +237,7 @@ bool CtfeValueFloat<T>::unary_op(pass_opt_t* opt, errorframe_t* errors, ast_t* a
   CtfeValue& result, const OperationFunction& op)
 {
   const CtfeValueFloat<T>& rec_val = recv.get_float<T>();
-  function f = get<UnaryOpFunction>(op);
+  std::function f = std::get<UnaryOpFunction>(op);
   CtfeValueFloat<T> r = f(&rec_val);
   result = CtfeValue(r, res_type);
   return true;
@@ -251,7 +251,7 @@ bool CtfeValueFloat<T>::cmp_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast
 {
   const CtfeValueFloat<T>& rec_val = recv.get_float<T>();
   const CtfeValueFloat<T>& first_arg = args[0].get_float<T>();
-  function f = get<CmpOpFunction>(op);
+  std::function f = std::get<CmpOpFunction>(op);
   CtfeValueBool r = f(&rec_val, first_arg);
   result = CtfeValue(r, res_type);
   return true;
@@ -265,7 +265,7 @@ bool CtfeValueFloat<T>::cast_op(pass_opt_t* opt, errorframe_t* errors, ast_t* as
 {
   const CtfeValueFloat<T>& rec_val = recv.get_float<T>();
 
-  function f = get<CastOpFunction>(op);
+  std::function f = std::get<CastOpFunction>(op);
   result = f(&rec_val, res_type);
   return true;
 }
