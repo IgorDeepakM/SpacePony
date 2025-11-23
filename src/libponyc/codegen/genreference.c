@@ -733,8 +733,10 @@ static LLVMValueRef gen_copy_constant_array(compile_t* c, ast_t* ast)
   LLVMValueRef const_array = LLVMGetNamedGlobal(c->module, obj_name);
   pony_assert(const_array != NULL);
 
-  const lexint_t* size_lex = ast_int(ast_childidx(ast, 2));
-  const lexint_t* elem_size_lex = ast_int(ast_childidx(ast, 3));
+  AST_GET_CHILDREN(ast, id, size_node, elem_size_node);
+
+  const lexint_t* size_lex = ast_int(size_node);
+  const lexint_t* elem_size_lex = ast_int(elem_size_node);
 
   size_t array_size = size_lex->low * elem_size_lex->low;
 
@@ -916,7 +918,7 @@ LLVMValueRef gen_constant_array(compile_t* c, ast_t* ast)
   LLVMValueRef ret = LLVMGetNamedGlobal(c->module, obj_name);
   if(ret == NULL)
   {
-    AST_GET_CHILDREN(ast, id, homogeneous_node, size_node, elem_size_node, members_node);
+    AST_GET_CHILDREN(ast, id, size_node, elem_size_node, members_node);
 
     const lexint_t* size_lex = ast_int(size_node);
 
@@ -924,26 +926,12 @@ LLVMValueRef gen_constant_array(compile_t* c, ast_t* ast)
     size_t buf_size = sizeof(LLVMValueRef) * array_size;
     LLVMValueRef *args = (LLVMValueRef*)ponyint_pool_alloc_size(buf_size);
 
-    // Check if the array is homogeneous
-    if(ast_id(ast_childidx(ast, 1)) == TK_TRUE)
+    ast_t* member = ast_child(members_node);
+    for(size_t i = 0; i < array_size; i++)
     {
-      ast_t* member = ast_child(members_node);
-      LLVMValueRef elem = gen_expr(c, member);
+      args[i] = gen_expr(c, member);
 
-      for(size_t i = 0; i < array_size; i++)
-      {
-        args[i] = elem;
-      }
-    }
-    else
-    {
-      ast_t* member = ast_child(members_node);
-      for(size_t i = 0; i < array_size; i++)
-      {
-        args[i] = gen_expr(c, member);
-
-        member = ast_sibling(member);
-      }
+      member = ast_sibling(member);
     }
 
     ast_t* pointer_type = ast_child(ast_childidx(type, 2));

@@ -68,10 +68,6 @@ public:
   CtfeValue(const CtfeValueTuple& val, ast_t* ast_type);
   CtfeValue(const CtfeValuePointer& p, ast_t* ast_type);
 
-  bool operator==(const CtfeValue& b) const;
-  bool operator!=(const CtfeValue& b) const;
-  CtfeValueBool eq(const CtfeValue& b) const;
-
   ast_t* get_type_ast() const { return m_type; }
   void set_type_ast(ast_t* new_type);
 
