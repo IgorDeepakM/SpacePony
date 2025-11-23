@@ -430,6 +430,8 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 * Implement a good and comprehensive reflection interface.
 
+* Currently there is no good alternative similar to an enum in C/C++. In Pony, the goto method is to use a primitive and implement methods that returns a literal [like this](https://tutorial.ponylang.io/appendices/examples.html#enumeration-with-values). However, this is very tedious to use and there is no auto increment of the enumerations. It is time to add enums in SpacePony in order to make it more convenient and also easier to port C interfaces. Sure you can use some fancy AI to do the conversion, but still SpacePony needs a more convenient primitive for this.
+
 ### Long term (read never)
 
 * Move to MLIR backend
