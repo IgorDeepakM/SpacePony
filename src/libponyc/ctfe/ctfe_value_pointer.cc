@@ -38,9 +38,10 @@ CtfeValuePointer::CtfeValuePointer(ast_t* pointer_type):
   m_array{nullptr},
   m_size{0},
   m_elem_size{0},
-  m_pointer_type{pointer_type}
+  m_pointer_type{pointer_type},
+  m_elem_pointer_type{ast_child(ast_childidx(pointer_type, 2))}
 {
-  m_elem_size = CtfeAstType::get_size_of_type(ast_child(ast_childidx(pointer_type, 2)));
+  m_elem_size = CtfeAstType::get_size_of_type(m_elem_pointer_type);
 }
 
 
@@ -48,9 +49,10 @@ CtfeValuePointer::CtfeValuePointer(size_t size, ast_t* pointer_type, CtfeRunner 
   m_array{nullptr},
   m_size{size},
   m_elem_size{0},
-  m_pointer_type{pointer_type}
+  m_pointer_type{pointer_type},
+  m_elem_pointer_type{ast_child(ast_childidx(pointer_type, 2))}
 {
-  m_elem_size = CtfeAstType::get_size_of_type(ast_child(ast_childidx(pointer_type, 2)));
+  m_elem_size = CtfeAstType::get_size_of_type(m_elem_pointer_type);
 
   if(size > 0)
   {
@@ -68,9 +70,10 @@ CtfeValuePointer::CtfeValuePointer(uint8_t *array, size_t size, ast_t* pointer_t
   m_array{array},
   m_size{size},
   m_elem_size{0},
-  m_pointer_type{pointer_type}
+  m_pointer_type{pointer_type},
+  m_elem_pointer_type{ast_child(ast_childidx(pointer_type, 2))}
 {
-  m_elem_size = CtfeAstType::get_size_of_type(ast_child(ast_childidx(pointer_type, 2)));
+  m_elem_size = CtfeAstType::get_size_of_type(m_elem_pointer_type);
 }
 
 
@@ -78,9 +81,10 @@ CtfeValuePointer::CtfeValuePointer(void *ptr, ast_t* pointer_type):
   m_array{reinterpret_cast<uint8_t*>(ptr)},
   m_size{0},
   m_elem_size{0},
-  m_pointer_type{pointer_type}
+  m_pointer_type{pointer_type},
+  m_elem_pointer_type{ast_child(ast_childidx(pointer_type, 2))}
 {
-  m_elem_size = CtfeAstType::get_size_of_type(ast_child(ast_childidx(pointer_type, 2)));
+  m_elem_size = CtfeAstType::get_size_of_type(m_elem_pointer_type);
 }
 
 
@@ -110,7 +114,7 @@ CtfeValue CtfeValuePointer::apply(size_t i) const
 {
   if(i < m_size)
   {
-    return CtfeValue::read_from_memory(get_pointer_elem_type_ast(), &m_array[i * m_elem_size]);
+    return read_from_array(i * m_elem_size);
   }
   else
   {
@@ -125,8 +129,8 @@ CtfeValue CtfeValuePointer::update(size_t i, const CtfeValue& val)
 
   if(i < m_size)
   {
-    CtfeValue ret = CtfeValue::read_from_memory(get_pointer_elem_type_ast(), &m_array[i * m_elem_size]);
-    val.write_to_memory(&m_array[i * m_elem_size]);
+    CtfeValue ret = read_from_array(i * m_elem_size);
+    write_to_array(i * m_elem_size, val);
     return ret;
   }
   else
@@ -175,11 +179,11 @@ CtfeValue CtfeValuePointer::_delete(size_t n, size_t len)
 
   if(n == 0)
   {
-    ret = CtfeValue::read_from_memory(get_pointer_elem_type_ast(), &m_array[0]);
+    ret = read_from_array(0);
   }
   else if(n + len < m_size)
   {
-    ret = CtfeValue::read_from_memory(get_pointer_elem_type_ast(), &m_array[0]);
+    ret = read_from_array(0);
     move(m_array + n * m_elem_size, m_array + (n + len) * m_elem_size, m_array);
 
     return ret;
@@ -350,7 +354,7 @@ ast_t* CtfeValuePointer::create_ast_literal_node(pass_opt_t* opt, errorframe_t* 
 
   for(size_t i = 0; i < size; i++)
   {
-    CtfeValue e = CtfeValue::read_from_memory(get_pointer_elem_type_ast(), &m_array[i * m_elem_size]);
+    CtfeValue e = read_from_array(i * m_elem_size);
     ast_t* member_node = e.create_ast_literal_node(opt, errors, from);
     ast_append(members_node, member_node);
   }
@@ -368,7 +372,7 @@ ast_t* CtfeValuePointer::create_ast_literal_node(pass_opt_t* opt, errorframe_t* 
   else
   {
     obj_name = object_hygienic_name(opt, m_pointer_type);
-    m_stored_obj_names.insert({ast_hash, string(obj_name)});
+    m_stored_obj_names.insert({ ast_hash, string(obj_name) });
   }
 
   ast_set_name(name_node, obj_name);
@@ -387,4 +391,34 @@ bool CtfeValuePointer::cmp_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
   CtfeValueBool r = f(&rec_val, first_arg);
   result = CtfeValue(r, res_type);
   return true;
+}
+
+
+CtfeValue CtfeValuePointer::read_from_array(size_t pos) const
+{
+  if(CtfeAstType::is_machine_word(m_elem_pointer_type) ||
+     CtfeAstType::is_struct(m_elem_pointer_type) ||
+     CtfeAstType::is_interface(m_elem_pointer_type))
+  {
+    return CtfeValue::read_from_memory(m_elem_pointer_type, &m_array[pos]);
+  }
+  else
+  {
+    return *reinterpret_cast<CtfeValue*>(&m_array[pos]);
+  }
+}
+
+
+void CtfeValuePointer::write_to_array(size_t pos, const CtfeValue& e)
+{
+  if(CtfeAstType::is_machine_word(m_elem_pointer_type) ||
+     CtfeAstType::is_struct(m_elem_pointer_type) ||
+     CtfeAstType::is_interface(m_elem_pointer_type))
+  {
+    e.write_to_memory(&m_array[pos]);
+  }
+  else
+  {
+    *reinterpret_cast<CtfeValue*>(&m_array[pos]) = e;
+  }
 }

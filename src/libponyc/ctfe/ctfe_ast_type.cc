@@ -1,5 +1,6 @@
 #include "ctfe_ast_type.h"
 #include "ctfe_exception.h"
+#include "ctfe_value.h"
 
 #include "../type/subtype.h"
 #include "../codegen/genopt.h"
@@ -48,89 +49,93 @@ void CtfeAstType::initialize(pass_opt_t* opt)
 
 size_t CtfeAstType::get_size_of_type(ast_t* type)
 {
-  const string type_name = ast_name(ast_childidx(type, 1));
+  if(is_nominal(type))
+  {
+    if(is_machine_word(type))
+    {
+      const string type_name = ast_name(ast_childidx(type, 1));
 
-  if(is_machine_word(type))
-  {
-    if(type_name == "Bool")
-    {
-      return sizeof(uint8_t);
+      if(type_name == "Bool")
+      {
+        return sizeof(uint8_t);
+      }
+      else if(type_name == "I8")
+      {
+        return sizeof(int8_t);
+      }
+      else if(type_name == "U8")
+      {
+        return sizeof(uint8_t);
+      }
+      else if(type_name == "I16")
+      {
+        return sizeof(int16_t);
+      }
+      else if(type_name == "U16")
+      {
+        return sizeof(uint16_t);
+      }
+      else if(type_name == "I32")
+      {
+        return sizeof(int32_t);
+      }
+      else if(type_name == "U32")
+      {
+        return sizeof(uint32_t);
+      }
+      else if(type_name == "I64")
+      {
+        return sizeof(int64_t);
+      }
+      else if(type_name == "U64")
+      {
+        return sizeof(uint64_t);
+      }
+      else if(type_name == "I128")
+      {
+        return sizeof(CtfeI128Type);
+      }
+      else if(type_name == "U128")
+      {
+        return sizeof(CtfeU128Type);
+      }
+      else if(type_name == "ILong")
+      {
+        return m_long_size;
+      }
+      else if(type_name == "ULong")
+      {
+        return m_long_size;
+      }
+      else if(type_name == "ISize")
+      {
+        return m_size_size;
+      }
+      else if(type_name == "USize")
+      {
+        return m_size_size;
+      }
     }
-    else if(type_name == "I8")
-    {
-      return sizeof(int8_t);
-    }
-    else if(type_name == "U8")
-    {
-      return sizeof(uint8_t);
-    }
-    else if(type_name == "I16")
-    {
-      return sizeof(int16_t);
-    }
-    else if(type_name == "U16")
-    {
-      return sizeof(uint16_t);
-    }
-    else if(type_name == "I32")
-    {
-      return sizeof(int32_t);
-    }
-    else if(type_name == "U32")
-    {
-      return sizeof(uint32_t);
-    }
-    else if(type_name == "I64")
-    {
-      return sizeof(int64_t);
-    }
-    else if(type_name == "U64")
-    {
-      return sizeof(uint64_t);
-    }
-    else if(type_name == "I128")
-    {
-      return sizeof(CtfeI128Type);
-    }
-    else if(type_name == "U128")
-    {
-      return sizeof(CtfeU128Type);
-    }
-    else if(type_name == "ILong")
-    {
-      return m_long_size;
-    }
-    else if(type_name == "ULong")
-    {
-      return m_long_size;
-    }
-    else if(type_name == "ISize")
-    {
-      return m_size_size;
-    }
-    else if(type_name == "USize")
-    {
-      return m_size_size;
-    }
-    else
-    {
-      pony_assert(false);
-    }
-  }
-  else if(is_none(type))
-  {
-    return 0;
-  }
-  else
-  {
     if(is_struct(type) || is_interface(type))
     {
       return sizeof(void*);
     }
+    else if (is_primitive(type))
+    {
+      return static_cast<size_t>(align_val_t(sizeof(CtfeValue)));
+    }
     else
     {
       pony_assert(false);
     }
+  }
+  else if(is_tuple(type) || is_union_type(type))
+  {
+    return static_cast<size_t>(align_val_t(sizeof(CtfeValue)));
+  }
+  else
+  {
+    pony_assert(false);
   }
 
   return 0;
@@ -145,6 +150,11 @@ const string CtfeAstType::get_type_name(ast_t* type)
 
 bool CtfeAstType::is_struct(ast_t* ast)
 {
+  if(!is_nominal(ast))
+  {
+    return false;
+  }
+
   ast_t* underlying_type = (ast_t*)ast_data(ast);
   if(ast_id(underlying_type) == TK_STRUCT ||
       ast_id(underlying_type) == TK_CLASS)
@@ -158,6 +168,11 @@ bool CtfeAstType::is_struct(ast_t* ast)
 
 bool CtfeAstType::is_primitive(ast_t* ast)
 {
+  if(!is_nominal(ast))
+  {
+    return false;
+  }
+
   ast_t* underlying_type = (ast_t*)ast_data(ast);
   if(ast_id(underlying_type) == TK_PRIMITIVE)
   {
@@ -170,6 +185,11 @@ bool CtfeAstType::is_primitive(ast_t* ast)
 
 bool CtfeAstType::is_interface(ast_t* ast)
 {
+  if(!is_nominal(ast))
+  {
+    return false;
+  }
+
   ast_t* underlying_type = (ast_t*)ast_data(ast);
   if(ast_id(underlying_type) == TK_INTERFACE)
   {
