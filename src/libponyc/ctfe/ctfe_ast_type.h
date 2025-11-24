@@ -32,6 +32,7 @@ public:
   static bool is_machine_word(ast_t* ast) { return ::is_machine_word(ast); }
   static bool is_signed(ast_t* ast) { return ::is_signed(ast); }
   static bool is_primitive(ast_t* ast);
+  static bool is_union_type(ast_t* ast) { return ast_id(ast) == TK_UNIONTYPE; }
 
   static void initialize(pass_opt_t* opt);
   static uint8_t get_long_size() { return m_long_size; }

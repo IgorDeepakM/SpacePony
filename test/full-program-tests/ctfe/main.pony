@@ -771,6 +771,50 @@ actor Main
       i = i + 1
     end
 
+    var g1 = comptime [as (None | Something): None; Something; Something; None] end
+    var g2 = [as (None | Something): None; Something; Something; None]
+
+    let iterator_g1 = g1.values()
+    let iterator_g2 = g2.values()
+    var sz: USize = 0
+    while iterator_g1.has_next() and iterator_g2.has_next() do
+      try
+        if not (iterator_g1.next()? is iterator_g2.next()?) then
+          @pony_exitcode(exit_add + 7)
+        end
+      else
+        @pony_exitcode(exit_add + 8)
+      end
+
+      sz = sz + 1
+    end
+
+    if sz != 4 then
+      @pony_exitcode(exit_add + 9)
+    end
+
+    var h1 = comptime [as ((None | Something), U32): (None, 1); (Something, 2); (Something, 3); (None, 3)] end
+    var h2 = [as ((None | Something), U32): (None, 1); (Something, 2); (Something, 3); (None, 3)]
+
+    let iterator_h1 = h1.values()
+    let iterator_h2 = h2.values()
+    sz = 0
+    while iterator_h1.has_next() and iterator_h2.has_next() do
+      try
+        if not (iterator_h1.next()? is iterator_h2.next()?) then
+          @pony_exitcode(exit_add + 10)
+        end
+      else
+        @pony_exitcode(exit_add + 11)
+      end
+
+     sz = sz + 1
+    end
+
+    if sz != 4 then
+      @pony_exitcode(exit_add + 12)
+    end
+
   fun big_generated_array(size: USize): Array[U32] val =>
     var ar: Array[U32] iso = Array[U32]
 

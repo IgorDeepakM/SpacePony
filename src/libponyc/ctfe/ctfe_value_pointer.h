@@ -36,10 +36,14 @@ class CtfeValuePointer
   size_t m_size;
   size_t m_elem_size;
   ast_t *m_pointer_type;
+  ast_t* m_elem_pointer_type;
 
   static bool cmp_op(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
     CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
     CtfeValue& result, const OperationFunction& op);
+
+  CtfeValue read_from_array(size_t pos) const;
+  void write_to_array(size_t pos, const CtfeValue& e);
 
 public:
   CtfeValuePointer(ast_t* pointer_type);
@@ -58,7 +62,7 @@ public:
 
   uint8_t *get_cpointer() const { return m_array; }
   ast_t* get_pointer_type_ast() const { return m_pointer_type; }
-  ast_t* get_pointer_elem_type_ast() const { return ast_child(ast_childidx(m_pointer_type, 2)); }
+  ast_t* get_pointer_elem_type_ast() const { return m_elem_pointer_type; }
 
   CtfeValueBool eq(const CtfeValuePointer& b) const { return CtfeValueBool(m_array == b.m_array); }
   CtfeValueBool ne(const CtfeValuePointer& b) const { return CtfeValueBool(m_array != b.m_array); }

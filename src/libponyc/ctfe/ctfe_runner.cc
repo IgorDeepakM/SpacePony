@@ -898,7 +898,38 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
     case TK_CONSUME:
     {
       CtfeValue ret = evaluate(opt, errors, ast_childidx(expression, 1));
-      ret.set_type_ast(ast_type(expression));
+
+      ast_t* new_type = ast_type(expression);
+
+      // Special case for unions. Since the type of a union value is stored as the
+      // selected type as the ast type, we must cherry pick the correct ast type in the
+      // union type.
+      if(CtfeAstType::is_union_type(new_type))
+      {
+        ast_t* u_type = ast_child(new_type);
+        bool found = false;
+        while(u_type != NULL)
+        {
+          if(is_subtype_ignore_cap(u_type, ret.get_type_ast(), nullptr, opt))
+          {
+            ret.set_type_ast(u_type);
+            found = true;
+            break;
+          }
+
+          u_type = ast_sibling(u_type);
+        }
+
+        if(!found)
+        {
+          pony_assert(false);
+        }
+      }
+      else
+      {
+        ret.set_type_ast(new_type);
+      }
+
       return ret;
     }
 
