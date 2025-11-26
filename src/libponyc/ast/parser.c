@@ -1221,11 +1221,34 @@ DEF(field);
   OPT TOKEN("docstring", TK_STRING);
   DONE();
 
+DEF(enum_expr);
+  SKIP(NULL, TK_ASSIGN);
+  RULE("enum body", infix)
+  DONE();
+
+DEF(enum_entry);
+  TOKEN("enum name", TK_ID);
+  OPT RULE("enum expression", enum_expr);
+  //SKIP(NULL, TK_SEMI, TK_NEWLINE)
+  IFELSE(TK_NEWLINE,
+    NEXT_FLAGS(AST_FLAG_BAD_SEMI),
+    NEXT_FLAGS(0); SKIP(NULL, TK_SEMI);
+  );
+  IF(TK_NEWLINE, SET_FLAG(AST_FLAG_BAD_SEMI));
+  DONE();
+
+DEF(enum_block);
+  TOKEN("enum block", TK_ENUM);
+  RULE("enum type", type);
+  SEQ("enum entry", enum_entry);
+  TERMINATE("enum block", TK_END);
+  DONE();
+
 // {field} {method}
 DEF(members);
   AST_NODE(TK_MEMBERS);
   SEQ("field", field);
-  SEQ("method", method);
+  SEQ("method", method, enum_block);
   DONE();
 
 // (TYPE | INTERFACE | TRAIT | PRIMITIVE | STRUCT | CLASS | ACTOR) [annotations]

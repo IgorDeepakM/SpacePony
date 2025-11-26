@@ -143,6 +143,7 @@ static const lextoken_t keywords[] =
   { "class", TK_CLASS },
   { "actor", TK_ACTOR },
   { "object", TK_OBJECT },
+  { "enum", TK_ENUM },
 
   { "as", TK_AS },
   { "is", TK_IS },

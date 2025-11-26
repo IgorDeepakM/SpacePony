@@ -400,7 +400,7 @@ class Iter[A] is Iterator[A]
           end
       end)
 
-  fun ref enum[B: (Real[B] val & Number) = USize](): Iter[(B, A)]^ =>
+  fun ref enumerate[B: (Real[B] val & Number) = USize](): Iter[(B, A)]^ =>
     """
     An iterator which yields the current iteration count as well as the next
     value from the iterator.
@@ -409,7 +409,7 @@ class Iter[A] is Iterator[A]
 
     ```pony
     Iter[I64]([1; 2; 3].values())
-      .enum()
+      .enumerate()
     ```
     `(0, 1) (1, 2) (2, 3)`
     """

@@ -203,13 +203,13 @@ class \nodoc\ iso _TestIterDedup is UnitTest
     end
 
 class \nodoc\ iso _TestIterEnum is UnitTest
-  fun name(): String => "itertools/Iter.enum"
+  fun name(): String => "itertools/Iter.enumerate"
 
   fun apply(h: TestHelper) ? =>
     let input = ["a"; "b"; "c"]
     let expected = [as (USize, String): (0, "a"); (1, "b"); (2, "c")]
 
-    let iter = Iter[String](input.values()).enum()
+    let iter = Iter[String](input.values()).enumerate()
 
     var i: USize = 0
     for (n, s) in iter do

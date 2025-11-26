@@ -30,6 +30,12 @@ The compiled output including the ponyc compiler is located in the build/release
 
 Did I miss anything? This guide will tell you more [Building from source](BUILD.md)
 
+## Breaking changes from original Pony
+
+* While SpacePony is compatible with original Pony, it is inevitable that SpacePony and Pony will diverge more and more. Several keywords have been added which might be used in Pony, cannot be used in SpacePony. This is a list of breaking changes that you might need to change in order to adapt Pony source code SpacePony.
+
+  * In the class `Iter` in the package `itertools`, the method `enum` was renamed to `enumerate` because `enum` is a reserved keyword in SpacePony.
+
 ## List of changes.
 
 ### Identify SpacePony
@@ -417,6 +423,56 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   end
   ```
 
+### Added enums (sort of)
+
+* Added the possibility using enum like declarations inside a primitive. The Pony language doesn't have enums and the goto method is to use methods inside a primitive [like this](https://tutorial.ponylang.io/appendices/examples.html#enumeration-with-values). However, this adds a lot of boiler plate to just write an enum which is very tedious for large amounts of enums and there is no auto increment of the value. Adding a completely new enum type classification in SpacePony is a lot of work so instead a syntax that lowers the enumerations to methods inside the primitive was chosen. Unlike C/C++ enums, the enums must be give a type and the is no automatic type inference to the smallest possible type that fits the enumerations.
+
+  ```pony
+  primitive P
+    enum I32
+      enum1 = 44
+      enum2
+      enum3
+    end
+  ```
+
+* Becomes after the lowering, equivalent to this.
+
+  ```pony
+  primitive P
+    fun enum1(): I32 => 44
+    fun enum2(): I32 => 44.add(1) // 45
+    fun enum3(): I32 => 44.add(2) // 46
+  ```
+
+ * When there are many enums, this makes it more easier to write. C intefaces can sometimes have many enums, often as some return status values and the ability to copy and paste most of it makes it easier.
+
+ * Any type can be used in enums, however for auto-incrementation the type must support the add method. If not every enum must be given a value.
+
+ * Several enums per line are supported using `;` delimeter
+
+   ```pony
+   primitive P
+     enum I32
+       enum1 = 1; enum2; enum3
+     end
+   ```
+
+ * By using lowering and using existing primitives for implementing enums was the path of least resistance. Adding "real" enums would require much more work in order to make it work with the existing type system. Also the Pony language already support enums using a union of types.
+
+   ```pony
+    primitive P1
+    primitive P2
+    primitive P3
+    primitive P4
+
+    type PUnion is (P1 | P2 | P3 | P4)
+    ```
+
+* The Pony type unions are ok for a moderate amount enums, both in terms of typing and code generation. This is usually the goto method when the is no interest what the underlying representation is, meaning no conversion to some integer needed. Under the hood a primitive is a pointer to a global aggregrate, like a class but without any members. Since there are no members it can be made an immutable global. For large amounts of enums, there might be missed optimizations opportunities as random pointers cannot easily be converted to jump tables. In this particular case monotonous increasing enums might be better. Despite having implemented enums using lowering in primitives, a "real" enum in SpacePony isn't off the table.
+
+* Right now it is necessary to use parathesis in order to dereference an enum since it is really a method `var x = P.enum()`. One possibility is to allow omitting the parathesis for enums, `var x = P.enum`. This might be a possible future improvement.
+
 
 ## Future directions
 
@@ -429,8 +485,6 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 * Real asynchronous IO and not a POSIX like wrapper. An API that can be used for anything streaming like Files, HTTP, TCP. The API should also use the best available asynchronous OS API primitives.
 
 * Implement a good and comprehensive reflection interface.
-
-* Currently there is no good alternative similar to an enum in C/C++. In Pony, the goto method is to use a primitive and implement methods that returns a literal [like this](https://tutorial.ponylang.io/appendices/examples.html#enumeration-with-values). However, this is very tedious to use and there is no auto increment of the enumerations. It is time to add enums in SpacePony in order to make it more convenient and also easier to port C interfaces. Sure you can use some fancy AI to do the conversion, but still SpacePony needs a more convenient primitive for this.
 
 ### Long term (read never)
 

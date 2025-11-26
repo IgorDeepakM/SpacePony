@@ -116,6 +116,7 @@ typedef enum token_id
   TK_OBJECT,
   TK_LAMBDA,
   TK_BARELAMBDA,
+  TK_ENUM,
 
   TK_AS,
   TK_IS,

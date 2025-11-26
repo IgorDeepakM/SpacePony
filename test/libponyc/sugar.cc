@@ -2017,3 +2017,29 @@ TEST_F(SugarTest, AsOperatorWithLambdaType)
 
   TEST_COMPILE(short_form);
 }
+
+
+TEST_F(SugarTest, TestPrimitiveEnumMixedLines)
+{
+  const char* enum_mixed =
+    "primitive P\n"
+    "  enum I32\n"
+    "    test_enum1; test_enum2\n"
+    "    test_enum3\n"
+    "  end\n";
+
+  TEST_COMPILE(enum_mixed);
+}
+
+
+TEST_F(SugarTest, TestPrimitiveEnumMixedLinesNoSemi)
+{
+  const char* enum_mixed =
+    "primitive P\n"
+    "  enum I32\n"
+    "    test_enum1 = 0 test_enum2\n"
+    "    test_enum3\n"
+    "  end\n";
+
+  TEST_ERROR(enum_mixed);
+}
