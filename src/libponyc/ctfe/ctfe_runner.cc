@@ -1200,7 +1200,7 @@ bool CtfeRunner::is_operator(pass_opt_t* opt, errorframe_t* errors, ast_t* ast_p
   CtfeValue& left, const CtfeValue& right)
 {
   ast_t* left_type = left.get_type_ast();
-  ast_t* right_type = left.get_type_ast();
+  ast_t* right_type = right.get_type_ast();
 
   bool is_sub = is_subtype(left_type, right_type, nullptr, opt);
 
@@ -1227,57 +1227,7 @@ bool CtfeRunner::is_operator(pass_opt_t* opt, errorframe_t* errors, ast_t* ast_p
       }
       else if(CtfeAstType::is_struct(left_type))
       {
-        ast_t* underlying_left = (ast_t*)ast_data(left_type);
-        ast_t* underlying_right = (ast_t*)ast_data(right_type);
-
-        ast_t* members_left = ast_childidx(underlying_left, 4);
-        ast_t* members_right = ast_childidx(underlying_left, 4);
-
-        if(ast_childcount(members_left) != ast_childcount(members_right))
-        {
-          return false;
-        }
-
-        CtfeValueStruct* left_s = left.get_struct_ref();
-        CtfeValueStruct* right_s = right.get_struct_ref();
-
-        ast_t* member = ast_child(members_left);
-
-        while(member != nullptr)
-        {
-          switch(ast_id(member))
-          {
-          case TK_FVAR:
-          case TK_FLET:
-          case TK_EMBED:
-          {
-            const char* var_name = ast_name(ast_child(member));
-            CtfeValue left_val;
-            if(!left_s->get_value(var_name, left_val))
-            {
-              pony_assert(false);
-            }
-
-            CtfeValue right_val;
-            if(!right_s->get_value(var_name, right_val))
-            {
-              pony_assert(false);
-            }
-
-            if(!is_operator(opt, errors, ast_pos, left_val, right_val))
-            {
-              return false;
-            }
-
-            break;
-          }
-
-          default:
-            break;
-          }
-
-          member = ast_sibling(member);
-        }
+        return left.get_struct_ref() == right.get_struct_ref();
       }
       else
       {
