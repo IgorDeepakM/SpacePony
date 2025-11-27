@@ -2,6 +2,29 @@
 
 SpacePony is an experimental fork of the [Pony programming language](https://github.com/ponylang/ponyc). The goal of the fork is to improve the FFI capabilities and add more systems programming language features.
 
+* [Quick start](#quick-start)
+  * [Linux/Macos](#linux/Macos)
+  * [Windows](#windows)
+* [Breaking changes from original Pony](#breaking-changes-from-original-pony)
+* [List of additions/changes](#list-of-additionschanges)
+  * [Identify SpacePony](#identify-spacepony)
+  * [Pointer](#pointer)
+  * [addressof](#addressof)
+  * [Constant values in generics](#constant-values-in-generics)
+  * [CFixedSizedArray](#cfixedsizedarray)
+  * [offsetof](#offsetof)
+  * [sizeof](#sizeof)
+  * [FFI pass by value parameters](#ffi-pass-by-value-parameters)
+  * [Inline assembler support](#inline-assembler-support)
+  * [Atomics](#atomics)
+  * [Additional capability, nhb](#additional-capability-nhb)
+  * [CTFE (Compile Time Function Execution)](#ctfe-compile-time-function-execution)
+  * [Enums](#enums-sort-of)
+* [Future directions](#future-directions)
+  * [Short term](#short-term)
+  * [Long term (read never)](#long-term-read-never)
+* [The original Pony README is here with instructions how to compile](#the-original-pony-readme-is-here-with-instructions-how-to-compile)
+
 ## Quick start
 
 SpacePony currently doesn't have any official binary releases, however it is easy to clone this repo and build the compiler.
@@ -36,7 +59,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
   * In the class `Iter` in the package `itertools`, the method `enum` was renamed to `enumerate` because `enum` is a reserved keyword in SpacePony.
 
-## List of changes.
+## List of additions/changes
 
 ### Identify SpacePony
 
@@ -223,7 +246,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 * Keep in mind that both sizeof and offsetof are not compile time constants, meaning they do not behave like a literal and they can unfortunately not be used as type values in generics. sizeof/offsetof are created during the code generation step becoming a compile time constant in the LLVM code and not before that. The reason for this is the the SpacePony compiler uses LLVM in order build target dependent aggregate types in the code generation pass which is one of the last passes. It is possible to make sizeof and offsetof into a literal but that would require using LLVM to build up the types in earlier passes.
 
-### Added FFI pass by value parameters.
+### FFI pass by value parameters
 
 * Structs and classes can be passed as value to FFI functions. Add the annotation `\byval\` before the type in the parameter declaration. Annotation was used because it could be easily added without intruding too much on the existing Pony syntax. It also can coexists with other annotations disregarding the order. 
 
@@ -269,7 +292,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 * Currently not supported is the C `const` qualifier. This might affect lowering for some targets and therefore it must taken into account in the future. To map the `const` qualifier in SpacePony, one possibility to have `let` be const in the C FFI. However, this doesn't cover everything as `embed` also might be const. Adding an annotation `\cconst\` to the type can cover this.
 
-### Inline assembler supported
+### Inline assembler support
 
 * Added support for an LLVM like syntax for inline assembler.
 
@@ -311,7 +334,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   var r = a + 1 // same as a.add_fetch(1)
   ```
 
-### Added an extra capability, nhb.
+### Additional capability, nhb
 
 * Added the extra capability called **nhb**. The nhb capability makes it possible to mutably share a class among actors. This is intended for when it is possible to mutably share a class when the class has implemented some form of custom synchronization like atomics or mutexes. 
 
@@ -347,7 +370,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
       _ta2.beh(nc2) // Yes, you can send that nhb class all you want, over and over again. Have fun.
     ```
 
-### Added CTFE (Compile Time Function Execution)
+### CTFE (Compile Time Function Execution)
 
 * Added CTFE to the pony compiler. Currently it is only supported using a `comptime expression end` statement. The compile time evaluation is mandatory inside this expression and a failure to evaluate the expression at compile time will result that the compilation fails. This corresponds to `consteval` in C++.
 
@@ -423,7 +446,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   end
   ```
 
-### Added enums (sort of)
+### Enums (sort of)
 
 * Added the possibility using enum like declarations inside a primitive. The Pony language doesn't have enums and the goto method is to use methods inside a primitive [like this](https://tutorial.ponylang.io/appendices/examples.html#enumeration-with-values). However, this adds a lot of boiler plate to just write an enum which is very tedious for large amounts of enums and there is no auto increment of the value. Adding a completely new enum type classification in SpacePony is a lot of work so instead a syntax that lowers the enumerations to methods inside the primitive was chosen. Unlike C/C++ enums, the enums must be give a type and there is no automatic type inference to the smallest possible type that fits the enumerations.
 
@@ -495,6 +518,6 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 * Improve the Pony type system.
 
 
-## The original Pony README is here with instruction how to compile.
+## The original Pony README is here with instructions how to compile
 
 * [Pony README](README_old_Pony.md)
