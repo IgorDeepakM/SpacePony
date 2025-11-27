@@ -1011,12 +1011,30 @@ actor Main
   fun test_is(exit_add: I32) =>
     var d1: Bool = comptime
       var e1 = S2
+      var e2 = e1
+      e1 is e2
+    end
+
+    var c11 = S2
+    var c22 = c11
+    var d2: Bool = c11 is c22
+
+    if d1 != d2 then
+      @pony_exitcode(exit_add + 1)
+    end
+
+    d1 = comptime
+      var e1 = S2
       var e2 = S2
       e1 is e2
     end
 
-    if d1 != true then
-      @pony_exitcode(exit_add + 1)
+    var e11 = S2
+    var e22 = S2
+    d2 = e11 is e22
+
+    if d1 != d2 then
+      @pony_exitcode(exit_add + 2)
     end
 
     d1 = comptime
@@ -1025,8 +1043,12 @@ actor Main
       e1 is e2
     end
 
-    if d1 != true then
-      @pony_exitcode(exit_add + 2)
+    var e11_2 = Is1(2)
+    var e22_2 = Is1(2)
+    d2 = e11_2 is e22_2
+
+    if d1 != d2 then
+      @pony_exitcode(exit_add + 3)
     end
 
     d1 = comptime
@@ -1035,18 +1057,26 @@ actor Main
       e1 is e2
     end
 
-    if d1 != false then
-      @pony_exitcode(exit_add + 3)
+    var e11_3 = Is1(1)
+    var e22_3 = Is1(2)
+    d2 = e11_3 is e22_3
+
+    if d1 != d2 then
+      @pony_exitcode(exit_add + 4)
     end
 
     d1 = comptime
-      var e1:(U32, I32) = (1, 2)
-      var e2:(U32, I32) = (1, 2)
+      var e1: (U32, I32) = (1, 2)
+      var e2: (U32, I32) = (1, 2)
       e1 is e2
     end
 
-    if d1 != true then
-      @pony_exitcode(exit_add + 4)
+     var e11_4: (U32, I32) = (1, 2)
+     var e22_4: (U32, I32) = (1, 2)
+     d2 = e11_4 is e22_4
+
+    if d1 != d2 then
+      @pony_exitcode(exit_add + 5)
     end
 
     d1 = comptime
@@ -1055,6 +1085,10 @@ actor Main
       e1 is e2
     end
 
-    if d1 != false then
-      @pony_exitcode(exit_add + 5)
+    var e11_5: (U32, I32) = (2, 1)
+    var e22_5: (U32, I32) = (1, 2)
+    d2 = e11_5 is e22_5
+
+    if d1 != d2 then
+      @pony_exitcode(exit_add + 6)
     end
