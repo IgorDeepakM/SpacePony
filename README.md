@@ -425,7 +425,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 ### Added enums (sort of)
 
-* Added the possibility using enum like declarations inside a primitive. The Pony language doesn't have enums and the goto method is to use methods inside a primitive [like this](https://tutorial.ponylang.io/appendices/examples.html#enumeration-with-values). However, this adds a lot of boiler plate to just write an enum which is very tedious for large amounts of enums and there is no auto increment of the value. Adding a completely new enum type classification in SpacePony is a lot of work so instead a syntax that lowers the enumerations to methods inside the primitive was chosen. Unlike C/C++ enums, the enums must be give a type and the is no automatic type inference to the smallest possible type that fits the enumerations.
+* Added the possibility using enum like declarations inside a primitive. The Pony language doesn't have enums and the goto method is to use methods inside a primitive [like this](https://tutorial.ponylang.io/appendices/examples.html#enumeration-with-values). However, this adds a lot of boiler plate to just write an enum which is very tedious for large amounts of enums and there is no auto increment of the value. Adding a completely new enum type classification in SpacePony is a lot of work so instead a syntax that lowers the enumerations to methods inside the primitive was chosen. Unlike C/C++ enums, the enums must be give a type and there is no automatic type inference to the smallest possible type that fits the enumerations.
 
   ```pony
   primitive P
@@ -445,11 +445,11 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
     fun enum3(): I32 => 44.add(2) // 46
   ```
 
- * When there are many enums, this makes it more easier to write. C intefaces can sometimes have many enums, often as some return status values and the ability to copy and paste most of it makes it easier.
+ * When there are many enums, this makes it more easier to write. C interfaces can sometimes have many enums, often as some return status values and the ability to copy and paste most of it makes it easier.
 
  * Any type can be used in enums, however for auto-incrementation the type must support the add method. If not every enum must be given a value.
 
- * Several enums per line are supported using `;` delimeter
+ * Several enums per line are supported using `;` delimiter
 
    ```pony
    primitive P
@@ -469,9 +469,9 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
     type PUnion is (P1 | P2 | P3 | P4)
     ```
 
-* The Pony type unions are ok for a moderate amount enums, both in terms of typing and code generation. This is usually the goto method when the is no interest what the underlying representation is, meaning no conversion to some integer needed. Under the hood a primitive is a pointer to a global aggregrate, like a class but without any members. Since there are no members it can be made an immutable global. For large amounts of enums, there might be missed optimizations opportunities as random pointers cannot easily be converted to jump tables. In this particular case monotonous increasing enums might be better. Despite having implemented enums using lowering in primitives, a "real" enum in SpacePony isn't off the table.
+* The Pony type unions are ok for a moderate amount enums, both in terms of typing and code generation. This is usually the goto method when the is no interest what the underlying representation is, meaning no conversion to some integer needed. Under the hood a primitive is a pointer to a global aggregate, like a class but without any members. Since there are no members it can be made an immutable global. For large amounts of enums, there might be missed optimizations opportunities as random pointers cannot easily be converted to jump tables. In this particular case monotonous increasing enums might be better. Despite having implemented enums using lowering in primitives, a "real" enum in SpacePony isn't off the table.
 
-* Right now it is necessary to use parathesis in order to dereference an enum since it is really a method `var x = P.enum()`. One possibility is to allow omitting the parathesis for enums, `var x = P.enum`. This might be a possible future improvement.
+* Right now it is necessary to use parenthesis in order to dereference an enum since it is really a method `var x = P.enum()`. One possibility is to allow omitting the parenthesis for enums, `var x = P.enum`. This might be a possible future improvement.
 
 
 ## Future directions
