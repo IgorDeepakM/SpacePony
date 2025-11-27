@@ -59,7 +59,7 @@ RULE(provides, ONE_OR_MORE(type), TK_PROVIDES);
 
 RULE(members,
   ZERO_OR_MORE(field)
-  ZERO_OR_MORE(method),
+  ZERO_OR_MORE(method, enum_block),
   TK_MEMBERS);
 
 RULE(field,
@@ -82,6 +82,16 @@ RULE(method,
   CHILD(rawseq, none)  // Body
   CHILD(string, none),
   TK_FUN, TK_NEW, TK_BE);
+
+RULE(enum_entry,
+  CHILD(expr, none),
+  TK_ID);
+
+RULE(enum_block,
+  HAS_TYPE(type)
+  CHILD(type)
+  ONE_OR_MORE(enum_entry),
+  TK_ENUM);
 
 RULE(type_params, ONE_OR_MORE(type_param, value_formal_param), TK_TYPEPARAMS);
 

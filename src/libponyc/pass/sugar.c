@@ -302,6 +302,81 @@ static ast_result_t sugar_entity(pass_opt_t* opt, ast_t* ast, bool add_create,
 }
 
 
+static ast_result_t sugar_enum(pass_opt_t* opt, ast_t** astp)
+{
+  ast_t* ast = *astp;
+  ast_t* enum_ret_type = ast_child(ast);
+  ast_t* next_member = ast_sibling(ast);
+  ast_t* enum_elem = ast_childidx(ast, 1);
+  ast_t* parent_members = ast_parent(ast);
+
+  ast_t* last_expr = NULL;
+
+  lexint_t current_incr = lexint_zero();
+
+  while(enum_elem != NULL)
+  {
+    const char* fn_name = ast_name(enum_elem);
+    ast_t* fn_body = ast_child(enum_elem);
+
+    if(ast_id(fn_body) == TK_NONE)
+    {
+      ast_t* curr_count_node = ast_from(enum_elem, TK_INT);
+      ast_set_int(curr_count_node, &current_incr);
+
+      if(last_expr != NULL)
+      {
+        BUILD(plus_one, enum_elem,
+          NODE(TK_CALL,
+            NODE(TK_DOT, TREE(last_expr) ID("add"))
+            NODE(TK_POSITIONALARGS, NODE(TK_SEQ, TREE(curr_count_node)))
+            NONE
+            NONE
+          );
+        );
+
+        fn_body = plus_one;
+      }
+      else
+      {
+        fn_body = curr_count_node;
+      }
+    }
+    else
+    {
+      last_expr = fn_body;
+      current_incr = lexint_zero();
+    }
+
+    current_incr = lexint_add64(&current_incr, 1);
+
+    BUILD(enum_def, ast,
+      NODE(TK_FUN, AST_SCOPE
+        NODE(TK_BOX)
+        ID(fn_name)
+        NONE
+        NONE
+        TREE(enum_ret_type)
+        NONE
+        NODE(TK_SEQ, TREE(fn_body))  // Body
+        NONE));// Doc string
+
+    ast_append(parent_members, enum_def);
+
+    enum_elem = ast_sibling(enum_elem);
+  }
+
+  ast_remove(ast);
+  *astp = next_member;
+
+  // Since we removed the TK_ENUM block, we need to process what comes after
+  if(!ast_passes_subtree(astp, opt, PASS_SUGAR))
+    return AST_FATAL;
+
+  return AST_OK;
+}
+
+
 static ast_result_t sugar_typeparam(ast_t* ast)
 {
   AST_GET_CHILDREN(ast, id, constraint);
@@ -1247,6 +1322,7 @@ ast_result_t pass_sugar(ast_t** astp, pass_opt_t* options)
     case TK_STRUCT:              return sugar_entity(options, ast, true, TK_REF);
     case TK_CLASS:               return sugar_entity(options, ast, true, TK_REF);
     case TK_ACTOR:               return sugar_entity(options, ast, true, TK_TAG);
+    case TK_ENUM:                return sugar_enum(options, astp);
     case TK_TRAIT:
     case TK_INTERFACE:           return sugar_entity(options, ast, false, TK_REF);
     case TK_TYPEPARAM:           return sugar_typeparam(ast);
