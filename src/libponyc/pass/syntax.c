@@ -6,6 +6,7 @@
 #include "../pkg/package.h"
 #include "../pkg/platformfuns.h"
 #include "../type/assemble.h"
+#include "../type/subtype.h"
 #include "../../libponyrt/mem/pool.h"
 #include "../codegen/genvaluepass.h"
 #include "ponyassert.h"
@@ -1623,6 +1624,35 @@ static bool check_annotation_location(pass_opt_t* opt, ast_t* ast,
       "a 'byval' annotation can only be used on parameter types in FFI "
       "and bare lambda declarations");
     return false;
+  }
+  else if(strcmp(str, "property") == 0)
+  {
+    ast_t* fundef = ast_parent(ast);
+    if(ast_id(fundef) != TK_FUN)
+    {
+      ast_error(opt->check.errors, loc,
+        "a 'property' annotation can only be used on function definitions");
+      return false;
+    }
+
+    ast_t* params = ast_childidx(fundef, 2);
+    ast_t* named_params = ast_childidx(fundef, 3);
+
+    if(ast_id(params) != TK_NONE || ast_id(named_params) != TK_NONE)
+    {
+      ast_error(opt->check.errors, loc,
+        "a method with a 'property' annotation cannot have any parameters");
+      return false;
+    }
+
+    ast_t* return_type = ast_childidx(fundef, 4);
+
+    if(ast_id(return_type) == TK_NONE || is_none(return_type))
+    {
+      ast_error(opt->check.errors, loc,
+        "a method with a 'property' annontation must have a return type");
+      return false;
+    }
   }
 
   return true;

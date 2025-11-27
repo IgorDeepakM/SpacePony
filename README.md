@@ -20,6 +20,7 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
   * [Additional capability, nhb](#additional-capability-nhb)
   * [CTFE (Compile Time Function Execution)](#ctfe-compile-time-function-execution)
   * [Enums](#enums-sort-of)
+  * [Property](#property)
 * [Future directions](#future-directions)
   * [Short term](#short-term)
   * [Long term (read never)](#long-term-read-never)
@@ -463,9 +464,9 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
   ```pony
   primitive P
-    fun enum1(): I32 => 44
-    fun enum2(): I32 => 44.add(1) // 45
-    fun enum3(): I32 => 44.add(2) // 46
+    fun \property\ enum1(): I32 => 44
+    fun \property\ enum2(): I32 => 44.add(1) // 45
+    fun \property\ enum3(): I32 => 44.add(2) // 46
   ```
 
  * When there are many enums, this makes it more easier to write. C interfaces can sometimes have many enums, often as some return status values and the ability to copy and paste most of it makes it easier.
@@ -494,7 +495,44 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 * The Pony type unions are ok for a moderate amount enums, both in terms of typing and code generation. This is usually the goto method when the is no interest what the underlying representation is, meaning no conversion to some integer needed. Under the hood a primitive is a pointer to a global aggregate, like a class but without any members. Since there are no members it can be made an immutable global. For large amounts of enums, there might be missed optimizations opportunities as random pointers cannot easily be converted to jump tables. In this particular case monotonous increasing enums might be better. Despite having implemented enums using lowering in primitives, a "real" enum in SpacePony isn't off the table.
 
-* Right now it is necessary to use parenthesis in order to dereference an enum since it is really a method `var x = P.enum()`. One possibility is to allow omitting the parenthesis for enums, `var x = P.enum`. This might be a possible future improvement.
+
+### Property
+
+* Added an `property` annotation for methods in order to remove the requirement to have parentheses for method calls that has no parameters and returns a value. This is especially useful for enums that are under the hood are methods but gets the look and feel as it was constant variables. It is similar what is available by default in the D language and C# has properties as well, descibed in the [C# programming guide](https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/properties)
+
+  * *A property is a member that provides a flexible mechanism to read, write, or compute the value of a data field. Properties appear as public data members, but they're implemented as special methods called accessors.*
+
+* The SpacePony enums inside primitives are automatically given the `property` annotation. Any method that with the right signature can have the 'propery' annotation.
+
+  ```pony
+  primitive P
+    enum I32
+      e1 // enums will have the 'property' annotation by default
+      e2
+      e3
+    end
+
+    fun \property\ m1(): I32 => 22 // A method can be a property member
+
+  class C
+    var x: I32
+
+    new create(x': I32) =>
+      x = x'
+
+    fun \property\ get_x(): I32 => x // It is not limited to literals but and can return any run time calculation
+
+  ...
+
+  let x = P.e1   // derferencing a property method looks like accessing a member variable
+  let y = P.m1
+
+  let c1 = C(33)
+  let z = c1.get_x
+
+  ```
+
+* Currently only reading a `property` is supported. However, in the future also writing to a `property` will be added.
 
 
 ## Future directions
