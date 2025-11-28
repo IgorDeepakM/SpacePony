@@ -3,6 +3,7 @@
 #include "literal.h"
 #include "call.h"
 #include "../ast/id.h"
+#include "../ast/astbuild.h"
 #include "../pkg/package.h"
 #include "../pass/expr.h"
 #include "../pass/names.h"
@@ -126,8 +127,9 @@ static bool constructor_type(pass_opt_t* opt, ast_t* ast, token_id cap,
   return false;
 }
 
-static bool method_access(pass_opt_t* opt, ast_t* ast, ast_t* method)
+static bool method_access(pass_opt_t* opt, ast_t** astp, ast_t* method)
 {
+  ast_t* ast = *astp;
   AST_GET_CHILDREN(method, cap, id, typeparams, params, result);
 
   switch(ast_id(method))
@@ -151,9 +153,32 @@ static bool method_access(pass_opt_t* opt, ast_t* ast, ast_t* method)
       break;
 
     case TK_FUN:
+    {
       ast_setid(ast, TK_FUNREF);
-      break;
 
+      // If there is no call to a member that is a method, it means we are
+      // trying to reference a property because TK_CALL wasn't generated
+      // during the parsing because of lack of parentheses.
+      // Here we add the TK_CALL node.
+      ast_t* parent = ast_parent(ast);
+      if(ast_has_annotation(method, "property") && ast_id(parent) != TK_CALL)
+      {
+        BUILD(call, parent,
+          NODE(TK_CALL,
+            TREE(ast)
+            NONE
+            NONE
+            NONE
+          )
+        );
+
+        ast_settype(call, result);
+        ast_replace(astp, call);
+        ast = ast_child(*astp);
+      }
+
+      break;
+    }
     default:
       pony_assert(0);
       return false;
@@ -212,13 +237,13 @@ static bool type_access(pass_opt_t* opt, ast_t** astp)
       break;
 
     case TK_NEW:
-      ret = method_access(opt, ast, r_find);
+      ret = method_access(opt, astp, r_find);
       break;
 
     case TK_FUN:
       if(ast_id(ast_child(r_find)) == TK_AT)
       {
-        ret = method_access(opt, ast, r_find);
+        ret = method_access(opt, astp, r_find);
         break;
       }
       //fallthrough
@@ -360,9 +385,10 @@ static bool tuple_access(pass_opt_t* opt, ast_t* ast)
   return true;
 }
 
-static bool member_access(pass_opt_t* opt, ast_t* ast)
+static bool member_access(pass_opt_t* opt, ast_t** astp)
 {
   // Left is a postfix expression, right is an id.
+  ast_t* ast = *astp;
   AST_GET_CHILDREN(ast, left, right);
   pony_assert(ast_id(right) == TK_ID);
   ast_t* type = ast_type(left);
@@ -423,7 +449,7 @@ static bool member_access(pass_opt_t* opt, ast_t* ast)
     case TK_NEW:
     case TK_BE:
     case TK_FUN:
-      ret = method_access(opt, ast, r_find);
+      ret = method_access(opt, astp, r_find);
       break;
 
     default:
@@ -533,7 +559,7 @@ static bool entity_access(pass_opt_t* opt, ast_t** astp)
   if(ast_id(type) == TK_TUPLETYPE)
     return tuple_access(opt, ast);
 
-  return member_access(opt, ast);
+  return member_access(opt, astp);
 }
 
 bool expr_dot(pass_opt_t* opt, ast_t** astp)

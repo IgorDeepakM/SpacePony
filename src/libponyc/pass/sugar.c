@@ -361,6 +361,12 @@ static ast_result_t sugar_enum(pass_opt_t* opt, ast_t** astp)
         NODE(TK_SEQ, TREE(fn_body))  // Body
         NONE));// Doc string
 
+    BUILD(property_annotation, enum_def,
+      NODE(TK_ANNOTATION,
+        ID("property")));
+
+    ast_setannotation(enum_def, property_annotation);
+
     ast_append(parent_members, enum_def);
 
     enum_elem = ast_sibling(enum_elem);

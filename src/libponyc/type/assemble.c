@@ -346,12 +346,20 @@ ast_t* type_for_fun(ast_t* ast)
   // avoid this make a clean version of the params without types.
   ast_t* clean_params = ast_dup(params);
 
+  ast_t* annotation = ast_annotation(ast);
+
   for(ast_t* p = ast_child(clean_params); p != NULL; p = ast_sibling(p))
     ast_settype(p, NULL);
 
   BUILD(fun, ast,
     NODE(TK_FUNTYPE,
       NODE(fcap) TREE(typeparams) TREE(clean_params) TREE(result)));
+
+  // set the annotation the same as the original
+  if(annotation != NULL)
+  {
+    ast_setannotation(fun, annotation);
+  }
 
   return fun;
 }
