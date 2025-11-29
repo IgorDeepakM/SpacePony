@@ -923,11 +923,11 @@ static bool is_nominal_sub_entity(ast_t* sub, ast_t* super,
     if(is_none(super_typearg))
       return true;
   }
+  // Implicit struct/class to pointer conversion
   else if(is_pointer(super) &&
           (ast_id(sub) == TK_NOMINAL && (ast_id(sub_def) == TK_STRUCT || ast_id(sub_def) == TK_CLASS)))
   {
     ast_t* pointer_elem_type = ast_child(ast_childidx(super, 2));
-    bool pointer_elem_none = is_none(pointer_elem_type);
 
     if(is_none(pointer_elem_type) || is_eqtype(pointer_elem_type, sub, errorf, opt))
     {
