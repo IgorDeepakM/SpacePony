@@ -444,6 +444,18 @@ ast_t* ast_from_string(ast_t* ast, const char* name)
   return new_ast;
 }
 
+ast_t* ast_from_string_w_question(ast_t* ast, const char* name, bool question)
+{
+  ast_t* name_node = ast_from_string(ast, name);
+
+  token_id q = question ? TK_QUESTION : TK_NONE;
+  ast_t* question_node = ast_from(ast, q);
+
+  ast_append(name_node, question_node);
+
+  return name_node;
+}
+
 ast_t* ast_from_int(ast_t* ast, uint64_t value)
 {
   pony_assert(ast != NULL);

@@ -104,6 +104,9 @@
 /// Add a TK_ID node with the given ID name
 #define ID(name) TREE(ast_from_string(basis_ast, name));
 
+/// Add a TK_ID node with the given ID name and appending question node
+#define ID_W_QUESTION(name, question) TREE(ast_from_string_w_question(basis_ast, name, question));
+
 /// Add a TK_ID node with the given ID name and nice name
 #define NICE_ID(name, nice) \
   TREE(ast_setdata(ast_from_string(basis_ast, name), (void*)stringtab(nice)));

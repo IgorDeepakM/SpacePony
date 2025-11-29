@@ -135,6 +135,25 @@ static bool method_access(pass_opt_t* opt, ast_t** astp, ast_t* method)
   switch(ast_id(method))
   {
     case TK_NEW:
+    case TK_BE:
+    {
+      ast_t* question_node = ast_child(ast);
+      if(question_node != NULL && ast_id(question_node) == TK_QUESTION)
+      {
+        ast_error(opt->check.errors, question_node,
+          "a behaviour or a constructor cannot be apartial '?'");
+        return false;
+      }
+
+      break;
+    }
+    default:
+      break;
+  }
+
+  switch(ast_id(method))
+  {
+    case TK_NEW:
     {
       AST_GET_CHILDREN(ast, left, right);
       ast_t* type = ast_type(left);
@@ -163,12 +182,18 @@ static bool method_access(pass_opt_t* opt, ast_t** astp, ast_t* method)
       ast_t* parent = ast_parent(ast);
       if(ast_has_annotation(method, "property") && ast_id(parent) != TK_CALL)
       {
+        ast_t* question_node = ast_child(ast_childidx(ast, 1));
+        if(question_node == NULL)
+        {
+          question_node = ast_from(ast, TK_NONE);
+        }
+
         BUILD(call, parent,
           NODE(TK_CALL,
             TREE(ast)
             NONE
             NONE
-            NONE
+            TREE(question_node)
           )
         );
 
@@ -350,6 +375,14 @@ static bool tuple_access(pass_opt_t* opt, ast_t* ast)
 
   if(is_typecheck_error(type))
     return false;
+
+  ast_t* question_node = ast_child(right);
+  if(question_node != NULL && ast_id(question_node) == TK_QUESTION)
+  {
+    ast_error(opt->check.errors, question_node,
+      "a tuple access cannot be a partial '?'");
+    return false;
+  }
 
   // Change the lookup name to an integer index.
   if(!make_tuple_index(&right))

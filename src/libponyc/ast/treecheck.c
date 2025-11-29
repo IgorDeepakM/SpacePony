@@ -47,8 +47,10 @@ static void error_preamble(ast_t* ast)
 {
   pony_assert(ast != NULL);
 
-  fprintf(stderr, "Internal error: AST node %d (%s), ", ast_id(ast),
-    ast_get_print(ast));
+  ast_t* parent = ast_parent(ast);
+
+  fprintf(stderr, "Internal error: AST node %d (%s), parent AST node %d (%s), ", ast_id(ast),
+    ast_get_print(ast), ast_id(parent), ast_get_print(parent));
 }
 
 
