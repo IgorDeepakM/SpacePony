@@ -499,11 +499,16 @@ DEF(thisliteral);
   TOKEN(NULL, TK_THIS);
   DONE();
 
+DEF(id_with_question);
+  TOKEN("id", TK_ID);
+  OPT_NO_DFLT TOKEN(NULL, TK_QUESTION);
+  DONE();
+
 // ID
 DEF(ref);
   PRINT_INLINE();
   AST_NODE(TK_REFERENCE);
-  TOKEN("name", TK_ID);
+  RULE("name", id_with_question);
   DONE();
 
 // __LOC
@@ -560,7 +565,7 @@ DEF(nextatom);
 DEF(dot);
   INFIX_BUILD();
   TOKEN(NULL, TK_DOT);
-  TOKEN("member name", TK_ID);
+  RULE("member name with question", id_with_question);
   DONE();
 
 // TILDE ID

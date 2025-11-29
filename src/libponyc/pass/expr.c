@@ -619,6 +619,7 @@ ast_result_t pass_expr(ast_t** astp, pass_opt_t* options)
     case TK_DIGESTOF:   r = expr_digestof(options, ast); break;
     case TK_OFFSETOF:   r = expr_offsetof(options, ast); break;
     case TK_SIZEOF:     r = expr_sizeof(options, ast); break;
+    case TK_ID:         r = expr_id(options, ast); break;
 
     case TK_AS:
       if(!expr_as(options, astp))

@@ -532,6 +532,37 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
   ```
 
+* A property can also be a partial. Just add `?` after the name.
+
+  ```pony
+  class C
+    var x: I32
+
+  new create(x': I32) =>
+    x = x'
+
+  fun \property\ partial_x(): I32 ? =>
+    if x < 10 then
+      error
+    else
+      x
+    end
+
+  ...
+
+  var c = C(5)
+
+  var c_x: I32 = 0
+  try
+    c_x = c2.partial_x?
+  else
+    c_x = 11
+  end
+
+  // c_x will have the value 11
+
+  ```
+
 * Currently only reading a `property` is supported. However, in the future also writing to a `property` will be added.
 
 

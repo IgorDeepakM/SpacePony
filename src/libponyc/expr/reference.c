@@ -253,6 +253,14 @@ bool expr_fieldref(pass_opt_t* opt, ast_t* ast, ast_t* find, token_id tid)
   if(is_typecheck_error(l_type))
     return false;
 
+  ast_t* question_node = ast_child(right);
+  if(question_node != NULL && ast_id(question_node) == TK_QUESTION)
+  {
+    ast_error(opt->check.errors, question_node,
+      "a field access cannot be a partial '?'");
+    return false;
+  }
+
   AST_GET_CHILDREN(find, id, f_type, init);
 
   f_type = typeparam_current(opt, f_type, ast);
@@ -326,6 +334,14 @@ bool expr_typeref(pass_opt_t* opt, ast_t** astp)
   ast_t* ast = *astp;
   pony_assert(ast_id(ast) == TK_TYPEREF);
   AST_GET_CHILDREN(ast, package, id, typeargs);
+
+  ast_t* question_node = ast_child(id);
+  if(question_node != NULL && ast_id(question_node) == TK_QUESTION)
+  {
+    ast_error(opt->check.errors, question_node,
+      "a type reference cannot be a partial '?'");
+    return false;
+  }
 
   ast_t* type = ast_type(ast);
   if(type == NULL || (ast_id(type) == TK_INFERTYPE))
@@ -1207,5 +1223,25 @@ bool expr_compile_intrinsic(pass_opt_t* opt, ast_t* ast)
 {
   (void)opt;
   ast_settype(ast, ast_from(ast, TK_COMPILE_INTRINSIC));
+  return true;
+}
+
+
+bool expr_id(pass_opt_t* opt, ast_t* ast)
+{
+  ast_t* question_node = ast_child(ast);
+  if(question_node != NULL)
+  {
+    ast_t* parent = ast_parent(ast);
+
+    // Anything that is not a dot expression cannot be used as a partial
+    if(ast_id(parent) != TK_DOT && ast_id(question_node) == TK_QUESTION)
+    {
+      ast_error(opt->check.errors, question_node,
+        "a partial '?' cannot be used by this reference");
+      return false;
+    }
+  }
+
   return true;
 }

@@ -57,6 +57,7 @@ ast_t* ast_blank(token_id id);
 ast_t* ast_token(token_t* t);
 ast_t* ast_from(ast_t* ast, token_id id);
 ast_t* ast_from_string(ast_t* ast, const char* name);
+ast_t* ast_from_string_w_question(ast_t* ast, const char* name, bool question);
 ast_t* ast_from_int(ast_t* ast, uint64_t value);
 ast_t* ast_from_float(ast_t* ast, double value);
 ast_t* ast_dup(ast_t* ast);

@@ -191,7 +191,7 @@ GROUP(expr,
   tilde, chain, qualify, call, ffi_call, match_capture, ffi_ref,
   if_expr, ifdef, iftypeset, whileloop, repeat, for_loop, with,
   disposing_block, match, try_expr, lambda, barelambda, array_literal,
-  object_literal, int_literal, float_literal, string, bool_literal, id, rawseq,
+  object_literal, int_literal, float_literal, string, bool_literal, id_with_question, id, rawseq,
   package_ref, location, this_ref, ref, fun_ref, type_ref, field_ref,
   tuple_elem_ref, local_ref, param_ref, value_formal_param_ref, comptime);
 
@@ -264,7 +264,7 @@ RULE(prefix,
 RULE(dot,
   HAS_TYPE(type)
   CHILD(expr)
-  CHILD(id, int_literal, type_args)
+  CHILD(id_with_question, int_literal, type_args)
   IF((CHILD_ID(0) == TK_THIS), HAS_DATA),
   TK_DOT);
 
@@ -334,7 +334,7 @@ RULE(ifdef_not,
   TK_IFDEFNOT);
 
 RULE(ifdef_flag,
-  CHILD(id),
+  CHILD(id_with_question),
   TK_IFDEFFLAG);
 
 RULE(iftypeset,
@@ -485,7 +485,7 @@ RULE(object_literal,
 
 RULE(ref,
   HAS_TYPE(type)
-  CHILD(id),
+  CHILD(id_with_question),
   TK_REFERENCE);
 
 RULE(package_ref,
@@ -512,7 +512,7 @@ RULE(field_ref,
   HAS_TYPE(type)
   HAS_DATA // Field definition
   CHILD(expr)
-  CHILD(id),
+  CHILD(id_with_question),
   TK_FVARREF, TK_FLETREF, TK_EMBEDREF);
 
 RULE(tuple_elem_ref,
@@ -525,13 +525,13 @@ RULE(local_ref,
   HAS_TYPE(type)
   HAS_DATA // Local definition
   CHILD(expr)
-  OPTIONAL(id),
+  OPTIONAL(id_with_question),
   TK_VARREF, TK_LETREF, TK_DONTCAREREF);
 
 RULE(param_ref,
   HAS_TYPE(type)
   HAS_DATA // Parameter definition
-  CHILD(id),
+  CHILD(id_with_question),
   TK_PARAMREF);
 
 
@@ -600,7 +600,7 @@ RULE(type_param_ref,
 RULE(value_formal_param_ref,
   HAS_TYPE(type)
   HAS_DATA  // Definition of referred type parameter
-  CHILD(id),
+  CHILD(id_with_question),
   //OPTIONAL(cap, gencap, none)
   //OPTIONAL(aliased, ephemeral, none),
   TK_VALUEFORMALPARAMREF);
@@ -621,6 +621,7 @@ RULE(float_literal, HAS_TYPE(type), TK_FLOAT);
 RULE(gencap, LEAF, TK_CAP_READ, TK_CAP_SEND, TK_CAP_SHARE, TK_CAP_ALIAS,
   TK_CAP_ANY);
 RULE(id, HAS_TYPE(type) HAS_DATA, TK_ID);
+RULE(id_with_question, HAS_TYPE(type) HAS_DATA OPTIONAL(question, none), TK_ID);
 RULE(int_literal, HAS_TYPE(type), TK_INT);
 RULE(literal_type, LEAF, TK_LITERAL, TK_LITERALBRANCH);
 RULE(location, HAS_TYPE(nominal), TK_LOCATION);

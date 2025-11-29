@@ -1347,3 +1347,31 @@ TEST_F(BadPonyTest, MatchIsoLetWithoutConsume)
 
     TEST_ERRORS_1(src, "this capture violates capabilities");
 }
+
+TEST_F(BadPonyTest, FieldAccessCannotBePartial)
+{
+  // From issue #4579
+  const char* src =
+    "class Bad\n"
+    "  var x: I32 = 0\n"
+    "\n"
+    "  fun bad() =>\n"
+    "    x?\n";
+
+  TEST_ERRORS_1(src, "a field access cannot be a partial '?'");
+}
+
+
+TEST_F(BadPonyTest, TypeAccessCannotBePartial)
+{
+  // From issue #4579
+  const char* src =
+    "primitive P\n"
+    " fun m(): I32 => 0\n"
+    "class Bad\n"
+    "  fun bad() =>\n"
+    "    var x = P?.m()\n";
+
+  TEST_ERRORS_2(src, "a partial '?' cannot be used by this reference",
+    "a type reference cannot be a partial '?'");
+}

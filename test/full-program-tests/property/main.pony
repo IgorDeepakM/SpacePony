@@ -17,6 +17,13 @@ class C
 
   fun \property\ get_x(): I32 => x
 
+  fun \property\ partial_x(): I32 ? =>
+    if x < 10 then
+      error
+    else
+      x
+    end
+
 actor Main
     let _env: Env
   
@@ -45,4 +52,25 @@ actor Main
 
     if c1.get_x != 44 then
       @pony_exitcode(3)
+    end
+
+    var c2 = C(5)
+
+    var c_x: I32 = 0
+    try
+      c_x = c2.partial_x?
+    end
+
+    if c_x != 0 then
+      @pony_exitcode(4)
+    end
+
+    var c3 = C(55)
+    c_x = 0
+    try
+      c_x = c3.partial_x?
+    end
+
+    if c_x != 55 then
+      @pony_exitcode(5)
     end
