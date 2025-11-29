@@ -3,7 +3,7 @@
 SpacePony is an experimental fork of the [Pony programming language](https://github.com/ponylang/ponyc). The goal of the fork is to improve the FFI capabilities and add more systems programming language features.
 
 * [Quick start](#quick-start)
-  * [Linux/Macos](#linux/Macos)
+  * [Linux/Macos](#linuxmacos)
   * [Windows](#windows)
 * [Breaking changes from original Pony](#breaking-changes-from-original-pony)
 * [List of additions/changes](#list-of-additionschanges)
@@ -520,7 +520,8 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
     new create(x': I32) =>
       x = x'
 
-    fun \property\ get_x(): I32 => x // It is not limited to literals but and can return any run time calculation
+    fun \property\ get_x(): I32 => x // It is not limited to literals and can
+                                     // return any run time calculation
 
   ...
 
@@ -577,6 +578,22 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 * Real asynchronous IO and not a POSIX like wrapper. An API that can be used for anything streaming like Files, HTTP, TCP. The API should also use the best available asynchronous OS API primitives.
 
 * Implement a good and comprehensive reflection interface.
+
+* Replace `use` for FFI definitions to `extern`. Right now the keyword `use` is reused for defining external C calls, with additional conditions trailing the definition. These conditions can easily get out of and become unreadable. For example
+
+  ```pony
+  use @pony_os_writev[USize](ev: AsioEventID, iov: Pointer[(Pointer[U8] tag, USize)] tag, iovcnt: I32) ? if not windows
+  ```
+
+  As different targets increases it will be `if not windows and not anothertarget and not yetanothertarget`. Instead choosing what should be defined should be chosen by `ifdef` similar to `#ifdef` in C. Instead it should be
+
+  ```pony
+  ifdef windows then
+    extern(C) @_write[I32](fd: I32, buffer: Pointer[None], bytes_to_send: I32)
+  end
+  ```
+
+  this allows for more complex conditional statements that are also readable. Notice how the example above uses `extern(C)` instead of `use`. The reason is that currently `use` cannot be extended. For example if supporting importing C++ functions, then `use` at the current form cannot be extended. It might be possible to extend `use` with `use(C++)` for example but how it can be extended remains an open question.
 
 ### Long term (read never)
 
