@@ -1226,6 +1226,7 @@ TEST_F(SubTypeTest, CantConsumeRefToIso)
 
   TEST_ERRORS_1(src, "can't consume to this capability");
 }
+
 TEST_F(SubTypeTest, ConsumeRefNotIso)
 {
   const char* src =
@@ -1234,6 +1235,35 @@ TEST_F(SubTypeTest, ConsumeRefNotIso)
     "primitive P\n"
     "  fun apply(x: C ref) =>\n"
     "    let x': C iso = consume x";
+
+  TEST_ERRORS_1(src, "right side must be a subtype of left side");
+}
+
+TEST_F(SubTypeTest, AllowedPointerConversion)
+{
+  const char* src =
+    "struct S\n"
+
+    "primitive P\n"
+    "  fun apply() =>\n"
+    "    var s: S ref = S\n"
+    "    var ps: Pointer[S] = s\n"
+    "    var ps2: Pointer[None] = s\n"
+    "    var ps3: Pointer[None] = ps\n";
+
+  TEST_COMPILE(src);
+}
+
+TEST_F(SubTypeTest, PointerFromNoneConversionFail)
+{
+  const char* src =
+    "struct S\n"
+
+    "primitive P\n"
+    "  fun apply() =>\n"
+    "    var s = S\n"
+    "    var ps: Pointer[None] = s\n"
+    "    var ps2: Pointer[S] = ps\n";
 
   TEST_ERRORS_1(src, "right side must be a subtype of left side");
 }

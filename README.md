@@ -129,6 +129,19 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   var ptr: Pointer[U32].from_any[MyStruct](my_struct)
   ```
 
+* A class or a struct can be implicitly converted to a Pointer. A Pointer[None] will accept any class or struct type.
+
+  ```pony
+  struct S
+
+  ...
+
+  let s: S = S
+  var ps: Pointer[S] = s
+  var ps2: Pointer[None] = s
+
+  ```
+
 ### addressof
 
 * addressof can be used **everywhere**
