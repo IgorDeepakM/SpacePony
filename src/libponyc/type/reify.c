@@ -74,7 +74,7 @@ static void reify_typeparamref(ast_t** astp, ast_t* typeparam, ast_t* typearg)
       pony_assert(0);
   }
 
-  ast_t* annotation = ast_annotation(ast);
+  ast_t* annotation = ast_dup(ast_annotation(ast));
   ast_replace(astp, typearg);
 
   // We need to apply the byval annotation again as it was
