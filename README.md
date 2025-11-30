@@ -123,6 +123,12 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   var ptr2 = ptr.pointer_at_index(3) // Gives a new pointer with a byte offset of ptr + 4 * 3
   ```
 
+* Added from_reftype constructor in order to create a pointer from a class or struct.
+
+  ```pony
+  var ptr: Pointer[MyStruct].from_reftype(my_struct)
+  ```
+
 * Added from_any constructor in order to create a pointer from anything of the desired type. This is like a cast assign.
 
   ```pony

@@ -106,6 +106,19 @@ static void pointer_from_usize(compile_t* c, reach_type_t* t)
   codegen_finishfun(c);
 }
 
+static void pointer_from_reftype(compile_t* c, reach_type_t* t)
+{
+  FIND_METHOD("from_reftype", TK_NONE, c->opt);
+
+  LLVMTypeRef params[2];
+  params[0] = c_t->use_type;
+  params[1] = c_t->use_type;
+  start_function(c, t, m, c_t->use_type, params, 2);
+
+  genfun_build_ret(c, LLVMGetParam(c_m->func, 1));
+  codegen_finishfun(c);
+}
+
 static void pointer_from_any(compile_t* c, reach_type_t* t, reach_method_t* m, void* gen_data)
 {
   m->intrinsic = true;
@@ -521,6 +534,7 @@ void genprim_pointer_methods(compile_t* c, reach_type_t* t)
 
   pointer_create(c, t);
   pointer_from_usize(c, t);
+  pointer_from_reftype(c, t);
   GENERIC_FUNCTION("from_any", pointer_from_any, c_box_args);
   pointer_alloc(c, t, c_t_elem);
 

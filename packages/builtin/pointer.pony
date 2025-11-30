@@ -15,11 +15,16 @@ struct Pointer[A: AnyNoCheck]
     Initializes the pointer from a USize value.
     """
     compile_intrinsic
+
+  new from_reftype(from: A) =>
+    """
+    Initializes a Pointer from a reference type which means a class or a struct.
+    """
+    compile_intrinsic
   
   new from_any[B: AnyNoCheck](from: B) =>
     """
-    This initializes from any type to a NullablePointer. This is useful when
-    initializing a NullablePointer[None] from a struct.
+    Initializes from any type to a Pointer.
     """
     compile_intrinsic
 
