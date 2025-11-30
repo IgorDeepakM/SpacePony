@@ -190,6 +190,8 @@ static bool names_typeparam(pass_opt_t* opt, ast_t** astp, ast_t* def)
     }
   }
 
+  ast_t* annotation = ast_dup(ast_annotation(ast));
+
   const char* name = ast_name(id);
 
   // Change to a typeparamref.
@@ -200,6 +202,13 @@ static bool names_typeparam(pass_opt_t* opt, ast_t** astp, ast_t* def)
       TREE(ephemeral)));
 
   ast = *astp;
+
+  // Annotations on the nominal containing a type reference must be carried over
+  // to the typeparamref
+  if(annotation != NULL)
+  {
+    ast_setannotation(ast, annotation);
+  }
 
   if(opt->check.frame->iftype_body != NULL)
     def = ast_get(ast, name, NULL);
