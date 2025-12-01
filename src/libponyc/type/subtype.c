@@ -397,8 +397,12 @@ static bool is_reified_fun_sub_fun(ast_t* sub, ast_t* super,
       if(ast_has_annotation(sub_result, "byval") !=
          ast_has_annotation(super_result, "byval"))
       {
-        ast_error_frame(errorf, sub, "%s and %s has different byval return type annotations",
+        if(errorf != NULL)
+        {
+          ast_error_frame(errorf, sub, "%s and %s has different byval return type annotations",
             ast_print_type(sub), ast_print_type(super));
+        }
+
         return false;
       }
       break;
