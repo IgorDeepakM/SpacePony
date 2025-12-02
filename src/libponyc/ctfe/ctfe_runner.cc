@@ -876,7 +876,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       AST_GET_CHILDREN(expression, left, right, then);
 
       CtfeValue ret;
-      if(is_subtype(left, right, nullptr, opt))
+      if(is_subtype_constraint(left, right, nullptr, opt))
       {
         m_frames.push_frame();
         ret = evaluate(opt, errors, then);
