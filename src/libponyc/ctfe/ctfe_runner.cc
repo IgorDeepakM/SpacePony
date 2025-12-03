@@ -208,7 +208,7 @@ CtfeValue CtfeRunner::call_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
   const vector<CtfeValue>& args, ast_t* typeargs)
 {
   CtfeValue result;
-  bool ret = CtfeValue::run_method(opt, errors, ast_pos, res_type, recv_val, args,
+  bool ret = CtfeValue::run_method(opt, errors, ast_pos, res_type, recv_val, args, typeargs,
     method_name, result, *this);
   if(ret)
   {
@@ -1292,15 +1292,6 @@ bool CtfeRunner::contains_valueparamref(ast_t* ast)
 bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
 {
   ast_t* ast = *astp;
-  /*ast_t* cached = search_cache(ast);
-  if(cached != NULL)
-  {
-    ast_replace(astp, cached);
-    return true;
-  }*/
-
-  //ast_setconstant(ast);
-  //ast_t* expression = ast;
 
   if(contains_valueparamref(ast))
   {
@@ -1311,13 +1302,6 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
   // current object. However it is not possible to access any variables.
   m_frames.new_value("this", CtfeValue());
 
-  // We can't evaluate expressions which still have references to value
-  // parameters so we simply stop, indicating no error yet.
-  //if(contains_valueparamref(expression))
-  //  return true;
-
-  // evaluate the expression passing NULL as 'this' as we aren't
-  // evaluating a method on an object
   errorframe_t errors = nullptr;
   bool failed = false;
 

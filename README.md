@@ -21,6 +21,7 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
   * [CTFE (Compile Time Function Execution)](#ctfe-compile-time-function-execution)
   * [Enums](#enums-sort-of)
   * [Property](#property)
+  * [TypeTrait](#typetrait)
 * [Future directions](#future-directions)
   * [Short term](#short-term)
   * [Long term (read never)](#long-term-read-never)
@@ -584,6 +585,52 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   ```
 
 * Currently only reading a `property` is supported. However, in the future also writing to a `property` will be added.
+
+
+### TypeTrait
+
+* TypeTrait is a primitive that has a set of methods that operates on types in order to identify certain type properties. The name is obviously influenced by <type_traits> in C++ and its functionality is similar. Previously Pony had `iftype` that checked if a type was a subtype of another type however this functionality was limited and couldn't easily be expanded. What was not possible with `iftype` was to check the underlying type, for example if type is a struct or a class which is possible with TypeTrait.
+
+  ```pony
+  if TypeTrait.is_struct[S]() then
+    env.out.print("S is struct")
+  else
+    env.out.print("S is not struct")
+  end
+  ```
+
+* `TypeTrait.is_subtype_constraint[A, B]()` is equivalent to `iftype A <: B`
+
+* Additional helper methods for build in types was added
+
+  ```pony
+  if TypeTrait.is_float[A]() then
+    env.out.print("A is float")
+  else
+    env.out.print("A is not float")
+  end
+
+  // Is the same as
+
+  iftype A <: FloatingPoint[A] then
+    env.out.print("A is float")
+  else
+    env.out.print("A is not float")
+  end
+
+  // Also the same as
+
+  iftype TypeTrait.is_eqtype[A, FloatingPoint[A]] then // also is_subtype_constraint can be used
+    env.out.print("A is float")
+  else
+    env.out.print("A is not float")
+  end
+  ```
+
+  * Why was TypeTrait added? First `iftype` couldn't detect underlying types like classes or primitives. `iftype` also couldn't support several expressions like `iftype (A <: B) and (A <: C)`. With the addition of `comptime` having a special `iftype` is no longer needed and it is possible to have even more complex expressions like `if comptime TypeTrait.is_float[A]() or TypeTrait.is_integer[A]() end`. Using `comptime` will ensure that the expression is evaluated during compile time and will result in the same code generation. Note that currently because of the Pony type system, all `if` branches will be type checked regardless of the compile time expression evaluation unlike in C++ and D that might skip the unused branch. This might change in the future. The ultimate goal here is to create something similar to `if constexpr` in C++ and `static if` in D and therefore `iftype` is unnecessary. In SpacePony the equivalent to `if constexpr (expr)` in C++ will be `if comptime expr end`.
+
+  * `iftype` might be removed in the future.
+
 
 
 ## Future directions

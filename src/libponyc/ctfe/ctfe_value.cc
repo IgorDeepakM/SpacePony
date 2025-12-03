@@ -4,6 +4,7 @@
 #include "ctfe_value_float_run_method.h"
 #include "ctfe_exception.h"
 #include "ctfe_comp_time_primitive.h"
+#include "ctfe_type_trait_primitive.h"
 
 #include "ponyassert.h"
 #include "../pass/pass.h"
@@ -399,7 +400,7 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
 
 
 bool CtfeValue::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
-  CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
+  CtfeValue& recv, const std::vector<CtfeValue>& args, ast_t* typeargs, const std::string& method_name,
   CtfeValue& result, CtfeRunner &ctfeRunner)
 {
   // A null ast type could indicate that we are trying operate on the
@@ -538,6 +539,11 @@ bool CtfeValue::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, as
     {
       return CtfeCompTimePrimitive::run_method(opt, errors, ast, res_type, recv, args, method_name, result,
         ctfeRunner);
+    }
+    else if(type_name == "TypeTrait")
+    {
+      return CtfeTypeTraitPrimitive::run_method(opt, errors, ast, res_type, recv, args, typeargs,
+        method_name, result);
     }
   }
 

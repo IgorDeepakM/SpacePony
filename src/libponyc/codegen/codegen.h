@@ -128,6 +128,7 @@ typedef struct compile_t
   const char* str_Array;
   const char* str_CFixedSizedArray;
   const char* str_Atomic;
+  const char* str_TypeTrait;
   const char* str_String;
   const char* str_Platform;
   const char* str_Main;

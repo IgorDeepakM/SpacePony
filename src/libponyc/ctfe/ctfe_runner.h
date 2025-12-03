@@ -2,6 +2,7 @@
 
 #include "../ast/ast.h"
 #include "../pass/pass.h"
+#include "../type/reify.h"
 
 #include "ctfe_frames.h"
 #include "ctfe_value.h"

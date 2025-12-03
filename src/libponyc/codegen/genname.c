@@ -64,13 +64,28 @@ static void type_append(printbuf_t* buf, ast_t* type, bool first, pass_opt_t* op
       ast_t* expr = ast_child(type);
       if(!is_value_formal_arg_literal(expr))
       {
-        reach_comptime(opt, &expr);
+        reach_comptime(opt, &expr, NULL);
         if(opt->check.evaluation_error)
         {
           return;
         }
       }
-      printbuf(buf, ast_get_print(expr));
+
+      if(is_value_formal_arg_literal(expr))
+      {
+        printbuf(buf, ast_get_print(expr));
+      }
+      else
+      {
+        errorframe_t errors = nullptr;
+        errorframe_t frame = nullptr;
+        ast_error_frame(&frame, type, "Unable to create type name because of compile time expresison failed "
+                                      "to reduce the expression to a single valid value type argument.");
+        errorframe_append(&frame, &errors);
+        errorframe_report(&frame, opt->check.errors);
+        opt->check.evaluation_error = true;
+      }
+
       return;
     }
 
