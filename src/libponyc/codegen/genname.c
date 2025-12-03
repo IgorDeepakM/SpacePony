@@ -77,8 +77,8 @@ static void type_append(printbuf_t* buf, ast_t* type, bool first, pass_opt_t* op
       }
       else
       {
-        errorframe_t errors = nullptr;
-        errorframe_t frame = nullptr;
+        errorframe_t errors = NULL;
+        errorframe_t frame = NULL;
         ast_error_frame(&frame, type, "Unable to create type name because of compile time expresison failed "
                                       "to reduce the expression to a single valid value type argument.");
         errorframe_append(&frame, &errors);
