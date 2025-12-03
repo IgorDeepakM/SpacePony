@@ -104,8 +104,8 @@ public:
   std::string get_type_name() const { return CtfeAstType::get_type_name(m_type); }
 
   static bool run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, ast_t* res_type,
-    CtfeValue& recv, const std::vector<CtfeValue>& args, const std::string& method_name,
-    CtfeValue& result, CtfeRunner &ctfeRunner);
+    CtfeValue& recv, const std::vector<CtfeValue>& args, ast_t* typeargs,
+    const std::string& method_name, CtfeValue& result, CtfeRunner &ctfeRunner);
 
   ControlFlowModifier get_control_flow_modifier() const { return m_ctrlFlow; }
   void set_control_flow_modifier(ControlFlowModifier val) { m_ctrlFlow = val; }
