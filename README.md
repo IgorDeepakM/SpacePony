@@ -599,7 +599,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   end
   ```
 
-  * Why was TypeTrait added? First `iftype` couldn't detect underlying types like classes or primitives. `iftype` also can't support several expressions like `iftype (A <: B) and (C <: D)`. Note that currently because of the Pony type system, all `if` branches will be type checked regardless of the compile time expression evaluation unlike in C++ and D that might skip the unused branch (or as it appears for the programmers). The ultimate goal is to create something similar to `if constexpr` in C++ and `static if` in D, however how the Pony compiler works this goal might be diffifcult.
+* Why was TypeTrait added? First `iftype` couldn't detect underlying types like classes or primitives. `iftype` also can't support several expressions like `iftype (A <: B) and (C <: D)`. Note that currently because of the Pony type system, all `if` branches will be type checked regardless of the compile time expression evaluation unlike in C++ and D that might skip the unused branch (or as it appears for the programmers). The ultimate goal is to create something similar to `if constexpr` in C++ and `static if` in D, however how the Pony compiler works this goal might be diffifcult.
 
 
 ## Future directions
