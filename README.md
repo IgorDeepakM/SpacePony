@@ -599,38 +599,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   end
   ```
 
-* `TypeTrait.is_subtype_constraint[A, B]()` is equivalent to `iftype A <: B`
-
-* Additional helper methods for build in types was added
-
-  ```pony
-  if TypeTrait.is_float[A]() then
-    env.out.print("A is float")
-  else
-    env.out.print("A is not float")
-  end
-
-  // Is the same as
-
-  iftype A <: FloatingPoint[A] then
-    env.out.print("A is float")
-  else
-    env.out.print("A is not float")
-  end
-
-  // Also the same as
-
-  iftype TypeTrait.is_eqtype[A, FloatingPoint[A]] then // also is_subtype_constraint can be used
-    env.out.print("A is float")
-  else
-    env.out.print("A is not float")
-  end
-  ```
-
-  * Why was TypeTrait added? First `iftype` couldn't detect underlying types like classes or primitives. `iftype` also couldn't support several expressions like `iftype (A <: B) and (C <: D)`. With the addition of `comptime` having a special `iftype` is no longer needed and it is possible to have even more complex expressions like `if comptime TypeTrait.is_float[A]() or TypeTrait.is_integer[B]() end`. Using `comptime` will ensure that the expression is evaluated during compile time and will result in the same code generation. Note that currently because of the Pony type system, all `if` branches will be type checked regardless of the compile time expression evaluation unlike in C++ and D that might skip the unused branch. This might change in the future. The ultimate goal here is to create something similar to `if constexpr` in C++ and `static if` in D and therefore `iftype` is unnecessary. In SpacePony the equivalent to `if constexpr (expr)` in C++ will be `if comptime expr end`.
-
-  * `iftype` might be removed in the future.
-
+  * Why was TypeTrait added? First `iftype` couldn't detect underlying types like classes or primitives. `iftype` also can't support several expressions like `iftype (A <: B) and (C <: D)`. Note that currently because of the Pony type system, all `if` branches will be type checked regardless of the compile time expression evaluation unlike in C++ and D that might skip the unused branch (or as it appears for the programmers). The ultimate goal is to create something similar to `if constexpr` in C++ and `static if` in D, however how the Pony compiler works this goal might be diffifcult.
 
 
 ## Future directions
