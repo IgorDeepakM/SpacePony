@@ -1166,9 +1166,10 @@ void genprim_atomic_methods(compile_t* c, reach_type_t* t)
 static void type_trait_gen_bool(compile_t* c, reach_type_t* t, reach_method_t* m, bool ret)
 {
   m->intrinsic = true;
+  compile_type_t* c_t = (compile_type_t*)t->c_type;
   compile_type_t* c_return = (compile_type_t*)m->result->c_type;
 
-  start_function(c, t, m, c_return->use_type, NULL, 0);
+  start_function(c, t, m, c_return->use_type, &c_t->use_type, 1);
 
   LLVMValueRef ret_val = LLVMConstInt(c->i1, ret, false);
 
