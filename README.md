@@ -636,7 +636,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 * GPU offload. The capability/actor model of Pony is very well suited for running parts of the actors in GPUs.
 
-* Improve the Pony type system.
+* Improve the Pony type system when it comes to reification.
 
 
 ## The original Pony README is here with instructions how to compile
