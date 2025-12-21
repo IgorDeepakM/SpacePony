@@ -21,6 +21,7 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
   * [CTFE (Compile Time Function Execution)](#ctfe-compile-time-function-execution)
   * [Enums](#enums-sort-of)
   * [Property](#property)
+  * [iftype on underlying type](#iftype-on-underlying-type)
 * [Future directions](#future-directions)
   * [Short term](#short-term)
   * [Long term (read never)](#long-term-read-never)
@@ -585,6 +586,20 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 * Currently only reading a `property` is supported. However, in the future also writing to a `property` will be added.
 
+
+
+### iftype on underlying type
+
+* Added the possibility to check if a type is a class, struct or primitive in an iftype expression.
+
+ ```pony
+  fun is_class[A: AnyNoCheck](): Bool =>
+    iftype A <: class then
+      true
+    else
+      false
+    end
+  ```
 
 
 ## Future directions

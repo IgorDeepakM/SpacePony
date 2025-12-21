@@ -1362,6 +1362,24 @@ static bool is_x_sub_arrow(ast_t* sub, ast_t* super,
   return ok;
 }
 
+static bool is_nominal_underlying_type(ast_t* sub, ast_t* super, errorframe_t* errorf,
+  pass_opt_t* opt)
+{
+  ast_t* sub_def = (ast_t*)ast_data(sub);
+
+  token_id super_id = ast_id(super);
+  token_id sub_id = ast_id(sub_def);
+  if((super_id == TK_UNDERLYING_CLASS && sub_id == TK_CLASS) ||
+     (super_id == TK_UNDERLYING_STRUCT && sub_id == TK_STRUCT) ||
+     (super_id == TK_UNDERLYING_PRIMITIVE && sub_id == TK_PRIMITIVE))
+  {
+    return true;
+  }
+
+  return false;
+
+}
+
 static bool is_nominal_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
   errorframe_t* errorf, pass_opt_t* opt)
 {
@@ -1424,6 +1442,11 @@ static bool is_nominal_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
 
     case TK_ARROW:
       return is_x_sub_arrow(sub, super, check_cap, errorf, opt);
+
+    case TK_UNDERLYING_CLASS:
+    case TK_UNDERLYING_STRUCT:
+    case TK_UNDERLYING_PRIMITIVE:
+      return is_nominal_underlying_type(sub, super, errorf, opt);
 
     case TK_FUNTYPE:
     case TK_INFERTYPE:

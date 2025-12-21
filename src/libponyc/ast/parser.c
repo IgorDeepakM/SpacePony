@@ -787,13 +787,21 @@ DEF(ifdef);
   REORDER(0, 2, 3, 1);
   DONE();
 
+DEF(underlying_type);
+  PRINT_INLINE();
+  TOKEN("underlying type", TK_CLASS, TK_STRUCT, TK_PRIMITIVE);
+  MAP_ID(TK_CLASS, TK_UNDERLYING_CLASS);
+  MAP_ID(TK_STRUCT, TK_UNDERLYING_STRUCT);
+  MAP_ID(TK_PRIMITIVE, TK_UNDERLYING_PRIMITIVE);
+  DONE();
+
 // type <: type THEN seq
 DEF(iftype);
   AST_NODE(TK_IFTYPE);
   SCOPE();
   RULE("type", type);
   SKIP(NULL, TK_SUBTYPE);
-  RULE("type", type);
+  RULE("type", type, underlying_type);
   SKIP(NULL, TK_THEN);
   RULE("then value", seq);
   AST_NODE(TK_NONE);
