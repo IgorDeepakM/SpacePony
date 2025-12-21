@@ -344,11 +344,15 @@ RULE(iftypeset,
   CHILD(seq, iftypeset, none), // Else body
   TK_IFTYPE_SET);
 
+RULE(underlying_type,
+  LEAF,
+  TK_UNDERLYING_PRIMITIVE, TK_UNDERLYING_STRUCT, TK_UNDERLYING_CLASS);
+
 RULE(iftype,
   IS_SCOPE
   HAS_TYPE(type)
   CHILD(type) // Subtype
-  CHILD(type) // Supertype
+  CHILD(type, underlying_type) // Supertype
   CHILD(seq) // Then body
   CHILD(type_params, none),
   TK_IFTYPE);

@@ -178,8 +178,18 @@ static ast_t* make_iftype_typeparam(pass_opt_t* opt, ast_t* subtype,
 
   ast_t* current_constraint = ast_childidx(def, 1);
   ast_t* new_constraint = ast_dup(supertype);
+
+  token_id new_constraint_id = ast_id(new_constraint);
+
+  if((new_constraint_id == TK_UNDERLYING_CLASS) ||
+     (new_constraint_id == TK_UNDERLYING_STRUCT) ||
+     (new_constraint_id == TK_UNDERLYING_PRIMITIVE))
+  {
+    return supertype;
+  }
+
   if((ast_id(current_constraint) != TK_NOMINAL) ||
-    (ast_name(ast_childidx(current_constraint, 1)) != name))
+     (ast_name(ast_childidx(current_constraint, 1)) != name))
   {
     // If the constraint is the type parameter itself, there is no constraint.
     // We can't use type_isect to build the new constraint because we don't have
@@ -229,13 +239,18 @@ static ast_result_t scope_iftype(pass_opt_t* opt, ast_t* ast)
         return AST_ERROR;
       }
 
-      if(!set_scope(opt, ast, ast_child(typeparam), typeparam, true))
+      // If the returned typeparam is the same as the supertype, it means
+      // that nothing extra was added to the type. For example "iftype A <: class"
+      if(typeparam != supertype)
       {
-        ast_free_unattached(typeparams);
-        return AST_ERROR;
-      }
+        if(!set_scope(opt, ast, ast_child(typeparam), typeparam, true))
+        {
+          ast_free_unattached(typeparams);
+          return AST_ERROR;
+        }
 
-      ast_add(typeparams, typeparam);
+        ast_add(typeparams, typeparam);
+      }
       break;
     }
 
@@ -271,13 +286,16 @@ static ast_result_t scope_iftype(pass_opt_t* opt, ast_t* ast)
           return AST_ERROR;
         }
 
-        if(!set_scope(opt, ast, ast_child(typeparam), typeparam, true))
+        if(typeparam != supertype)
         {
-          ast_free_unattached(typeparams);
-          return AST_ERROR;
-        }
+          if(!set_scope(opt, ast, ast_child(typeparam), typeparam, true))
+          {
+            ast_free_unattached(typeparams);
+            return AST_ERROR;
+          }
 
-        ast_add(typeparams, typeparam);
+          ast_add(typeparams, typeparam);
+        }
         sub_child = ast_sibling(sub_child);
         super_child = ast_sibling(super_child);
       }
@@ -292,11 +310,19 @@ static ast_result_t scope_iftype(pass_opt_t* opt, ast_t* ast)
       return AST_ERROR;
   }
 
-  // We don't want the scope pass to run on typeparams. The compiler would think
-  // that type parameters are declared twice.
-  ast_pass_record(typeparams, PASS_SCOPE);
-  pony_assert(ast_id(typeparam_store) == TK_NONE);
-  ast_replace(&typeparam_store, typeparams);
+  if(ast_child(typeparams) != NULL)
+  {
+    // We don't want the scope pass to run on typeparams. The compiler would think
+    // that type parameters are declared twice.
+    ast_pass_record(typeparams, PASS_SCOPE);
+    pony_assert(ast_id(typeparam_store) == TK_NONE);
+    ast_replace(&typeparam_store, typeparams);
+  }
+  else
+  {
+    ast_free_unattached(typeparams);
+  }
+
   return AST_OK;
 }
 

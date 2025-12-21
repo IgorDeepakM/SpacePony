@@ -308,3 +308,30 @@ TEST_F(IftypeTest, InsideLambda)
 
     TEST_COMPILE(src);
 }
+
+TEST_F(IftypeTest, TestUnderlyingType)
+{
+  const char* src =
+    "class C1\n"
+    "struct S1\n"
+    "primitive P1\n"
+
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    foo[C1]()\n"
+    "    foo[S1]()\n"
+    "    foo[P1]()\n"
+
+    "  fun foo[A: AnyNoCheck]() =>\n"
+    "    iftype A <: class then\n"
+    "      None\n"
+    "    end\n"
+    "    iftype A <: struct then\n"
+    "      None\n"
+    "    end\n"
+    "    iftype A <: primitive then\n"
+    "      None\n"
+    "    end";
+
+  TEST_COMPILE(src);
+}

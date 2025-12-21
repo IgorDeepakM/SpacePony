@@ -316,6 +316,10 @@ static const lextoken_t abstract[] =
   { "constant_object", TK_CONSTANT_OBJECT },
   { "constant_array", TK_CONSTANT_ARRAY },
 
+  { "class", TK_UNDERLYING_CLASS },
+  { "struct", TK_UNDERLYING_STRUCT },
+  { "primitive", TK_UNDERLYING_PRIMITIVE },
+
   { "annotation", TK_ANNOTATION },
 
   { "disposingblock", TK_DISPOSING_BLOCK },
