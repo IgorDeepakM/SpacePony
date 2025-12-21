@@ -126,7 +126,6 @@ static void init_runtime(compile_t* c)
   c->str_Array = stringtab("Array");
   c->str_CFixedSizedArray = stringtab("CFixedSizedArray");
   c->str_Atomic = stringtab("Atomic");
-  c->str_TypeTrait = stringtab("TypeTrait");
   c->str_String = stringtab("String");
   c->str_Platform = stringtab("Platform");
   c->str_Main = stringtab("Main");

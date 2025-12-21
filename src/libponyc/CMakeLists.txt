@@ -50,7 +50,6 @@ add_library(libponyc STATIC
     ctfe/ctfe_frames.cc
     ctfe/ctfe_reach.cc
     ctfe/ctfe_runner.cc
-    ctfe/ctfe_type_trait_primitive.cc
     ctfe/ctfe_value.cc
     ctfe/ctfe_value_bool.cc
     ctfe/ctfe_value_pointer.cc
