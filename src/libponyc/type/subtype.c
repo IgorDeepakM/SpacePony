@@ -1365,6 +1365,8 @@ static bool is_x_sub_arrow(ast_t* sub, ast_t* super,
 static bool is_nominal_underlying_type(ast_t* sub, ast_t* super, errorframe_t* errorf,
   pass_opt_t* opt)
 {
+  (void)opt;
+
   ast_t* sub_def = (ast_t*)ast_data(sub);
 
   token_id super_id = ast_id(super);
@@ -1376,8 +1378,14 @@ static bool is_nominal_underlying_type(ast_t* sub, ast_t* super, errorframe_t* e
     return true;
   }
 
-  return false;
+  if(errorf != NULL)
+  {
+    ast_error_frame(errorf, sub,
+      "%s is not an underlying type of %s",
+      ast_print_type(sub), ast_print_type(super));
+  }
 
+  return false;
 }
 
 static bool is_nominal_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
