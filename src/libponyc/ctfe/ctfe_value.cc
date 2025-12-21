@@ -4,7 +4,6 @@
 #include "ctfe_value_float_run_method.h"
 #include "ctfe_exception.h"
 #include "ctfe_comp_time_primitive.h"
-#include "ctfe_type_trait_primitive.h"
 
 #include "ponyassert.h"
 #include "../pass/pass.h"
@@ -539,11 +538,6 @@ bool CtfeValue::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* ast, as
     {
       return CtfeCompTimePrimitive::run_method(opt, errors, ast, res_type, recv, args, method_name, result,
         ctfeRunner);
-    }
-    else if(type_name == "TypeTrait")
-    {
-      return CtfeTypeTraitPrimitive::run_method(opt, errors, ast, res_type, recv, args, typeargs,
-        method_name, result);
     }
   }
 

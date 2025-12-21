@@ -21,7 +21,6 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
   * [CTFE (Compile Time Function Execution)](#ctfe-compile-time-function-execution)
   * [Enums](#enums-sort-of)
   * [Property](#property)
-  * [TypeTrait](#typetrait)
 * [Future directions](#future-directions)
   * [Short term](#short-term)
   * [Long term (read never)](#long-term-read-never)
@@ -586,20 +585,6 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 * Currently only reading a `property` is supported. However, in the future also writing to a `property` will be added.
 
-
-### TypeTrait
-
-* TypeTrait is a primitive that has a set of methods that operates on types in order to identify certain type properties. The name is obviously influenced by <type_traits> in C++ and its functionality is similar. Previously Pony had `iftype` that checked if a type was a subtype of another type however this functionality was limited and couldn't easily be expanded. What was not possible with `iftype` was to check the underlying type, for example if type is a struct or a class which is possible with TypeTrait.
-
-  ```pony
-  if TypeTrait.is_struct[S]() then
-    env.out.print("S is struct")
-  else
-    env.out.print("S is not struct")
-  end
-  ```
-
-* Why was TypeTrait added? First `iftype` couldn't detect underlying types like classes or primitives. `iftype` also can't support several expressions like `iftype (A <: B) and (C <: D)`. Note that currently because of the Pony type system, all `if` branches will be type checked regardless of the compile time expression evaluation unlike in C++ and D that might skip the unused branch (or as it appears for the programmers). The ultimate goal is to create something similar to `if constexpr` in C++ and `static if` in D, however how the Pony compiler works this goal might be diffifcult.
 
 
 ## Future directions
