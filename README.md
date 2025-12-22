@@ -592,7 +592,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 * Added the possibility to check if a type is a class, struct or primitive in an iftype expression.
 
- ```pony
+  ```pony
   fun is_class[A: AnyNoCheck](): Bool =>
     iftype A <: class then
       true
