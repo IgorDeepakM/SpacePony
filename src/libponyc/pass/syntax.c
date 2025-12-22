@@ -342,15 +342,7 @@ static bool check_members(pass_opt_t* opt, ast_t* members, int entity_def_index)
       }
 
       case TK_ENUM:
-      {
-        if(ast_id(ast_parent(members)) != TK_PRIMITIVE)
-        {
-          ast_error(opt->check.errors, member,
-            "enum blocks can only be used inside primitives");
-          r = false;
-        }
         break;
-      }
 
       default:
         pony_assert(0);
