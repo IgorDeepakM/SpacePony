@@ -469,7 +469,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 ### Enums (sort of)
 
-* Added the possibility using enum like declarations inside a primitive. The Pony language doesn't have enums and the goto method is to use methods inside a primitive [like this](https://tutorial.ponylang.io/appendices/examples.html#enumeration-with-values). However, this adds a lot of boiler plate to just write an enum which is very tedious for large amounts of enums and there is no auto increment of the value. Adding a completely new enum type classification in SpacePony is a lot of work so instead a syntax that lowers the enumerations to methods inside the primitive was chosen. Unlike C/C++ enums, the enums must be give a type and there is no automatic type inference to the smallest possible type that fits the enumerations.
+* Added the possibility using enum like declarations inside a primitive, a class or a struct. The Pony language doesn't have enums and the goto method is to use methods inside a primitive [like this](https://tutorial.ponylang.io/appendices/examples.html#enumeration-with-values). However, this adds a lot of boiler plate to just write an enum which is very tedious for large amounts of enums and there is no auto increment of the value. Adding a completely new enum type classification in SpacePony is a lot of work so instead a syntax that lowers the enumerations to methods inside the primitive was chosen. Unlike C/C++ enums, the enums must be give a type and there is no automatic type inference to the smallest possible type that fits the enumerations.
 
   ```pony
   primitive P
