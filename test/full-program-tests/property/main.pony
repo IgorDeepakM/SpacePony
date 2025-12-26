@@ -24,6 +24,19 @@ class C
       x
     end
 
+  fun \property\ xp(): I32 => x
+  fun \property\ ref xp_w(x': I32): I32 => x = x'
+
+  fun \property\ ref xpp_w(x': I32)? =>
+    if x' < 10 then
+      error
+    else
+      x = x'
+    end
+
+class C2
+  var c: C = C(11)
+
 actor Main
     let _env: Env
   
@@ -73,4 +86,40 @@ actor Main
 
     if c_x != 55 then
       @pony_exitcode(5)
+    end
+
+    if c3.xp != 55 then
+      @pony_exitcode(6)
+    end
+
+    c3.xp = 111
+
+    if c3.x != 111 then
+      @pony_exitcode(7)
+    end
+
+    try
+      c3.xpp? = 222
+    else
+      @pony_exitcode(8)
+    end
+
+    if c3.x != 222 then
+      @pony_exitcode(9)
+    end
+
+    try
+      c3.xpp? = 5
+    end
+
+    if c3.x != 222 then
+      @pony_exitcode(11)
+    end
+
+    var c4: C2 = C2
+
+    c4.c.xp = 333
+
+    if c4.c.x != 333 then
+      @pony_exitcode(12)
     end

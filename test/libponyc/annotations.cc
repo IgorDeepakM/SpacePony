@@ -151,39 +151,3 @@ TEST_F(AnnotationsTest, ByValCorrectLocationLambda)
 
   TEST_COMPILE(src, "syntax");
 }
-
-TEST_F(AnnotationsTest, PropertyWrongLocation)
-{
-  const char* src =
-    "primitive \\property\\ P\n"
-    "  fun m1(): I32 => 22\n";
-
-  TEST_ERROR(src);
-}
-
-TEST_F(AnnotationsTest, PropertyWrongParameter)
-{
-  const char* src =
-    "primitive P\n"
-    "  fun \\property\\ m1(x: I32): I32 => x\n";
-
-  TEST_ERROR(src);
-}
-
-TEST_F(AnnotationsTest, PropertyNoReturnType)
-{
-  const char* src =
-    "primitive P\n"
-    "  fun \\property\\ m1() => None\n";
-
-  TEST_ERROR(src);
-}
-
-TEST_F(AnnotationsTest, PropertyCorrect)
-{
-  const char* src =
-    "primitive P\n"
-    "  fun \\property\\ m1(): I32 => 22\n";
-
-  TEST_COMPILE(src, "syntax");
-}

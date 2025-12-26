@@ -12,6 +12,7 @@
 #include "../type/assemble.h"
 #include "../type/lookup.h"
 #include "../type/subtype.h"
+#include "../../libponyrt/mem/pool.h"
 #include "ponyassert.h"
 #include <string.h>
 #include <stdlib.h>
@@ -173,8 +174,6 @@ static bool method_access(pass_opt_t* opt, ast_t** astp, ast_t* method)
 
     case TK_FUN:
     {
-      ast_setid(ast, TK_FUNREF);
-
       // If there is no call to a member that is a method, it means we are
       // trying to reference a property because TK_CALL wasn't generated
       // during the parsing because of lack of parentheses.
@@ -188,18 +187,54 @@ static bool method_access(pass_opt_t* opt, ast_t** astp, ast_t* method)
           question_node = ast_from(ast, TK_NONE);
         }
 
-        BUILD(call, parent,
-          NODE(TK_CALL,
-            TREE(ast)
-            NONE
-            NONE
-            TREE(question_node)
-          )
-        );
+        ast_t* params_def = ast_childidx(method, 3);
+        size_t num_params = ast_childcount(params_def);
 
-        ast_settype(call, result);
-        ast_replace(astp, call);
-        ast = ast_child(*astp);
+        pony_assert(num_params <= 1);
+
+        if(num_params == 0)
+        {
+          BUILD(call, parent,
+            NODE(TK_CALL,
+              TREE(ast)
+              NONE
+              NONE
+              TREE(question_node)
+            )
+          );
+
+          //ast_settype(call, result);
+          ast_replace(astp, call);
+          ast = ast_child(*astp);
+        }
+        else
+        {
+          ast_t* param_expr = ast_dup(ast_sibling(ast));
+          ast_remove(ast_sibling(ast));
+
+          BUILD(call, parent,
+            NODE(TK_CALL,
+              TREE(ast)
+              NODE(TK_POSITIONALARGS, NODE(TK_SEQ, TREE(param_expr)))
+              NONE
+              TREE(question_node)
+            )
+          );
+
+          ast_replace(astp, call);
+          ast = ast_child(*astp);
+        }
+
+        if(!ast_passes_subtree(astp, opt, PASS_EXPR))
+        {
+          return false;
+        }
+
+        return true;
+      }
+      else
+      {
+        ast_setid(ast, TK_FUNREF);
       }
 
       break;
@@ -230,9 +265,10 @@ static bool type_access(pass_opt_t* opt, ast_t** astp)
   pony_assert(ast_id(right) == TK_ID);
 
   deferred_reification_t* find = lookup(opt, ast, type, ast_name(right));
-
   if(find == NULL)
+  {
     return false;
+  }
 
   ast_t* r_find = find->ast;
 
@@ -418,6 +454,32 @@ static bool tuple_access(pass_opt_t* opt, ast_t* ast)
   return true;
 }
 
+static bool is_assigned_to(pass_opt_t* opt, ast_t* ast)
+{
+  while(true)
+  {
+    ast_t* parent = ast_parent(ast);
+
+    switch(ast_id(parent))
+    {
+      case TK_ASSIGN:
+      {
+        return is_in_ast(ast_child(parent), ast);
+      }
+
+      case TK_SEQ:
+      {
+        return false;
+      }
+
+      default:
+        break;
+    }
+
+    ast = parent;
+  }
+}
+
 static bool member_access(pass_opt_t* opt, ast_t** astp)
 {
   // Left is a postfix expression, right is an id.
@@ -429,10 +491,48 @@ static bool member_access(pass_opt_t* opt, ast_t** astp)
   if(is_typecheck_error(type))
     return false;
 
-  deferred_reification_t* find = lookup(opt, ast, type, ast_name(right));
+  const char* name = ast_name(right);
+
+  deferred_reification_t* find = lookup_try(opt, ast, type, name, false);
+  if(find == NULL || ast_has_annotation(find->ast, "property"))
+  {
+    // Special case for property when assigned to
+    // First check that the expression is actually assign to.
+    // Either it didn't find the referece because of '_w' was missing or the wrong
+    // property was found ie. the read property with the same reference name.
+    // This is detected by the that the function found has no parameters.
+    if(is_assigned_to(opt, right) &&
+       ((find == NULL) || (ast_id(find->ast) == TK_FUN && ast_childcount(ast_childidx(find->ast, 3)) == 0)))
+    {
+      // Check if we find a propery write name with _w at the end
+      size_t field_name_len = strlen(name) + 3;
+      char* property_write_name = (char*)ponyint_pool_alloc_size(field_name_len);
+
+      strcpy(property_write_name, name);
+      strncat(property_write_name, "_w", field_name_len);
+
+      find = lookup(opt, ast, type, stringtab(property_write_name));
+
+      if(find != NULL)
+      {
+        ast_set_name(right, stringtab(property_write_name));
+      }
+
+      ponyint_pool_free_size(field_name_len, property_write_name);
+
+      if(find == NULL)
+      {
+        return false;
+      }
+    }
+  }
 
   if(find == NULL)
+  {
+    // Just in order to trigger the error text, call lookup again without try
+    lookup(opt, ast, type, name);
     return false;
+  }
 
   ast_t* r_find = find->ast;
 

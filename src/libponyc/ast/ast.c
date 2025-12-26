@@ -1007,6 +1007,41 @@ ast_t* ast_nearest(ast_t* ast, token_id id)
   return ast;
 }
 
+bool is_in_ast(ast_t* ast, ast_t* node)
+{
+  if(ast == NULL)
+  {
+    return false;
+  }
+  else if(ast == node)
+  {
+    return true;
+  }
+  else
+  {
+    if(is_in_ast(ast->child, node))
+    {
+      return true;
+    }
+    else
+    {
+      ast_t* sib = ast->sibling;
+
+      while(sib != NULL)
+      {
+        if(is_in_ast(ast->child, node))
+        {
+          return true;
+        }
+
+        sib = sib->sibling;
+      }
+    }
+
+    return false;
+  }
+}
+
 ast_t* ast_error_handling_clause(ast_t* ast, size_t* clause)
 {
   ast_t* last = NULL;

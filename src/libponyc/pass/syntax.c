@@ -1627,22 +1627,53 @@ static bool check_annotation_location(pass_opt_t* opt, ast_t* ast,
       return false;
     }
 
-    ast_t* params = ast_childidx(fundef, 2);
-    ast_t* named_params = ast_childidx(fundef, 3);
+    AST_GET_CHILDREN(fundef, cap, id, typeparams, params, return_type);
 
-    if(ast_id(params) != TK_NONE || ast_id(named_params) != TK_NONE)
+    if(ast_id(typeparams) != TK_NONE)
     {
       ast_error(opt->check.errors, loc,
-        "a method with a 'property' annotation cannot have any parameters");
+        "a method with a 'property' annotation cannot have any type parameters");
       return false;
     }
 
-    ast_t* return_type = ast_childidx(fundef, 4);
+    size_t num_params = ast_childcount(params);
 
-    if(ast_id(return_type) == TK_NONE || is_none(return_type))
+    if(num_params == 0)
+    {
+      if(ast_id(return_type) == TK_NONE || is_none(return_type))
+      {
+        ast_error(opt->check.errors, loc,
+          "a read property method must have a return type");
+        return false;
+      }
+
+      const char* name = ast_name(id);
+      size_t name_len = strlen(name);
+
+      if(name_len >= 3 && strcmp(name + name_len - 2, "_w") == 0)
+      {
+        ast_error(opt->check.errors, loc,
+          "a read property method cannot have a name that ends with '_w'");
+        return false;
+      }
+    }
+    else if(num_params == 1)
+    {
+      const char* name = ast_name(id);
+      size_t name_len = strlen(name);
+
+      if(name_len < 3 || strcmp(name + name_len - 2, "_w") != 0)
+      {
+        ast_error(opt->check.errors, loc,
+          "a write property method must have a name with at least one character "
+          "and then is appended with '_w'");
+        return false;
+      }
+    }
+    else
     {
       ast_error(opt->check.errors, loc,
-        "a method with a 'property' annontation must have a return type");
+        "a property method cannot have more than one parameters");
       return false;
     }
   }

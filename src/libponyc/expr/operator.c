@@ -391,11 +391,24 @@ static bool check_embed_construction(pass_opt_t* opt, ast_t* left, ast_t* right)
   return result;
 }
 
-bool expr_assign(pass_opt_t* opt, ast_t* ast)
+bool expr_assign(pass_opt_t* opt, ast_t** astp)
 {
+  ast_t* ast = *astp;
+
   // Left and right are swapped in the AST to make sure we type check the
   // right side before the left. Fetch them in the opposite order.
   pony_assert(ast_id(ast) == TK_ASSIGN);
+
+  // if the left side is a TK_CALL that means a dot expression was transformed
+  // to a call because the reference is a property method. Then the TK_ASSIGN should
+  // just with the TK_CALL at the child.
+  ast_t* left_call = ast_child(ast);
+  if(ast_id(left_call) == TK_CALL)
+  {
+    ast_replace(astp, left_call);
+    return true;
+  }
+
   AST_GET_CHILDREN(ast, left, right);
   ast_t* l_type = ast_type(left);
 
