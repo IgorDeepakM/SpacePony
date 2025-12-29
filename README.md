@@ -584,7 +584,32 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
   ```
 
-* Currently only reading a `property` is supported. However, in the future also writing to a `property` will be added.
+* Write properties are supported by adding "_w" at the end of the method name and it must have one parameter. It is not allowed to shadow an existing variable. Partial write properies are supported in the same way as read properties.
+
+  ```pony
+  class C
+    var x: I32
+
+    new create(x': I32) =>
+      x = x'
+
+    fun \property\ prop_x(): I32 => x               // This is the read property
+    fun \property\ ref prop_x_w(x': I32) => x = x'  // This is the write property
+  ...
+
+  let c1 = C(33)
+  c1.prop_x = 44
+
+  ```
+
+* In Pony language when a field or variable is assigned, the old value is the result of the expression
+
+  ```pony
+  var x: I32 = 0
+  let y = (x = 2)   // y gets the value 0
+  ```
+
+* Returning the old value behaviour is optional with properties. It is possible not to define a return type, which means that the property just returns `None`. It also possible to define a return type and then it is possible to return the value before the operation, or any value for that matter. This is similar to how the postfix increment (`operator++(int)`) in C++ is usually implemented.
 
 
 
