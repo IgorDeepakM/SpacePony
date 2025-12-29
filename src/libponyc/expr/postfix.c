@@ -454,7 +454,7 @@ static bool tuple_access(pass_opt_t* opt, ast_t* ast)
   return true;
 }
 
-static bool is_assigned_to(pass_opt_t* opt, ast_t* ast)
+static bool is_assigned_to(ast_t* ast)
 {
   while(true)
   {
@@ -501,7 +501,7 @@ static bool member_access(pass_opt_t* opt, ast_t** astp)
     // Either it didn't find the referece because of '_w' was missing or the wrong
     // property was found ie. the read property with the same reference name.
     // This is detected by the that the function found has no parameters.
-    if(is_assigned_to(opt, right) &&
+    if(is_assigned_to(right) &&
        ((find == NULL) || (ast_id(find->ast) == TK_FUN && ast_childcount(ast_childidx(find->ast, 3)) == 0)))
     {
       // Check if we find a propery write name with _w at the end

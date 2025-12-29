@@ -111,7 +111,7 @@ TEST_F(PropertyTest, WritePropertyWithReturnValueOk)
     "class C\n"
     "  var x: I32 = 0\n"
     "  fun \\property\\ ref m1_w(x': I32): I32 =>\n"
-    "    x = x'\n";
+    "    x = x'\n"
     "    x";
 
   TEST_COMPILE(src);
