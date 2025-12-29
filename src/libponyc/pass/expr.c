@@ -576,7 +576,7 @@ ast_result_t pass_expr(ast_t** astp, pass_opt_t* options)
     case TK_RETURN:     r = expr_return(options, ast); break;
     case TK_IS:
     case TK_ISNT:       r = expr_identity(options, ast); break;
-    case TK_ASSIGN:     r = expr_assign(options, ast); break;
+    case TK_ASSIGN:     r = expr_assign(options, astp); break;
     case TK_CONSUME:    r = expr_consume(options, ast); break;
     case TK_RECOVER:    r = expr_recover(options, ast); break;
     case TK_DOT:        r = expr_dot(options, astp); break;

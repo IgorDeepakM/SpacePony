@@ -7,6 +7,7 @@
 #include "../ast/stringtab.h"
 #include "../ast/astbuild.h"
 #include "../ast/id.h"
+#include "../../libponyrt/mem/pool.h"
 #include "ponyassert.h"
 #include <string.h>
 
@@ -38,8 +39,40 @@ static bool set_scope(pass_opt_t* opt, ast_t* scope, ast_t* name, ast_t* value,
     case TK_PACKAGE:
     case TK_NEW:
     case TK_BE:
-    case TK_FUN:
       break;
+
+    case TK_FUN:
+    {
+      if(ast_has_annotation(value, "property"))
+      {
+        size_t name_len = strlen(s);
+
+        if(name_len >= 3 && strstr(s + name_len - 2, "_w") != NULL)
+        {
+          // Check if we find a propery write name with the name without the _w at the end
+          // which shadows the write property
+          size_t field_name_len = name_len - 2 + 1;
+          char* property_write_name = (char*)ponyint_pool_alloc_size(field_name_len);
+
+          strncpy(property_write_name, s, field_name_len - 1);
+          property_write_name[field_name_len - 1] = 0;
+
+          ast_t* def = ast_get(scope, stringtab(property_write_name), NULL);
+
+          if(def != NULL && ast_id(def) != TK_FUN)
+          {
+            ast_error(opt->check.errors, name,
+              "The name '%s' is already used which shadows the write property '%s'",
+              property_write_name, s);
+            ponyint_pool_free_size(field_name_len, property_write_name);
+            return false;
+          }
+
+          ponyint_pool_free_size(field_name_len, property_write_name);
+        }
+      }
+      break;
+    }
 
     case TK_VAR:
     case TK_LET:

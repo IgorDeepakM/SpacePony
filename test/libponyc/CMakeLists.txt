@@ -34,6 +34,7 @@ add_executable(libponyc.tests
     parse_entity.cc
     parse_expr.cc
     program.cc
+    property.cc
     reach.cc
     recover.cc
     refer.cc
