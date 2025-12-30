@@ -71,8 +71,8 @@ class \nodoc\ _Simple
   var words6: (Any ref | None) = None
   var string: String = "hello"
   var none: None = None
-  var tuple: (U64, String) = (99, "goodbye")
-  var tuple2: ((U64, String) | None) = (101, "awesome")
+  var tupl: (U64, String) = (99, "goodbye")
+  var tupl2: ((U64, String) | None) = (101, "awesome")
   var a_tag: _MachineWords tag = words1
   var a_ref: _MachineWords = words1
 
@@ -90,12 +90,12 @@ class \nodoc\ _Simple
       and (words6 is that.words6)
       and (string == that.string)
       and (none is that.none)
-      and (tuple._1 == that.tuple._1)
-      and (tuple._2 == that.tuple._2)
+      and (tupl._1 == that.tupl._1)
+      and (tupl._2 == that.tupl._2)
       and
         try
-          let x = tuple2 as (U64, String)
-          let y = that.tuple2 as (U64, String)
+          let x = tupl2 as (U64, String)
+          let y = that.tupl2 as (U64, String)
           (x._1 == y._1) and (x._2 == y._2)
         else
           false

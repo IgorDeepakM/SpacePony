@@ -144,6 +144,7 @@ static const lextoken_t keywords[] =
   { "actor", TK_ACTOR },
   { "object", TK_OBJECT },
   { "enum", TK_ENUM },
+  { "tuple", TK_TUPLE },
 
   { "as", TK_AS },
   { "is", TK_IS },
@@ -284,7 +285,6 @@ static const lextoken_t abstract[] =
   { "seq", TK_SEQ },
   { "qualify", TK_QUALIFY },
   { "call", TK_CALL },
-  { "tuple", TK_TUPLE },
   { "array", TK_ARRAY },
   { "cases", TK_CASES },
   { "case", TK_CASE },
