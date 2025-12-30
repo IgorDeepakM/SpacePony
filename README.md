@@ -57,9 +57,21 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 ## Breaking changes from original Pony
 
-* While SpacePony is compatible with original Pony, it is inevitable that SpacePony and Pony will diverge more and more. Several keywords have been added which might be used in Pony, cannot be used in SpacePony. This is a list of breaking changes that you might need to change in order to adapt Pony source code SpacePony.
+* While SpacePony is compatible with original Pony, it is inevitable that SpacePony and Pony will diverge more and more. Several keywords have been added which might be used in Pony, cannot be used in SpacePony. This is a list of breaking changes that you might need to change in order to adapt Pony source code to SpacePony.
+
+  * The following keywords have been added. They are either in use or reserved for future use.
+
+    * enum
+    * comptime
+    * asm
+    * tuple
+    * nhb
+    * offsetof
+    * sizeof
 
   * In the class `Iter` in the package `itertools`, the method `enum` was renamed to `enumerate` because `enum` is a reserved keyword in SpacePony.
+
+
 
 ## List of additions/changes
 
