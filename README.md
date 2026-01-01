@@ -525,7 +525,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
     type PUnion is (P1 | P2 | P3 | P4)
     ```
 
-* The Pony type unions are ok for a moderate amount enums, both in terms of typing and code generation. This is usually the goto method when the is no interest what the underlying representation is, meaning no conversion to some integer needed. Under the hood a primitive is a pointer to a global aggregate, like a class but without any members. Since there are no members it can be made an immutable global. For large amounts of enums, there might be missed optimizations opportunities as random pointers cannot easily be converted to jump tables. In this particular case monotonous increasing enums might be better. Despite having implemented enums using lowering in primitives, a "real" enum in SpacePony isn't off the table.
+* The Pony type unions are ok for a moderate amount enums, both in terms of typing and code generation. This is usually the goto method when the is no interest what the underlying representation is, meaning no conversion to some integer needed. Under the hood a primitive is a pointer to a global aggregate, like a class but without any members. Since there are no members it can be made an immutable global. For large amounts of enums, there might be missed optimizations opportunities as random pointers cannot easily be converted to jump tables. In this particular case monotonous increasing enums might be better. Despite having implemented enums using lowering in primitives, classes and structs, a "real" enum in SpacePony isn't off the table.
 
 
 ### Property
@@ -623,6 +623,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 * Returning the old value behaviour is optional with properties. It is possible not to define a return type, which means that the property just returns `None`. It also possible to define a return type and then it is possible to return the value before the operation, or any value for that matter. This is similar to how the postfix increment (`operator++(int)`) in C++ is usually implemented.
 
+* The extra "_w" is a way to overcome that the Pony language doesn't have any function overloading. If function overloading would be supported then the obvious choice would be that the property methods for read and write would have the same name. It is possible that function overloading will be implemented in the future and then the extra "_w" at the end will be removed as it is no longer needed.
 
 
 ### iftype on underlying type
@@ -666,6 +667,9 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   ```
 
   this allows for more complex conditional statements that are also readable. Notice how the example above uses `extern(C)` instead of `use`. The reason is that currently `use` cannot be extended. For example if supporting importing C++ functions, then `use` at the current form cannot be extended. It might be possible to extend `use` with `use(C++)` for example but how it can be extended remains an open question.
+
+* Implement function overloading.
+
 
 ### Long term (read never)
 
