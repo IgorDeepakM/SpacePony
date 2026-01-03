@@ -322,6 +322,29 @@ static bool check_arg_types(pass_opt_t* opt, ast_t* params, ast_t* positional,
       ast_free_unattached(wp_type);
       return false;
     }
+    else if(ast_id(wp_type) == TK_UNIONTYPE || ast_id(wp_type) == TK_ISECTTYPE)
+    {
+      if(grouped_contains_struct(wp_type))
+      {
+        errorframe_t frame = NULL;
+        ast_error_frame(&frame, wp_type,
+          "Cannot assign to a parameter with a union or isect type that contains a struct");
+
+        errorframe_append(&frame, &info);
+        errorframe_report(&frame, opt->check.errors);
+        return false;
+      }
+      else if(grouped_contains_entity_type(wp_type))
+      {
+        errorframe_t frame = NULL;
+        ast_error_frame(&frame, wp_type,
+          "Cannot assign to a parameter with a union or isect type that contains an entity type");
+
+        errorframe_append(&frame, &info);
+        errorframe_report(&frame, opt->check.errors);
+        return false;
+      }
+    }
 
     ast_free_unattached(wp_type);
     arg = ast_sibling(arg);

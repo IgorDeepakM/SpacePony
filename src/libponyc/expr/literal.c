@@ -462,6 +462,10 @@ static int uifset(pass_opt_t* opt, ast_t* type, lit_chain_t* chain)
 
     case TK_DONTCARETYPE:
     case TK_FUNTYPE:
+    case TK_ENTITY_TYPE_CLASS:
+    case TK_ENTITY_TYPE_STRUCT:
+    case TK_ENTITY_TYPE_PRIMITIVE:
+    case TK_ENTITY_TYPE_ACTOR:
       return UIF_NO_TYPES;
 
     default:

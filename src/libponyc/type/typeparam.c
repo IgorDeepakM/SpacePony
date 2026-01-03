@@ -331,6 +331,12 @@ static token_id cap_from_constraint(ast_t* type)
     case TK_NOMINAL:
       return cap_single(type);
 
+    case TK_ENTITY_TYPE_CLASS:
+    case TK_ENTITY_TYPE_STRUCT:
+    case TK_ENTITY_TYPE_PRIMITIVE:
+    case TK_ENTITY_TYPE_ACTOR:
+      return TK_CAP_ANY;
+
     default: {}
   }
 

@@ -65,6 +65,10 @@ bool is_entity(ast_t* type, token_id entity);
 
 bool contains_dontcare(ast_t* ast);
 
+bool grouped_contains_struct(ast_t* type);
+
+bool grouped_contains_entity_type(ast_t* type);
+
 PONY_EXTERN_C_END
 
 #endif

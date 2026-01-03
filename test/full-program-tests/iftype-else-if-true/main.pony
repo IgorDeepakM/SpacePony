@@ -49,6 +49,18 @@ actor Main
       @pony_exitcode(10)
     end
 
+    if not is_class_or_primitive[C1]() then
+      @pony_exitcode(11)
+    end
+
+    if not is_class_or_primitive[S1]() then
+      @pony_exitcode(12)
+    end
+
+    if is_class_or_primitive[P1]() then
+      @pony_exitcode(13)
+    end
+
   fun foo[A: T](x: A): Bool =>
     iftype A <: C1 then
       return false
@@ -74,6 +86,13 @@ actor Main
 
   fun is_primitive[A: AnyNoCheck](): Bool =>
     iftype A <: primitive then
+      true
+    else
+      false
+    end
+
+  fun is_class_or_primitive[A: AnyNoCheck](): Bool =>
+    iftype A <: (class | struct) then
       true
     else
       false

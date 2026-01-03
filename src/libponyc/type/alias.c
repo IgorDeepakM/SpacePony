@@ -385,6 +385,10 @@ ast_t* consume_type(ast_t* type, token_id cap, bool keep_double_ephemeral)
     case TK_FUNTYPE:
     case TK_INFERTYPE:
     case TK_ERRORTYPE:
+    case TK_ENTITY_TYPE_CLASS:
+    case TK_ENTITY_TYPE_STRUCT:
+    case TK_ENTITY_TYPE_PRIMITIVE:
+    case TK_ENTITY_TYPE_ACTOR:
       return type;
 
     default: {}

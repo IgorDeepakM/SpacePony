@@ -316,9 +316,10 @@ static const lextoken_t abstract[] =
   { "constant_object", TK_CONSTANT_OBJECT },
   { "constant_array", TK_CONSTANT_ARRAY },
 
-  { "class", TK_UNDERLYING_CLASS },
-  { "struct", TK_UNDERLYING_STRUCT },
-  { "primitive", TK_UNDERLYING_PRIMITIVE },
+  { "classtype", TK_ENTITY_TYPE_CLASS },
+  { "structtype", TK_ENTITY_TYPE_STRUCT },
+  { "primitivetype", TK_ENTITY_TYPE_PRIMITIVE },
+  { "actortype", TK_ENTITY_TYPE_ACTOR },
 
   { "annotation", TK_ANNOTATION },
 
