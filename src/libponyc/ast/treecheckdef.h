@@ -344,15 +344,11 @@ RULE(iftypeset,
   CHILD(seq, iftypeset, none), // Else body
   TK_IFTYPE_SET);
 
-RULE(underlying_type,
-  LEAF,
-  TK_UNDERLYING_PRIMITIVE, TK_UNDERLYING_STRUCT, TK_UNDERLYING_CLASS);
-
 RULE(iftype,
   IS_SCOPE
   HAS_TYPE(type)
   CHILD(type) // Subtype
-  CHILD(type, underlying_type) // Supertype
+  CHILD(type) // Supertype
   CHILD(seq) // Then body
   CHILD(type_params, none),
   TK_IFTYPE);
@@ -538,11 +534,10 @@ RULE(param_ref,
   CHILD(id_with_question),
   TK_PARAMREF);
 
-
 GROUP(type,
   type_infix, type_tuple, type_arrow, type_this, cap, nominal,
   type_param_ref, dontcare_type, fun_type, error_type, infer_type, lambda_type,
-  barelambda_type, literal_type, opliteral_type, control_type);
+  barelambda_type, literal_type, opliteral_type, control_type, entity_type);
 
 RULE(type_infix, ONE_OR_MORE(type), TK_UNIONTYPE, TK_ISECTTYPE);
 
@@ -581,6 +576,10 @@ RULE(barelambda_type,
   CHILD(cap_val, none) // Type reference cap
   CHILD(aliased, ephemeral, none),
   TK_BARELAMBDATYPE);
+
+RULE(entity_type,
+  LEAF,
+  TK_ENTITY_TYPE_PRIMITIVE, TK_ENTITY_TYPE_STRUCT, TK_ENTITY_TYPE_CLASS, TK_ENTITY_TYPE_ACTOR);
 
 RULE(type_list, ONE_OR_MORE(type), TK_PARAMS);
 

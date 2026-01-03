@@ -1362,7 +1362,7 @@ static bool is_x_sub_arrow(ast_t* sub, ast_t* super,
   return ok;
 }
 
-static bool is_nominal_underlying_type(ast_t* sub, ast_t* super, errorframe_t* errorf,
+static bool is_nominal_entity_type(ast_t* sub, ast_t* super, errorframe_t* errorf,
   pass_opt_t* opt)
 {
   (void)opt;
@@ -1371,9 +1371,10 @@ static bool is_nominal_underlying_type(ast_t* sub, ast_t* super, errorframe_t* e
 
   token_id super_id = ast_id(super);
   token_id sub_id = ast_id(sub_def);
-  if((super_id == TK_UNDERLYING_CLASS && sub_id == TK_CLASS) ||
-     (super_id == TK_UNDERLYING_STRUCT && sub_id == TK_STRUCT) ||
-     (super_id == TK_UNDERLYING_PRIMITIVE && sub_id == TK_PRIMITIVE))
+  if((super_id == TK_ENTITY_TYPE_CLASS && sub_id == TK_CLASS) ||
+     (super_id == TK_ENTITY_TYPE_STRUCT && sub_id == TK_STRUCT) ||
+     (super_id == TK_ENTITY_TYPE_PRIMITIVE && sub_id == TK_PRIMITIVE) ||
+     (super_id == TK_ENTITY_TYPE_ACTOR && sub_id == TK_ACTOR))
   {
     return true;
   }
@@ -1381,7 +1382,7 @@ static bool is_nominal_underlying_type(ast_t* sub, ast_t* super, errorframe_t* e
   if(errorf != NULL)
   {
     ast_error_frame(errorf, sub,
-      "%s is not an underlying type of %s",
+      "%s is not an entity type of %s",
       ast_print_type(sub), ast_print_type(super));
   }
 
@@ -1396,14 +1397,6 @@ static bool is_nominal_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
   {
     case TK_UNIONTYPE:
     {
-      ast_t* def = (ast_t*)ast_data(sub);
-
-      if(ast_id(def) == TK_STRUCT)
-      {
-        struct_cant_be_x(sub, super, errorf, "a union type");
-        return false;
-      }
-
       if(is_bare(sub))
       {
         if(errorf != NULL)
@@ -1418,14 +1411,6 @@ static bool is_nominal_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
 
     case TK_ISECTTYPE:
     {
-      ast_t* def = (ast_t*)ast_data(sub);
-
-      if(ast_id(def) == TK_STRUCT)
-      {
-        struct_cant_be_x(sub, super, errorf, "an intersection type");
-        return false;
-      }
-
       if(is_bare(sub))
       {
         if(errorf != NULL)
@@ -1451,10 +1436,11 @@ static bool is_nominal_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
     case TK_ARROW:
       return is_x_sub_arrow(sub, super, check_cap, errorf, opt);
 
-    case TK_UNDERLYING_CLASS:
-    case TK_UNDERLYING_STRUCT:
-    case TK_UNDERLYING_PRIMITIVE:
-      return is_nominal_underlying_type(sub, super, errorf, opt);
+    case TK_ENTITY_TYPE_CLASS:
+    case TK_ENTITY_TYPE_STRUCT:
+    case TK_ENTITY_TYPE_PRIMITIVE:
+    case TK_ENTITY_TYPE_ACTOR:
+      return is_nominal_entity_type(sub, super, errorf, opt);
 
     case TK_FUNTYPE:
     case TK_INFERTYPE:
@@ -1465,6 +1451,34 @@ static bool is_nominal_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
   }
 
   pony_assert(0);
+  return false;
+}
+
+static bool is_entity_type_sub_x(ast_t* sub, ast_t* super, errorframe_t* errorf,
+  pass_opt_t* opt)
+{
+  // Entity type is the top type of all and it cannot be a subtype of anything
+  // besides itself.
+
+  // N k <: T
+  switch(ast_id(super))
+  {
+    case TK_ENTITY_TYPE_CLASS:
+    case TK_ENTITY_TYPE_STRUCT:
+    case TK_ENTITY_TYPE_PRIMITIVE:
+    case TK_ENTITY_TYPE_ACTOR:
+      return ast_id(sub) == ast_id(super);
+
+    default: {}
+  }
+
+  if(errorf != NULL)
+  {
+    ast_error_frame(errorf, sub,
+      "entity %s is not a subtype of %s",
+      ast_print_type(sub), ast_print_type(super));
+  }
+
   return false;
 }
 
@@ -1934,6 +1948,12 @@ static bool is_x_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
     case TK_INFERTYPE:
     case TK_ERRORTYPE:
       return false;
+
+    case TK_ENTITY_TYPE_CLASS:
+    case TK_ENTITY_TYPE_STRUCT:
+    case TK_ENTITY_TYPE_PRIMITIVE:
+    case TK_ENTITY_TYPE_ACTOR:
+      return is_entity_type_sub_x(sub, super, errorf, opt);
 
     default: {}
   }
@@ -2491,6 +2511,89 @@ bool contains_dontcare(ast_t* ast)
     }
 
     default: {}
+  }
+
+  return false;
+}
+
+bool grouped_contains_struct(ast_t* type)
+{
+  pony_assert(ast_id(type) == TK_UNIONTYPE || ast_id(type) == TK_ISECTTYPE);
+
+  bool ret = false;
+
+  ast_t* child = ast_child(type);
+
+  while(child != NULL)
+  {
+    switch(ast_id(child))
+    {
+      case TK_UNIONTYPE:
+      case TK_ISECTTYPE:
+      {
+        if(grouped_contains_struct(child))
+        {
+          return true;
+        }
+
+        break;
+      }
+
+      case TK_NOMINAL:
+      {
+        ast_t* def = (ast_t*)ast_data(child);
+        if(ast_id(def) == TK_STRUCT)
+        {
+          return true;
+        }
+
+        break;
+      }
+
+      default:
+        break;
+    }
+
+    child = ast_sibling(child);
+  }
+
+  return false;
+}
+
+bool grouped_contains_entity_type(ast_t * type)
+{
+  pony_assert(ast_id(type) == TK_UNIONTYPE || ast_id(type) == TK_ISECTTYPE);
+
+  bool ret = false;
+
+  ast_t* child = ast_child(type);
+
+  while(child != NULL)
+  {
+    switch(ast_id(child))
+    {
+    case TK_UNIONTYPE:
+    case TK_ISECTTYPE:
+    {
+      if(grouped_contains_entity_type(child))
+      {
+        return true;
+      }
+
+      break;
+    }
+
+    case TK_ENTITY_TYPE_CLASS:
+    case TK_ENTITY_TYPE_STRUCT:
+    case TK_ENTITY_TYPE_PRIMITIVE:
+    case TK_ENTITY_TYPE_ACTOR:
+      return true;
+
+    default:
+      break;
+    }
+
+    child = ast_sibling(child);
   }
 
   return false;

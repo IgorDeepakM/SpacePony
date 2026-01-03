@@ -280,9 +280,18 @@ DEF(barelambdatype);
   OPT TOKEN(NULL, TK_EPHEMERAL, TK_ALIASED);
   DONE();
 
+DEF(entitytype);
+  PRINT_INLINE();
+  TOKEN("entity type", TK_CLASS, TK_STRUCT, TK_PRIMITIVE, TK_ACTOR);
+  MAP_ID(TK_CLASS, TK_ENTITY_TYPE_CLASS);
+  MAP_ID(TK_STRUCT, TK_ENTITY_TYPE_STRUCT);
+  MAP_ID(TK_PRIMITIVE, TK_ENTITY_TYPE_PRIMITIVE);
+  MAP_ID(TK_ACTOR, TK_ENTITY_TYPE_PRIMITIVE);
+  DONE();
+
 // (thistype | cap | typeexpr | nominal | lambdatype | barelambdatype)
 DEF(atomtype);
-  RULE("type", thistype, cap, groupedtype, nominal, lambdatype, barelambdatype);
+  RULE("type", thistype, cap, groupedtype, nominal, lambdatype, barelambdatype, entitytype);
   DONE();
 
 // ARROW type
@@ -787,21 +796,13 @@ DEF(ifdef);
   REORDER(0, 2, 3, 1);
   DONE();
 
-DEF(underlying_type);
-  PRINT_INLINE();
-  TOKEN("underlying type", TK_CLASS, TK_STRUCT, TK_PRIMITIVE);
-  MAP_ID(TK_CLASS, TK_UNDERLYING_CLASS);
-  MAP_ID(TK_STRUCT, TK_UNDERLYING_STRUCT);
-  MAP_ID(TK_PRIMITIVE, TK_UNDERLYING_PRIMITIVE);
-  DONE();
-
 // type <: type THEN seq
 DEF(iftype);
   AST_NODE(TK_IFTYPE);
   SCOPE();
   RULE("type", type);
   SKIP(NULL, TK_SUBTYPE);
-  RULE("type", type, underlying_type);
+  RULE("type", type);
   SKIP(NULL, TK_THEN);
   RULE("then value", seq);
   AST_NODE(TK_NONE);

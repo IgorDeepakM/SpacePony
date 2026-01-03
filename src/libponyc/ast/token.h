@@ -266,9 +266,10 @@ typedef enum token_id
   TK_BECHAIN,
   TK_FUNCHAIN,
 
-  TK_UNDERLYING_CLASS,     // Extra tokens of underlying type in iftype expressions
-  TK_UNDERLYING_STRUCT,    // so that they don't collide with TK_CLASS etc.
-  TK_UNDERLYING_PRIMITIVE,
+  TK_ENTITY_TYPE_CLASS,
+  TK_ENTITY_TYPE_STRUCT,
+  TK_ENTITY_TYPE_PRIMITIVE,
+  TK_ENTITY_TYPE_ACTOR,
 
   TK_ANNOTATION,
 
