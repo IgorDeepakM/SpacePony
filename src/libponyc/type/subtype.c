@@ -1460,6 +1460,7 @@ static bool is_entity_type_sub_x(ast_t* sub, ast_t* super, errorframe_t* errorf,
   // Entity type is the top type of all and it cannot be a subtype of anything
   // besides itself.
 
+  (void)opt;
   // N k <: T
   switch(ast_id(super))
   {
@@ -2520,8 +2521,6 @@ bool grouped_contains_struct(ast_t* type)
 {
   pony_assert(ast_id(type) == TK_UNIONTYPE || ast_id(type) == TK_ISECTTYPE);
 
-  bool ret = false;
-
   ast_t* child = ast_child(type);
 
   while(child != NULL)
@@ -2563,8 +2562,6 @@ bool grouped_contains_struct(ast_t* type)
 bool grouped_contains_entity_type(ast_t * type)
 {
   pony_assert(ast_id(type) == TK_UNIONTYPE || ast_id(type) == TK_ISECTTYPE);
-
-  bool ret = false;
 
   ast_t* child = ast_child(type);
 
