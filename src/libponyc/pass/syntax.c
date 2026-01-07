@@ -282,6 +282,31 @@ static bool check_method(pass_opt_t* opt, ast_t* ast, int method_def_index)
   return r;
 }
 
+static bool check_members(pass_opt_t* opt, ast_t* members, int entity_def_index);
+
+static bool check_iftype_method(pass_opt_t* opt, ast_t* ast, int entity_def_index)
+{
+  AST_GET_CHILDREN(ast, left_control, right);
+  AST_GET_CHILDREN(left_control, sub, super, left);
+
+  if(ast_id(right) == TK_IFTYPE_SET_METHOD)
+  {
+    if(!check_iftype_method(opt, right, entity_def_index))
+    {
+      return false;
+    }
+  }
+  else
+  {
+    if(ast_id(right) == TK_MEMBERS && !check_members(opt, right, entity_def_index))
+    {
+      return false;
+    }
+  }
+
+  return check_members(opt, left, entity_def_index);
+}
+
 
 // Check whether the given entity members are legal in their entity
 static bool check_members(pass_opt_t* opt, ast_t* members, int entity_def_index)
@@ -343,6 +368,12 @@ static bool check_members(pass_opt_t* opt, ast_t* members, int entity_def_index)
 
       case TK_ENUM:
         break;
+
+      case TK_IFTYPE_SET_METHOD:
+      {
+        r = check_iftype_method(opt, member, entity_def_index);
+        break;
+      }
 
       default:
         pony_assert(0);

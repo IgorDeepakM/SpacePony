@@ -79,7 +79,7 @@ bool has_member(ast_t* members, const char* name)
 
   while(member != NULL)
   {
-    ast_t* id;
+    ast_t* id = NULL;
 
     switch(ast_id(member))
     {
@@ -89,12 +89,16 @@ bool has_member(ast_t* members, const char* name)
         id = ast_child(member);
         break;
 
+      case TK_IFTYPE_SET_METHOD:
+        id = NULL;
+        break;
+
       default:
         id = ast_childidx(member, 1);
         break;
     }
 
-    if(ast_name(id) == name)
+    if(id != NULL && ast_name(id) == name)
       return true;
 
     member = ast_sibling(member);

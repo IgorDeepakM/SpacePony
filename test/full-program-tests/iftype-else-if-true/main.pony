@@ -7,6 +7,36 @@ class C2 is T
 struct S1
 primitive P1
 
+primitive PFloat1[A]
+  iftype A <: F64 then
+    fun float_op(x : A) =>
+      x.acos()
+  elseif A <: F32 then
+    fun float_op2(x : A) =>
+      None
+  else
+    fun float_op3(x: A) =>
+      None
+    fun float_op4(x: A) =>
+      None
+  end
+
+primitive PFloat2[A: (Real[A] val & Number)]
+  iftype A <: FloatingPoint[A] then
+    iftype A <: F64 then
+      fun float_op(x: A): A =>
+        x.acos()
+    elseif A <: F32 then
+      fun float_op2(x: A) =>
+        None
+    else
+      fun float_op3(x: A) =>
+        None
+      fun float_op4(x: A) =>
+        None
+    end
+  end
+
 actor Main
   new create(env: Env) =>
     if not foo[C2](C2) then
@@ -60,6 +90,9 @@ actor Main
     if is_class_or_primitive[P1]() then
       @pony_exitcode(13)
     end
+
+    PFloat1[F64].float_op(0.5)
+    PFloat2[F32].float_op2(0.5)
 
   fun foo[A: T](x: A): Bool =>
     iftype A <: C1 then

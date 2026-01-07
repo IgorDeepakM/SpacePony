@@ -59,7 +59,7 @@ RULE(provides, ONE_OR_MORE(type), TK_PROVIDES);
 
 RULE(members,
   ZERO_OR_MORE(field)
-  ZERO_OR_MORE(method, enum_block),
+  ZERO_OR_MORE(method, enum_block, iftype_set_method),
   TK_MEMBERS);
 
 RULE(field,
@@ -92,6 +92,26 @@ RULE(enum_block,
   CHILD(type)
   ONE_OR_MORE(enum_entry),
   TK_ENUM);
+
+RULE(iftype_method_seq,
+  ONE_OR_MORE(method, enum_block, iftype_set_method),
+  TK_MEMBERS);
+
+RULE(iftype_set_method,
+  IS_SCOPE
+  HAS_TYPE(type)
+  CHILD(iftype_method) // Condition/then body
+  CHILD(iftype_method_seq, iftype_set_method, none), // Else body
+  TK_IFTYPE_SET_METHOD);
+
+RULE(iftype_method,
+  IS_SCOPE
+  HAS_TYPE(type)
+  CHILD(type) // Subtype
+  CHILD(type) // Supertype
+  CHILD(iftype_method_seq) // Then body
+  CHILD(type_params, none),
+  TK_IFTYPE_METHOD);
 
 RULE(type_params, ONE_OR_MORE(type_param, value_formal_param), TK_TYPEPARAMS);
 

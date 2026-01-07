@@ -156,6 +156,8 @@ typedef enum token_id
   TK_IFDEF,
   TK_IFTYPE,
   TK_IFTYPE_SET,
+  TK_IFTYPE_METHOD,
+  TK_IFTYPE_SET_METHOD,
   TK_THEN,
   TK_ELSE,
   TK_ELSEIF,

@@ -38,6 +38,7 @@ DECL(caseparampattern);
 DECL(annotations);
 DECL(dot);
 DECL(call);
+DECL(iftypeset_method);
 
 /* Precedence
  *
@@ -1258,11 +1259,55 @@ DEF(enum_block);
   TERMINATE("enum block", TK_END);
   DONE();
 
+DEF(iftype_method_seq);
+  AST_NODE(TK_MEMBERS);
+  SEQ("method", method, enum_block, iftypeset_method);
+  DONE();
+
+DEF(iftype_method);
+  AST_NODE(TK_IFTYPE_METHOD);
+  SCOPE();
+  RULE("type", type);
+  SKIP(NULL, TK_SUBTYPE);
+  RULE("type", type);
+  SKIP(NULL, TK_THEN);
+  RULE("method seq", iftype_method_seq);
+  AST_NODE(TK_NONE);
+  DONE();
+
+DEF(elseclause_method);
+  PRINT_INLINE();
+  SKIP(NULL, TK_ELSE);
+  RULE("method seq", iftype_method_seq);
+  DONE();
+
+  // ELSEIF [annotations] iftype [elseiftype | (ELSE seq)]
+DEF(elseiftype_method);
+  AST_NODE(TK_IFTYPE_SET_METHOD);
+  SKIP(NULL, TK_ELSEIF);
+  ANNOTATE(annotations);
+  SCOPE();
+  RULE("iftype clause", iftype_method);
+  OPT RULE("else clause", elseiftype_method, elseclause_method);
+  DONE();
+
+  // IFTYPE_SET [annotations] iftype [elseiftype | (ELSE seq)] END
+DEF(iftypeset_method);
+  PRINT_INLINE();
+  TOKEN(NULL, TK_IFTYPE_SET);
+  MAP_ID(TK_IFTYPE_SET, TK_IFTYPE_SET_METHOD);
+  SCOPE();
+  ANNOTATE(annotations);
+  RULE("iftype clause", iftype_method);
+  OPT RULE("else clause", elseiftype_method, elseclause_method);
+  TERMINATE("iftype expression", TK_END);
+  DONE();
+
 // {field} {method}
 DEF(members);
   AST_NODE(TK_MEMBERS);
   SEQ("field", field);
-  SEQ("method", method, enum_block);
+  SEQ("method", method, enum_block, iftypeset_method);
   DONE();
 
 // (TYPE | INTERFACE | TRAIT | PRIMITIVE | STRUCT | CLASS | ACTOR) [annotations]

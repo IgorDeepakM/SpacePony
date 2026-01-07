@@ -10,6 +10,10 @@
   { const char* errs[] = {err, NULL}; \
     DO(test_expected_errors(src, "ir", errs)); }
 
+#define TEST_ERRORS_2(src, err1, err2) \
+  { const char* errs[] = {err1, err2, NULL}; \
+    DO(test_expected_errors(src, "ir", errs)); }
+
 
 class IftypeTest : public PassTest
 {};
@@ -329,9 +333,117 @@ TEST_F(IftypeTest, TestUnderlyingType)
     "    iftype A <: struct then\n"
     "      None\n"
     "    end\n"
-    "    iftype A <: primitive then\n"
+    "    iftype A <: (primitive | struct) then\n"
     "      None\n"
     "    end";
 
   TEST_COMPILE(src);
+}
+
+TEST_F(IftypeTest, TestIfTypeMethodOk)
+{
+  const char* src =
+    "primitive P[A]\n"
+    "  iftype A <: F64 then\n"
+    "    fun float_op(x : A) =>\n"
+    "      None\n"
+    "  elseif A <: F32 then\n"
+    "    fun float_op2(x : A) =>\n"
+    "      None\n"
+    "  else\n"
+    "    fun float_op3(x: A) =>\n"
+    "      None\n"
+    "    fun float_op4(x: A) =>\n"
+    "      None\n"
+    "  end\n"
+
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    P[F64].float_op(0.5)\n"
+    "    P[F32].float_op2(0.5)";
+
+  TEST_COMPILE(src);
+}
+
+TEST_F(IftypeTest, TestIfTypeMethodFail)
+{
+  const char* src =
+    "primitive P[A]\n"
+    "  iftype A <: F64 then\n"
+    "    fun float_op(x : A) =>\n"
+    "      None\n"
+    "  elseif A <: F32 then\n"
+    "    fun float_op2(x : A) =>\n"
+    "      None\n"
+    "  else\n"
+    "    fun float_op3(x: A) =>\n"
+    "      None\n"
+    "    fun float_op4(x: A) =>\n"
+    "      None\n"
+    "  end\n"
+
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    P[F64].float_op3(0.5)\n"
+    "    P[F32].float_op4(0.5)";
+
+  TEST_ERRORS_2(src,
+    "Method float_op3 in type P_F64_val_o not found because it was removed in an iftype expression",
+    "Method float_op4 in type P_F32_val_o not found because it was removed in an iftype expression");
+}
+
+TEST_F(IftypeTest, TestIfTypeNestedMethodOk)
+{
+  const char* src =
+    "primitive P[A:(Real[A] val & Number)]\n"
+    "  iftype A <: (F32 | F64) then\n"
+    "    iftype A <: F64 then\n"
+    "      fun float_op(x : A) =>\n"
+    "        None\n"
+    "    elseif A <: F32 then\n"
+    "      fun float_op2(x : A) =>\n"
+    "        None\n"
+    "    else\n"
+    "      fun float_op3(x: A) =>\n"
+    "        None\n"
+    "      fun float_op4(x: A) =>\n"
+    "        None\n"
+    "    end\n"
+    "  end\n"
+
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    P[F64].float_op(0.5)\n"
+    "    P[F32].float_op2(0.5)";
+
+  TEST_COMPILE(src);
+}
+
+TEST_F(IftypeTest, TestIfTypeNestedMethodFail)
+{
+  const char* src =
+    "primitive P[A:(Real[A] val & Number)]\n"
+    "  iftype A <: (F32 | F64) then\n"
+    "    iftype A <: F64 then\n"
+    "      fun float_op(x : A) =>\n"
+    "        None\n"
+    "    elseif A <: F32 then\n"
+    "      fun float_op2(x : A) =>\n"
+    "        None\n"
+    "    else\n"
+    "      fun float_op3(x: A) =>\n"
+    "        None\n"
+    "      fun float_op4(x: A) =>\n"
+    "        None\n"
+    "    end\n"
+    "  end\n"
+
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    P[F64].float_op3(0.5)\n"
+    "    P[F32].float_op4(0.5)";
+
+  TEST_ERRORS_2(src,
+    "Method float_op3 in type P_F64_val_o not found because it was removed in an iftype expression",
+    "Method float_op4 in type P_F32_val_o not found because it was removed in an iftype expression");
 }
