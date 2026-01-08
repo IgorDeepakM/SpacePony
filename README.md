@@ -22,6 +22,7 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
   * [Enums](#enums-sort-of)
   * [Property](#property)
   * [iftype on entity types](#iftype-on-entity-types)
+  * [iftype on method definitions](#iftype-on-method-definitions)
 * [Future directions](#future-directions)
   * [Short term](#short-term)
   * [Long term (read never)](#long-term-read-never)
@@ -649,6 +650,42 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
       false
     end
   ```
+
+### iftype on method definitions
+
+* A method definition inside an entity (class/struct/primitive/actor) can be conditionally selected based on an iftype expression.
+
+  ```pony
+  primitive PFloat2[A]
+    iftype A <: F64 then
+      fun float_op(x: A): A =>
+        x.acos()
+    elseif A <: F32 then
+      fun float_op2(x: A): A =>
+        x.acos()
+    else
+      fun float_op3(x: A): A =>
+        1
+    end
+  ```
+
+* A method can be selectively enabled or disabled by being inside an iftype expression. This can be useful when some methods aren't applicable for certain types.
+
+* Just like the regular iftype expression, it creates a new type shadowing the existing type of the subtype in the expression.
+
+  ```pony
+  primitive PFloat2[A]            // In the outer most scope of the primitive defintion, A is not known
+                                  // and can only be known if there is additional type parameter constraints
+    iftype A <: F64 then
+      fun float_op(x: A): A =>    // In this scope A has the type of F64 as a new type A is created shadowing
+                                  // A in the type parameters of the primitive
+        x.acos()
+    end
+  ```
+
+* Note that the methods must still have unique names inside the iftype expression as well. However, the goal is to support having the same name in the future.
+
+* This is similar to `if constexpr` in C++ and `static if` in D and the ultimate goal here is to have a similar compile time if statement. This is in particular difficult to achieve with the Pony compiler because how it works internally. Still the goal is to rewrite the compiler so that this is possible.
 
 
 ## Future directions
