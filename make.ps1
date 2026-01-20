@@ -593,7 +593,7 @@ switch ($Command.ToLower())
         Write-Output "Creating $buildDir\..\$package"
 
         # Remove unneeded files; we do it this way because Compress-Archive cannot add a single file to anything other than the root directory
-        Get-ChildItem -File -Path "$Prefix\bin\*" -Exclude ponyc.exe | Remove-Item
+        Get-ChildItem -File -Path "$Prefix\bin\*" -Exclude ponyc.exe,pony-lsp.exe | Remove-Item
         Compress-Archive -Path "$Prefix\bin", "$Prefix\lib", "$Prefix\packages", "$Prefix\examples" -DestinationPath "$buildDir\..\$package" -Force
         break
     }
@@ -603,7 +603,7 @@ switch ($Command.ToLower())
         Write-Output "Creating $buildDir\..\$package"
 
         # Remove unneeded files; we do it this way because Compress-Archive cannot add a single file to anything other than the root directory
-        Get-ChildItem -File -Path "$Prefix\bin\*" -Exclude ponyc.exe | Remove-Item
+        Get-ChildItem -File -Path "$Prefix\bin\*" -Exclude ponyc.exe,pony-lsp.exe | Remove-Item
         Compress-Archive -Path "$Prefix\bin", "$Prefix\lib", "$Prefix\packages", "$Prefix\examples" -DestinationPath "$buildDir\..\$package" -Force
         break
     }
