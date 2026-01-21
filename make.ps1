@@ -33,7 +33,7 @@
 
     [Parameter(HelpMessage="Tests to run")]
     [string]
-    $TestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release' # ,grammar' do not run grammar for now as there is work on the parser. Reenable later.
+    $TestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release,pony-lsp-tests' # ,grammar' do not run grammar for now as there is work on the parser. Reenable later.
 )
 
 # Function to extract process exit code from LLDB output
@@ -444,6 +444,42 @@ switch ($Command.ToLower())
             }
         }
 
+        # pony-lsp-test
+        if ($TestsToRun -match 'pony-lsp-tests')
+        {
+            $numTestSuitesRun += 1;
+            Write-Output "$outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\peg --path $srcDir\tools\lib\mfelsche\pony-ast --path $srcDir\tools\lib\mfelsche\pony-binarysearch --path $srcDir\tools\lib\mfelsche\pony-immutable-json -o $outDir -b pony-lsp-tests $srcDir\tools"
+            & $outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\peg --path $srcDir\tools\lib\mfelsche\pony-ast --path $srcDir\tools\lib\mfelsche\pony-binarysearch --path $srcDir\tools\lib\mfelsche\pony-immutable-json -o $outDir -b pony-lsp-tests $srcDir\tools
+            if ($LastExitCode -eq 0)
+            {
+                try
+                {
+                    if ($Uselldb -eq "yes")
+                    {
+                        Write-Output "$lldbcmd $lldbargs $outDir\pony-lsp-tests.exe --sequential"
+                        $lldboutput = & $lldbcmd $lldbargs $outDir\pony-lsp-tests.exe --sequential
+                        Write-Output $lldboutput
+                        $err = Get-ProcessExitCodeFromLLDB -LLDBOutput $lldboutput
+                    }
+                    else
+                    {
+                        Write-Output "$outDir\pony-lsp-tests.exe --sequential"
+                        & $outDir\pony-lsp-tests.exe --sequential
+                        $err = $LastExitCode
+                    }
+                }
+                catch
+                {
+                    $err = -1
+                }
+                if ($err -ne 0) { $failedTestSuites += 'pony-lsp-tests' }
+            }
+            else
+            {
+                $failedTestSuites += 'compile pony-lsp-tests'
+            }
+        }
+
         #
         $numTestSuitesFailed = $failedTestSuites.Length
         Write-Output "Test suites run: $numTestSuitesRun, num failed: $numTestSuitesFailed"
@@ -593,7 +629,7 @@ switch ($Command.ToLower())
         Write-Output "Creating $buildDir\..\$package"
 
         # Remove unneeded files; we do it this way because Compress-Archive cannot add a single file to anything other than the root directory
-        Get-ChildItem -File -Path "$Prefix\bin\*" -Exclude ponyc.exe | Remove-Item
+        Get-ChildItem -File -Path "$Prefix\bin\*" -Exclude ponyc.exe,pony-lsp.exe | Remove-Item
         Compress-Archive -Path "$Prefix\bin", "$Prefix\lib", "$Prefix\packages", "$Prefix\examples" -DestinationPath "$buildDir\..\$package" -Force
         break
     }
@@ -603,7 +639,7 @@ switch ($Command.ToLower())
         Write-Output "Creating $buildDir\..\$package"
 
         # Remove unneeded files; we do it this way because Compress-Archive cannot add a single file to anything other than the root directory
-        Get-ChildItem -File -Path "$Prefix\bin\*" -Exclude ponyc.exe | Remove-Item
+        Get-ChildItem -File -Path "$Prefix\bin\*" -Exclude ponyc.exe,pony-lsp.exe | Remove-Item
         Compress-Archive -Path "$Prefix\bin", "$Prefix\lib", "$Prefix\packages", "$Prefix\examples" -DestinationPath "$buildDir\..\$package" -Force
         break
     }
