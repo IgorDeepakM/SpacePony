@@ -33,7 +33,7 @@
 
     [Parameter(HelpMessage="Tests to run")]
     [string]
-    $TestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release,pony-lsp-test' # ,grammar' do not run grammar for now as there is work on the parser. Reenable later.
+    $TestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release,pony-lsp-tests' # ,grammar' do not run grammar for now as there is work on the parser. Reenable later.
 )
 
 # Function to extract process exit code from LLDB output
@@ -445,7 +445,7 @@ switch ($Command.ToLower())
         }
 
         # pony-lsp-test
-        if ($TestsToRun -match 'pony-lsp-test')
+        if ($TestsToRun -match 'pony-lsp-tests')
         {
             $numTestSuitesRun += 1;
             Write-Output "$outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\peg --path $srcDir\tools\lib\mfelsche\pony-ast --path $srcDir\tools\lib\mfelsche\pony-binarysearch --path $srcDir\tools\lib\mfelsche\pony-immutable-json -o $outDir -b pony-lsp-tests $srcDir\tools"
@@ -472,11 +472,11 @@ switch ($Command.ToLower())
                 {
                     $err = -1
                 }
-                if ($err -ne 0) { $failedTestSuites += 'pony-lsp-test' }
+                if ($err -ne 0) { $failedTestSuites += 'pony-lsp-tests' }
             }
             else
             {
-                $failedTestSuites += 'compile pony-lsp-test'
+                $failedTestSuites += 'compile pony-lsp-tests'
             }
         }
 
