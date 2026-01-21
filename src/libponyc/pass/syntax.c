@@ -284,14 +284,14 @@ static bool check_method(pass_opt_t* opt, ast_t* ast, int method_def_index)
 
 static bool check_members(pass_opt_t* opt, ast_t* members, int entity_def_index);
 
-static bool check_iftype_method(pass_opt_t* opt, ast_t* ast, int entity_def_index)
+static bool check_entityif(pass_opt_t* opt, ast_t* ast, int entity_def_index)
 {
   AST_GET_CHILDREN(ast, left_control, right);
   AST_GET_CHILDREN(left_control, sub, super, left);
 
-  if(ast_id(right) == TK_IFTYPE_SET_METHOD)
+  if(ast_id(right) == TK_ENTITYIF_SET)
   {
-    if(!check_iftype_method(opt, right, entity_def_index))
+    if(!check_entityif(opt, right, entity_def_index))
     {
       return false;
     }
@@ -369,9 +369,9 @@ static bool check_members(pass_opt_t* opt, ast_t* members, int entity_def_index)
       case TK_ENUM:
         break;
 
-      case TK_IFTYPE_SET_METHOD:
+      case TK_ENTITYIF_SET:
       {
-        r = check_iftype_method(opt, member, entity_def_index);
+        r = check_entityif(opt, member, entity_def_index);
         break;
       }
 

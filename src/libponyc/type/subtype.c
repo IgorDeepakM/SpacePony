@@ -2248,6 +2248,10 @@ bool is_known(ast_t* type)
 
   switch(ast_id(type))
   {
+    case TK_ENTITY_TYPE_CLASS:
+    case TK_ENTITY_TYPE_STRUCT:
+    case TK_ENTITY_TYPE_PRIMITIVE:
+    case TK_ENTITY_TYPE_ACTOR:
     case TK_UNIONTYPE:
     case TK_TUPLETYPE:
       return false;

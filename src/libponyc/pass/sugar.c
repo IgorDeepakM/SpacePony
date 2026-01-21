@@ -89,7 +89,7 @@ bool has_member(ast_t* members, const char* name)
         id = ast_child(member);
         break;
 
-      case TK_IFTYPE_SET_METHOD:
+      case TK_ENTITYIF_SET:
         id = NULL;
         break;
 

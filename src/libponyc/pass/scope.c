@@ -148,14 +148,14 @@ static bool scope_method(pass_opt_t* opt, ast_t* scope, ast_t* ast)
   return true;
 }
 
-static bool scope_iftype_method(pass_opt_t* opt, ast_t* scope, ast_t* ast)
+static bool scope_entityif(pass_opt_t* opt, ast_t* scope, ast_t* ast)
 {
   AST_GET_CHILDREN(ast, left_control, right);
   AST_GET_CHILDREN(left_control, sub, super, left);
 
-  if(ast_id(right) == TK_IFTYPE_SET_METHOD)
+  if(ast_id(right) == TK_ENTITYIF_SET)
   {
-    if(!scope_iftype_method(opt, scope, right))
+    if(!scope_entityif(opt, scope, right))
     {
       return false;
     }
@@ -177,8 +177,8 @@ static bool scope_iftype_method(pass_opt_t* opt, ast_t* scope, ast_t* ast)
               return false;
             break;
 
-          case TK_IFTYPE_SET_METHOD:
-            if(!scope_iftype_method(opt, scope, decl))
+          case TK_ENTITYIF_SET:
+            if(!scope_entityif(opt, scope, decl))
               return false;
             break;
 
@@ -207,8 +207,8 @@ static bool scope_iftype_method(pass_opt_t* opt, ast_t* scope, ast_t* ast)
           return false;
         break;
 
-      case TK_IFTYPE_SET_METHOD:
-        if(!scope_iftype_method(opt, scope, decl))
+      case TK_ENTITYIF_SET:
+        if(!scope_entityif(opt, scope, decl))
           return false;
         break;
 
@@ -252,8 +252,8 @@ static ast_result_t scope_entity(pass_opt_t* opt, ast_t* ast)
           return AST_ERROR;
         break;
 
-      case TK_IFTYPE_SET_METHOD:
-        if(!scope_iftype_method(opt, ast_parent(member), member))
+      case TK_ENTITYIF_SET:
+        if(!scope_entityif(opt, ast_parent(member), member))
           return AST_ERROR;
         break;
 
@@ -320,7 +320,7 @@ static ast_t* make_iftype_typeparam(pass_opt_t* opt, ast_t* subtype,
 
 static ast_result_t scope_iftype(pass_opt_t* opt, ast_t* ast)
 {
-  pony_assert(ast_id(ast) == TK_IFTYPE || ast_id(ast) == TK_IFTYPE_METHOD);
+  pony_assert(ast_id(ast) == TK_IFTYPE || ast_id(ast) == TK_ENTITYIF);
 
   AST_GET_CHILDREN(ast, subtype, supertype, body, typeparam_store);
   // Prevent this from running again, if, for example, the iftype
@@ -488,7 +488,7 @@ ast_result_t pass_scope(ast_t** astp, pass_opt_t* options)
       break;
 
     case TK_IFTYPE:
-    case TK_IFTYPE_METHOD:
+    case TK_ENTITYIF:
       return scope_iftype(options, ast);
 
     case TK_CALL:
