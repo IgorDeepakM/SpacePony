@@ -474,6 +474,12 @@ static bool apply_cap(ast_t* type, token_id tcap, token_id teph)
     case TK_TYPEPARAMREF:
       return apply_cap_to_single(type, tcap, teph);
 
+    case TK_ENTITY_TYPE_CLASS:
+    case TK_ENTITY_TYPE_STRUCT:
+    case TK_ENTITY_TYPE_PRIMITIVE:
+    case TK_ENTITY_TYPE_ACTOR:
+      return true;
+
     default: {}
   }
 

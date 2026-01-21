@@ -176,6 +176,7 @@ static const lextoken_t keywords[] =
   { "if", TK_IF },
   { "ifdef", TK_IFDEF },
   { "iftype", TK_IFTYPE_SET },
+  { "entityif", TK_ENTITYIF_SET },
   { "then", TK_THEN },
   { "else", TK_ELSE },
   { "elseif", TK_ELSEIF },
@@ -229,8 +230,7 @@ static const lextoken_t keywords[] =
   { "$let", TK_MATCH_CAPTURE },
   { "$dontcare", TK_MATCH_DONTCARE },
   { "$iftype", TK_IFTYPE },
-  { "$iftypemethod", TK_IFTYPE_METHOD },
-  { "$iftypesetmethod", TK_IFTYPE_SET_METHOD },
+  { "$entityif", TK_ENTITYIF },
 
   { NULL, (token_id)0 }
 };

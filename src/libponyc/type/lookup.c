@@ -571,6 +571,18 @@ static deferred_reification_t* lookup_base(pass_opt_t* opt, ast_t* from,
       // Can only happen due to a local inference fail earlier
       return NULL;
 
+    case TK_ENTITY_TYPE_CLASS:
+    case TK_ENTITY_TYPE_STRUCT:
+    case TK_ENTITY_TYPE_PRIMITIVE:
+    case TK_ENTITY_TYPE_ACTOR:
+      if(errors)
+      {
+        ast_error(opt->check.errors, from,
+          "can't lookup a member in an entity type");
+      }
+
+      return NULL;
+
     default: {}
   }
 

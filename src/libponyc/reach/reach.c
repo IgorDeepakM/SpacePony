@@ -847,7 +847,7 @@ static reach_type_t* add_tuple(reach_t* r, ast_t* type, pass_opt_t* opt)
   return t;
 }
 
-static ast_t* reach_iftype_method(pass_opt_t* opt, ast_t* ast, reach_type_t* t,
+static ast_t* reach_entityif(pass_opt_t* opt, ast_t* ast, reach_type_t* t,
   ast_t* typeparams, ast_t* typeargs)
 {
   AST_GET_CHILDREN(ast, left_control, right);
@@ -861,9 +861,9 @@ static ast_t* reach_iftype_method(pass_opt_t* opt, ast_t* ast, reach_type_t* t,
   ast_free_unattached(r_sub);
   ast_free_unattached(r_super);
 
-  if(ast_id(right) == TK_IFTYPE_SET_METHOD)
+  if(ast_id(right) == TK_ENTITYIF_SET)
   {
-    right = reach_iftype_method(opt, right, t, typeparams, typeargs);
+    right = reach_entityif(opt, right, t, typeparams, typeargs);
   }
 
   pony_assert(ast_id(right) == TK_MEMBERS || ast_id(right) == TK_NONE);
@@ -887,11 +887,11 @@ static ast_t* reach_iftype_method(pass_opt_t* opt, ast_t* ast, reach_type_t* t,
           }
           break;
 
-        case TK_IFTYPE_SET_METHOD:
+        case TK_ENTITYIF_SET:
           if(!is_sub)
           {
-            // If subtype is false, this path is taken and we need also to check nesten iftype
-            reach_iftype_method(opt, decl, t, typeparams, typeargs);
+            // If subtype is false, this path is taken and we need also to check nested entityif
+            reach_entityif(opt, decl, t, typeparams, typeargs);
           }
           break;
 
@@ -923,11 +923,11 @@ static ast_t* reach_iftype_method(pass_opt_t* opt, ast_t* ast, reach_type_t* t,
         }
         break;
 
-      case TK_IFTYPE_SET_METHOD:
-        // If subtype is true, this path is taken and we need also to check nesten iftype
+      case TK_ENTITYIF_SET:
+        // If subtype is true, this path is taken and we need also to check nested entityif
         if(is_sub)
         {
-          reach_iftype_method(opt, decl, t, typeparams, typeargs);
+          reach_entityif(opt, decl, t, typeparams, typeargs);
         }
         break;
 
@@ -1075,10 +1075,10 @@ static reach_type_t* add_nominal(reach_t* r, ast_t* type, pass_opt_t* opt)
 
   while(member != NULL)
   {
-    if((ast_id(member) == TK_IFTYPE_SET_METHOD))
+    if((ast_id(member) == TK_ENTITYIF_SET))
     {
       ast_t* typeparams = ast_childidx(def, 1);
-      reach_iftype_method(opt, member, t, typeparams, typeargs);
+      reach_entityif(opt, member, t, typeparams, typeargs);
     }
 
     member = ast_sibling(member);
@@ -1564,7 +1564,7 @@ static void reachable_method(reach_t* r, deferred_reification_t* reify,
     if(pos != NULL)
     {
       ast_error(opt->check.errors, pos, "Method %s in type %s_%s not found because it was removed "
-        "in an iftype expression", n->name, t->name, t->mangle);
+        "in an entityif expression", n->name, t->name, t->mangle);
     }
     opt->check.evaluation_error = true;
     return;

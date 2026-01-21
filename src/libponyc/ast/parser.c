@@ -1265,7 +1265,7 @@ DEF(iftype_method_seq);
   DONE();
 
 DEF(iftype_method);
-  AST_NODE(TK_IFTYPE_METHOD);
+  AST_NODE(TK_ENTITYIF);
   SCOPE();
   RULE("type", type);
   SKIP(NULL, TK_SUBTYPE);
@@ -1283,7 +1283,7 @@ DEF(elseclause_method);
 
   // ELSEIF [annotations] iftype [elseiftype | (ELSE seq)]
 DEF(elseiftype_method);
-  AST_NODE(TK_IFTYPE_SET_METHOD);
+  AST_NODE(TK_ENTITYIF_SET);
   SKIP(NULL, TK_ELSEIF);
   ANNOTATE(annotations);
   SCOPE();
@@ -1294,8 +1294,7 @@ DEF(elseiftype_method);
   // IFTYPE_SET [annotations] iftype [elseiftype | (ELSE seq)] END
 DEF(iftypeset_method);
   PRINT_INLINE();
-  TOKEN(NULL, TK_IFTYPE_SET);
-  MAP_ID(TK_IFTYPE_SET, TK_IFTYPE_SET_METHOD);
+  TOKEN(NULL, TK_ENTITYIF_SET);
   SCOPE();
   ANNOTATE(annotations);
   RULE("iftype clause", iftype_method);
