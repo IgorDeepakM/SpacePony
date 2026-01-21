@@ -33,7 +33,7 @@
 
     [Parameter(HelpMessage="Tests to run")]
     [string]
-    $TestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release' # ,grammar' do not run grammar for now as there is work on the parser. Reenable later.
+    $TestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release,pony-lsp-test' # ,grammar' do not run grammar for now as there is work on the parser. Reenable later.
 )
 
 # Function to extract process exit code from LLDB output
@@ -441,6 +441,42 @@ switch ($Command.ToLower())
             else
             {
                 $failedTestSuites += 'generate grammar'
+            }
+        }
+
+        # pony-lsp-test
+        if ($TestsToRun -match 'pony-lsp-test')
+        {
+            $numTestSuitesRun += 1;
+            Write-Output "$outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\peg --path $srcDir\tools\lib\mfelsche\pony-ast --path $srcDir\tools\lib\mfelsche\pony-binarysearch --path $srcDir\tools\lib\mfelsche\pony-immutable-json -o $outDir -b pony-lsp-tests $srcDir\tools"
+            & $outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\peg --path $srcDir\tools\lib\mfelsche\pony-ast --path $srcDir\tools\lib\mfelsche\pony-binarysearch --path $srcDir\tools\lib\mfelsche\pony-immutable-json -o $outDir -b pony-lsp-tests $srcDir\tools
+            if ($LastExitCode -eq 0)
+            {
+                try
+                {
+                    if ($Uselldb -eq "yes")
+                    {
+                        Write-Output "$lldbcmd $lldbargs $outDir\pony-lsp-tests.exe --sequential"
+                        $lldboutput = & $lldbcmd $lldbargs $outDir\pony-lsp-tests.exe --sequential
+                        Write-Output $lldboutput
+                        $err = Get-ProcessExitCodeFromLLDB -LLDBOutput $lldboutput
+                    }
+                    else
+                    {
+                        Write-Output "$outDir\pony-lsp-tests.exe --sequential"
+                        & $outDir\pony-lsp-tests.exe --sequential
+                        $err = $LastExitCode
+                    }
+                }
+                catch
+                {
+                    $err = -1
+                }
+                if ($err -ne 0) { $failedTestSuites += 'pony-lsp-test' }
+            }
+            else
+            {
+                $failedTestSuites += 'compile pony-lsp-test'
             }
         }
 

@@ -35,7 +35,7 @@ primitive PassIds
   fun paint(): I32 => 16
   fun llvm_ir(): I32 => 17
   fun bitcode(): I32 => 18
-  fun asm(): I32 => 19
+  fun p_asm(): I32 => 19
   fun obj(): I32 => 20
   fun all(): I32 => 21
 

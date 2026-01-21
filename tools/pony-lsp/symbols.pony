@@ -13,7 +13,7 @@ primitive SymbolKinds
   fun tag property(): I64 => 7
   fun tag field(): I64 => 8
   fun tag constructor(): I64 => 9
-  fun tag enum(): I64 => 10
+  fun tag sk_enum(): I64 => 10
   fun tag sk_interface(): I64 => 11
   fun tag function(): I64 =>12
   fun tag variable(): I64 =>13
