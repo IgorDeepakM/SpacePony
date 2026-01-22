@@ -688,7 +688,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 * This is similar to `if constexpr` in C++ and `static if` in D and the ultimate goal here is to have a similar compile time if statement. This is in particular difficult to achieve with the Pony compiler because how it works internally. Still the goal is to rewrite the compiler so that this is possible.
 
-* Why using a new keyword `entityif` and not reuse `if` or `iftype`? The problem is that if `if` or `iftype` would be used, the parser thinks that these keywords would belong to the method body of the previous method. This is a direct effect of that methods don't use an `end` after the definition closing the scope. If `end` would be used, then it would be possible to resuse `if` or `iftype`. However, this would greatly break compatability with the old Pony compiler and also questionable a aesthetics (like `fun v(): I32 => 3 end` instead of just `fun v(): I32 => 3`).
+* Why using a new keyword `entityif` and not reuse `if` or `iftype`? The problem is that if `if` or `iftype` would be used, the parser thinks that these keywords would belong to the method body of the previous method. This is a direct effect of that methods don't use an `end` after the definition closing the scope. If `end` would be used, then it would be possible to reuse `if` or `iftype`. However, this would greatly break compatibility with the old Pony compiler and also questionable aesthetics (like `fun v(): I32 => 3 end` instead of just `fun v(): I32 => 3`).
 
 
 
