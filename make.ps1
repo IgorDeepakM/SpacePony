@@ -166,7 +166,7 @@ switch ($Command.ToLower())
         }
 
         $libsSrcDir = Join-Path -Path $srcDir -ChildPath "lib"
-		    $numCpus = [Environment]::ProcessorCount
+	    $numCpus = [Environment]::ProcessorCount
         Write-Output "Configuring libraries..."
         if ($Arch.Length -gt 0)
         {
