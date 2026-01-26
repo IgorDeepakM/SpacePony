@@ -1,5 +1,6 @@
 #include "scope.h"
 #include "../type/assemble.h"
+#include "../type/subtype.h"
 #include "../pkg/package.h"
 #include "../pkg/use.h"
 #include "../ast/symtab.h"
@@ -295,6 +296,15 @@ static ast_t* make_iftype_typeparam(pass_opt_t* opt, ast_t* subtype,
   if((ast_id(current_constraint) != TK_NOMINAL) ||
      (ast_name(ast_childidx(current_constraint, 1)) != name))
   {
+    if(ast_id(new_constraint) == TK_UNIONTYPE ||
+       ast_id(new_constraint) == TK_ISECTTYPE)
+    {
+      if(grouped_contains_entity_type(new_constraint))
+      {
+
+      }
+    }
+
     // If the constraint is the type parameter itself, there is no constraint.
     // We can't use type_isect to build the new constraint because we don't have
     // full type information yet.
