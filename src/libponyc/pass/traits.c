@@ -90,12 +90,9 @@ static method_t* attach_method_t(ast_t* method)
 
 
 // Setup a method_t structure for each method in the given type.
-static void setup_local_methods(ast_t* ast)
+static void setup_local_method_members(ast_t* members, ast_t* entity)
 {
-  pony_assert(ast != NULL);
-
-  ast_t* members = ast_childidx(ast, 4);
-  pony_assert(members != NULL);
+  pony_assert(ast_id(members) == TK_MEMBERS);
 
   for(ast_t* p = ast_child(members); p != NULL; p = ast_sibling(p))
   {
@@ -105,19 +102,38 @@ static void setup_local_methods(ast_t* ast)
       info->local_define = true;
 
       if(ast_id(ast_childidx(p, 6)) != TK_NONE)
-        info->body_donor = ast;
+        info->body_donor = entity;
+    }
+    else if(ast_id(p) == TK_ENTITYIF_SET)
+    {
+      AST_GET_CHILDREN(p, left_control, right);
+      AST_GET_CHILDREN(left_control, sub, super, left);
+
+      if(ast_id(right) != TK_NONE)
+      {
+        setup_local_method_members(right, entity);
+      }
+      setup_local_method_members(left, entity);
     }
   }
 }
 
 
-// Tidy up the method_t structures in the given entity.
-static void tidy_up(ast_t* entity)
+// Setup a method_t structure for each method in the given type.
+static void setup_local_methods(ast_t* ast)
 {
-  pony_assert(entity != NULL);
+  pony_assert(ast != NULL);
 
-  ast_t* members = ast_childidx(entity, 4);
+  ast_t* members = ast_childidx(ast, 4);
   pony_assert(members != NULL);
+
+  setup_local_method_members(members, ast);
+}
+
+
+static void tidy_up_members(ast_t* members, ast_t* entity)
+{
+  pony_assert(ast_id(members) == TK_MEMBERS);
 
   for(ast_t* p = ast_child(members); p != NULL; p = ast_sibling(p))
   {
@@ -134,7 +150,30 @@ static void tidy_up(ast_t* entity)
 
       ast_setdata(p, body_donor);
     }
+    else if(ast_id(p) == TK_ENTITYIF_SET)
+    {
+      AST_GET_CHILDREN(p, left_control, right);
+      AST_GET_CHILDREN(left_control, sub, super, left);
+
+      if(ast_id(right) != TK_NONE)
+      {
+        tidy_up_members(right, entity);
+      }
+      tidy_up_members(left, entity);
+    }
   }
+}
+
+
+// Tidy up the method_t structures in the given entity.
+static void tidy_up(ast_t* entity)
+{
+  pony_assert(entity != NULL);
+
+  ast_t* members = ast_childidx(entity, 4);
+  pony_assert(members != NULL);
+
+  tidy_up_members(members, entity);
 }
 
 
@@ -664,19 +703,9 @@ static bool provided_methods(ast_t* entity, pass_opt_t* opt)
 }
 
 
-// Check that the given entity, if concrete, has bodies for all methods.
-static bool check_concrete_bodies(ast_t* entity, pass_opt_t* opt)
+static bool check_concrete_bodies_members(ast_t* members, ast_t* entity, pass_opt_t* opt)
 {
-  pony_assert(entity != NULL);
-
-  token_id variety = ast_id(entity);
-  if((variety != TK_PRIMITIVE) && (variety != TK_STRUCT) &&
-    (variety != TK_CLASS) && (variety != TK_ACTOR))
-    return true;
-
   bool r = true;
-  ast_t* members = ast_childidx(entity, 4);
-  pony_assert(members != NULL);
 
   for(ast_t* p = ast_child(members); p != NULL; p = ast_sibling(p))
   {
@@ -706,7 +735,38 @@ static bool check_concrete_bodies(ast_t* entity, pass_opt_t* opt)
         }
       }
     }
+    else if(ast_id(p) == TK_ENTITYIF_SET)
+    {
+      AST_GET_CHILDREN(p, left_control, right);
+      AST_GET_CHILDREN(left_control, sub, super, left);
+
+      if(ast_id(right) != TK_NONE)
+      {
+        check_concrete_bodies_members(right, entity, opt);
+      }
+      check_concrete_bodies_members(left, entity, opt);
+    }
   }
+
+  return r;
+}
+
+
+// Check that the given entity, if concrete, has bodies for all methods.
+static bool check_concrete_bodies(ast_t* entity, pass_opt_t* opt)
+{
+  pony_assert(entity != NULL);
+
+  token_id variety = ast_id(entity);
+  if((variety != TK_PRIMITIVE) && (variety != TK_STRUCT) &&
+    (variety != TK_CLASS) && (variety != TK_ACTOR))
+    return true;
+
+  bool r = true;
+  ast_t* members = ast_childidx(entity, 4);
+  pony_assert(members != NULL);
+
+  r = check_concrete_bodies_members(members, entity, opt);
 
   return r;
 }

@@ -569,12 +569,11 @@ bool verify_fun(pass_opt_t* opt, ast_t* ast)
     // to raise an error somewhere in the body. This check is skipped for
     // traits and interfaces - they are allowed to give a default implementation
     // of the method that does or does not have the potential to raise an error.
-    ast_t* fun_data = (ast_t*)ast_data(ast);
     bool is_trait =
       (ast_id(opt->check.frame->type) == TK_TRAIT) ||
       (ast_id(opt->check.frame->type) == TK_INTERFACE) ||
-      (fun_data != NULL && ((ast_id(fun_data) == TK_TRAIT) ||
-                            (ast_id(fun_data) == TK_INTERFACE)));
+      (ast_id((ast_t*)ast_data(ast)) == TK_TRAIT) ||
+      (ast_id((ast_t*)ast_data(ast)) == TK_INTERFACE);
 
     if(!is_trait &&
       !ast_canerror(body) &&

@@ -507,8 +507,6 @@ ast_result_t pass_scope(ast_t** astp, pass_opt_t* options)
       break;
 
     case TK_IFTYPE:
-      return scope_iftype(options, ast);
-
     case TK_ENTITYIF:
       return scope_iftype(options, ast);
 
