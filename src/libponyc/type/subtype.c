@@ -2602,8 +2602,6 @@ bool contains_entity_type(ast_t* type)
 
 ast_t* remove_entity_types(ast_t* type)
 {
-  ast_t* ret = NULL;
-
   switch(ast_id(type))
   {
     case TK_UNIONTYPE:
