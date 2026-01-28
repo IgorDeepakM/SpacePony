@@ -16,11 +16,13 @@ struct Pointer[A: AnyNoCheck]
     """
     compile_intrinsic
 
-  new from_reftype(from: A) =>
-    """
-    Initializes a Pointer from a reference type which means a class or a struct.
-    """
-    compile_intrinsic
+  entityif A <: (class | struct) then
+    new from_reftype(from: A) =>
+      """
+      Initializes a Pointer from a reference type which means a class or a struct.
+      """
+      compile_intrinsic
+  end
   
   new from_any[B: AnyNoCheck](from: B) =>
     """
@@ -110,20 +112,22 @@ struct Pointer[A: AnyNoCheck]
     """
     compile_intrinsic
 
-  fun to_reftype(): this->A ? =>
-    """
-    This re-encodes the type of `this` from Pointer[A] to A, allowing
-    `this` to be assigned to a field of variable of type A.
-    """
-    compile_intrinsic
+  entityif A <: (class | struct) then
+    fun to_reftype(): this->A ? =>
+      """
+      This re-encodes the type of `this` from Pointer[A] to A, allowing
+      `this` to be assigned to a field of variable of type A.
+      """
+      compile_intrinsic
 
-  fun to_reftype_no_check(): this->A =>
-    """
-    This re-encodes the type of `this` from Pointer[A] to A, allowing
-    `this` to be assigned to a field of variable of type A. This method
-    does not check for null pointer and will assign it regardless.
-    """
-    compile_intrinsic
+    fun to_reftype_no_check(): this->A =>
+      """
+      This re-encodes the type of `this` from Pointer[A] to A, allowing
+      `this` to be assigned to a field of variable of type A. This method
+      does not check for null pointer and will assign it regardless.
+      """
+      compile_intrinsic
+  end
 
   fun tag is_null(): Bool =>
     """

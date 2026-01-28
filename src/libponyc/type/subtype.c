@@ -898,6 +898,10 @@ static bool is_tuple_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
     case TK_FUNTYPE:
     case TK_INFERTYPE:
     case TK_ERRORTYPE:
+    case TK_ENTITY_TYPE_CLASS:
+    case TK_ENTITY_TYPE_STRUCT:
+    case TK_ENTITY_TYPE_PRIMITIVE:
+    case TK_ENTITY_TYPE_ACTOR:
       return false;
 
     default: {}
@@ -2521,64 +2525,63 @@ bool contains_dontcare(ast_t* ast)
   return false;
 }
 
-bool grouped_contains_struct(ast_t* type)
+bool contains_struct(ast_t* type)
 {
-  pony_assert(ast_id(type) == TK_UNIONTYPE || ast_id(type) == TK_ISECTTYPE);
-
-  ast_t* child = ast_child(type);
-
-  while(child != NULL)
+  switch(ast_id(type))
   {
-    switch(ast_id(child))
+    case TK_UNIONTYPE:
+    case TK_ISECTTYPE:
     {
-      case TK_UNIONTYPE:
-      case TK_ISECTTYPE:
+      ast_t* child = ast_child(type);
+
+      while(child != NULL)
       {
-        if(grouped_contains_struct(child))
+        if(contains_struct(child))
         {
           return true;
         }
 
-        break;
+        child = ast_sibling(child);
       }
 
-      case TK_NOMINAL:
-      {
-        ast_t* def = (ast_t*)ast_data(child);
-        if(ast_id(def) == TK_STRUCT)
-        {
-          return true;
-        }
-
-        break;
-      }
-
-      default:
-        break;
+      break;
     }
 
-    child = ast_sibling(child);
+    case TK_NOMINAL:
+    {
+      ast_t* def = (ast_t*)ast_data(type);
+      if(ast_id(def) == TK_STRUCT)
+      {
+        return true;
+      }
+
+      break;
+    }
+
+    default:
+      break;
   }
 
   return false;
 }
 
-bool grouped_contains_entity_type(ast_t * type)
+bool contains_entity_type(ast_t* type)
 {
-  pony_assert(ast_id(type) == TK_UNIONTYPE || ast_id(type) == TK_ISECTTYPE);
-
-  ast_t* child = ast_child(type);
-
-  while(child != NULL)
+  switch(ast_id(type))
   {
-    switch(ast_id(child))
-    {
     case TK_UNIONTYPE:
     case TK_ISECTTYPE:
     {
-      if(grouped_contains_entity_type(child))
+      ast_t* child = ast_child(type);
+
+      while(child != NULL)
       {
-        return true;
+        if(contains_entity_type(child))
+        {
+          return true;
+        }
+
+        child = ast_sibling(child);
       }
 
       break;
@@ -2592,10 +2595,64 @@ bool grouped_contains_entity_type(ast_t * type)
 
     default:
       break;
-    }
-
-    child = ast_sibling(child);
   }
 
   return false;
+}
+
+ast_t* remove_entity_types(ast_t* type)
+{
+  ast_t* ret = NULL;
+
+  switch(ast_id(type))
+  {
+    case TK_UNIONTYPE:
+    case TK_ISECTTYPE:
+    {
+      ast_t* child = ast_child(type);
+
+      ast_t* new_chain = ast_from(type, ast_id(type));
+
+      while(child != NULL)
+      {
+        ast_t* ret_type = remove_entity_types(child);
+        if(ret_type != NULL)
+        {
+          ast_append(new_chain, ret_type);
+        }
+
+        child = ast_sibling(child);
+      }
+
+      size_t child_count = ast_childcount(new_chain);
+      if(child_count == 0)
+      {
+        ast_free_unattached(new_chain);
+        return NULL;
+      }
+      else if(child_count == 1)
+      {
+        ast_t* only_one_type = ast_dup(ast_child(new_chain));
+        ast_free_unattached(new_chain);
+        return only_one_type;
+      }
+      else
+      {
+        return new_chain;
+      }
+
+      break;
+    }
+
+    case TK_ENTITY_TYPE_CLASS:
+    case TK_ENTITY_TYPE_STRUCT:
+    case TK_ENTITY_TYPE_PRIMITIVE:
+    case TK_ENTITY_TYPE_ACTOR:
+      return NULL;
+
+    default:
+      break;
+  }
+
+  return ast_dup(type);
 }
