@@ -90,6 +90,50 @@ static method_t* attach_method_t(ast_t* method)
 
 
 // Setup a method_t structure for each method in the given type.
+static void setup_local_method_members(ast_t* members, ast_t* entity)
+{
+  pony_assert(ast_id(members) == TK_MEMBERS || ast_id(members) == TK_ENTITYIF_SET);
+
+  if(ast_id(members) == TK_ENTITYIF_SET)
+  {
+    AST_GET_CHILDREN(members, left_control, right);
+    AST_GET_CHILDREN(left_control, sub, super, left);
+
+    if(ast_id(right) != TK_NONE)
+    {
+      setup_local_method_members(right, entity);
+    }
+    setup_local_method_members(left, entity);
+  }
+  else
+  {
+    for(ast_t* p = ast_child(members); p != NULL; p = ast_sibling(p))
+    {
+      if(is_method(p))
+      {
+        method_t* info = attach_method_t(p);
+        info->local_define = true;
+
+        if(ast_id(ast_childidx(p, 6)) != TK_NONE)
+          info->body_donor = entity;
+      }
+      else if(ast_id(p) == TK_ENTITYIF_SET)
+      {
+        AST_GET_CHILDREN(p, left_control, right);
+        AST_GET_CHILDREN(left_control, sub, super, left);
+
+        if(ast_id(right) != TK_NONE)
+        {
+          setup_local_method_members(right, entity);
+        }
+        setup_local_method_members(left, entity);
+      }
+    }
+  }
+}
+
+
+// Setup a method_t structure for each method in the given type.
 static void setup_local_methods(ast_t* ast)
 {
   pony_assert(ast != NULL);
@@ -97,15 +141,53 @@ static void setup_local_methods(ast_t* ast)
   ast_t* members = ast_childidx(ast, 4);
   pony_assert(members != NULL);
 
-  for(ast_t* p = ast_child(members); p != NULL; p = ast_sibling(p))
-  {
-    if(is_method(p))
-    {
-      method_t* info = attach_method_t(p);
-      info->local_define = true;
+  setup_local_method_members(members, ast);
+}
 
-      if(ast_id(ast_childidx(p, 6)) != TK_NONE)
-        info->body_donor = ast;
+
+static void tidy_up_members(ast_t* members, ast_t* entity)
+{
+  pony_assert(ast_id(members) == TK_MEMBERS || ast_id(members) == TK_ENTITYIF_SET);
+
+  if(ast_id(members) == TK_ENTITYIF_SET)
+  {
+    AST_GET_CHILDREN(members, left_control, right);
+    AST_GET_CHILDREN(left_control, sub, super, left);
+
+    if(ast_id(right) != TK_NONE)
+    {
+      tidy_up_members(right, entity);
+    }
+    tidy_up_members(left, entity);
+  }
+  else
+  {
+    for(ast_t* p = ast_child(members); p != NULL; p = ast_sibling(p))
+    {
+      if(is_method(p))
+      {
+        method_t* info = (method_t*)ast_data(p);
+        pony_assert(info != NULL);
+        ast_t* body_donor = info->body_donor;
+        POOL_FREE(method_t, info);
+
+        if(body_donor == NULL)
+          // No body, donor should indicate containing type.
+          body_donor = entity;
+
+        ast_setdata(p, body_donor);
+      }
+      else if(ast_id(p) == TK_ENTITYIF_SET)
+      {
+        AST_GET_CHILDREN(p, left_control, right);
+        AST_GET_CHILDREN(left_control, sub, super, left);
+
+        if(ast_id(right) != TK_NONE)
+        {
+          tidy_up_members(right, entity);
+        }
+        tidy_up_members(left, entity);
+      }
     }
   }
 }
@@ -119,22 +201,7 @@ static void tidy_up(ast_t* entity)
   ast_t* members = ast_childidx(entity, 4);
   pony_assert(members != NULL);
 
-  for(ast_t* p = ast_child(members); p != NULL; p = ast_sibling(p))
-  {
-    if(is_method(p))
-    {
-      method_t* info = (method_t*)ast_data(p);
-      pony_assert(info != NULL);
-      ast_t* body_donor = info->body_donor;
-      POOL_FREE(method_t, info);
-
-      if(body_donor == NULL)
-        // No body, donor should indicate containing type.
-        body_donor = entity;
-
-      ast_setdata(p, body_donor);
-    }
-  }
+  tidy_up_members(members, entity);
 }
 
 
@@ -664,6 +731,71 @@ static bool provided_methods(ast_t* entity, pass_opt_t* opt)
 }
 
 
+static bool check_concrete_bodies_members(ast_t* members, ast_t* entity, pass_opt_t* opt)
+{
+  bool r = true;
+
+  pony_assert(ast_id(members) == TK_MEMBERS || ast_id(members) == TK_ENTITYIF_SET);
+
+  if(ast_id(members) == TK_ENTITYIF_SET)
+  {
+    AST_GET_CHILDREN(members, left_control, right);
+    AST_GET_CHILDREN(left_control, sub, super, left);
+
+    if(ast_id(right) != TK_NONE)
+    {
+      check_concrete_bodies_members(right, entity, opt);
+    }
+    check_concrete_bodies_members(left, entity, opt);
+  }
+  else
+  {
+    for(ast_t* p = ast_child(members); p != NULL; p = ast_sibling(p))
+    {
+      if(is_method(p))
+      {
+        method_t* info = (method_t*)ast_data(p);
+        pony_assert(info != NULL);
+
+        if(!info->failed)
+        {
+          const char* name = ast_name(ast_childidx(p, 1));
+
+          if(ast_checkflag(p, AST_FLAG_AMBIGUOUS))
+          {
+            // Concrete types must not have ambiguous bodies.
+            ast_error(opt->check.errors, entity, "multiple possible bodies for "
+              "method %s, local disambiguation required", name);
+            r = false;
+          }
+          else if(info->body_donor == NULL)
+          {
+            // Concrete types must have method bodies.
+            pony_assert(info->trait_ref != NULL);
+            ast_error(opt->check.errors, info->trait_ref,
+              "no body found for method '%s'", name);
+            r = false;
+          }
+        }
+      }
+      else if(ast_id(p) == TK_ENTITYIF_SET)
+      {
+        AST_GET_CHILDREN(p, left_control, right);
+        AST_GET_CHILDREN(left_control, sub, super, left);
+
+        if(ast_id(right) != TK_NONE)
+        {
+          check_concrete_bodies_members(right, entity, opt);
+        }
+        check_concrete_bodies_members(left, entity, opt);
+      }
+    }
+  }
+
+  return r;
+}
+
+
 // Check that the given entity, if concrete, has bodies for all methods.
 static bool check_concrete_bodies(ast_t* entity, pass_opt_t* opt)
 {
@@ -678,35 +810,7 @@ static bool check_concrete_bodies(ast_t* entity, pass_opt_t* opt)
   ast_t* members = ast_childidx(entity, 4);
   pony_assert(members != NULL);
 
-  for(ast_t* p = ast_child(members); p != NULL; p = ast_sibling(p))
-  {
-    if(is_method(p))
-    {
-      method_t* info = (method_t*)ast_data(p);
-      pony_assert(info != NULL);
-
-      if(!info->failed)
-      {
-        const char* name = ast_name(ast_childidx(p, 1));
-
-        if(ast_checkflag(p, AST_FLAG_AMBIGUOUS))
-        {
-          // Concrete types must not have ambiguous bodies.
-          ast_error(opt->check.errors, entity, "multiple possible bodies for "
-            "method %s, local disambiguation required", name);
-          r = false;
-        }
-        else if(info->body_donor == NULL)
-        {
-          // Concrete types must have method bodies.
-          pony_assert(info->trait_ref != NULL);
-          ast_error(opt->check.errors, info->trait_ref,
-            "no body found for method '%s'", name);
-          r = false;
-        }
-      }
-    }
-  }
+  r = check_concrete_bodies_members(members, entity, opt);
 
   return r;
 }

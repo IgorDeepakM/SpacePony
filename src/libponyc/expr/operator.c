@@ -499,26 +499,24 @@ bool expr_assign(pass_opt_t* opt, ast_t** astp)
     ast_free_unattached(wl_type);
     return false;
   }
-  else if(ast_id(wl_type) == TK_UNIONTYPE || ast_id(wl_type) == TK_ISECTTYPE)
+  else if((ast_id(wl_type) == TK_UNIONTYPE || ast_id(wl_type) == TK_ISECTTYPE) &&
+          contains_struct(wl_type))
   {
-    if(grouped_contains_struct(wl_type))
-    {
-      ast_error_frame(&frame, wl_type,
-        "Cannot assign to a union or isect type that contains a struct");
+    ast_error_frame(&frame, wl_type,
+      "Cannot assign to a union or isect type that contains a struct");
 
-      errorframe_append(&frame, &info);
-      errorframe_report(&frame, opt->check.errors);
-      return false;
-    }
-    else if(grouped_contains_entity_type(wl_type))
-    {
-      ast_error_frame(&frame, wl_type,
-        "Cannot assign to a union or isect type that contains an entity type");
+    errorframe_append(&frame, &info);
+    errorframe_report(&frame, opt->check.errors);
+    return false;
+  }
+  else if(contains_entity_type(wl_type))
+  {
+    ast_error_frame(&frame, wl_type,
+      "Cannot assign to a type that contains an entity type");
 
-      errorframe_append(&frame, &info);
-      errorframe_report(&frame, opt->check.errors);
-      return false;
-    }
+    errorframe_append(&frame, &info);
+    errorframe_report(&frame, opt->check.errors);
+    return false;
   }
 
   if((ast_id(left) == TK_TUPLE) && (ast_id(r_type) != TK_TUPLETYPE))

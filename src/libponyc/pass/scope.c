@@ -1,5 +1,6 @@
 #include "scope.h"
 #include "../type/assemble.h"
+#include "../type/subtype.h"
 #include "../pkg/package.h"
 #include "../pkg/use.h"
 #include "../ast/symtab.h"
@@ -160,35 +161,32 @@ static bool scope_entityif(pass_opt_t* opt, ast_t* scope, ast_t* ast)
       return false;
     }
   }
-  else
+  else if(ast_id(right) == TK_MEMBERS)
   {
-    if(ast_id(right) == TK_MEMBERS)
+    ast_t* decl = ast_child(right);
+
+    while(decl != NULL)
     {
-      ast_t* decl = ast_child(right);
-
-      while(decl != NULL)
+      switch(ast_id(decl))
       {
-        switch(ast_id(decl))
-        {
-          case TK_NEW:
-          case TK_BE:
-          case TK_FUN:
-            if(!scope_method(opt, scope, decl))
-              return false;
-            break;
+        case TK_NEW:
+        case TK_BE:
+        case TK_FUN:
+          if(!scope_method(opt, scope, decl))
+            return false;
+          break;
 
-          case TK_ENTITYIF_SET:
-            if(!scope_entityif(opt, scope, decl))
-              return false;
-            break;
+        case TK_ENTITYIF_SET:
+          if(!scope_entityif(opt, scope, decl))
+            return false;
+          break;
 
-          default:
-            pony_assert(false);
-            break;
-        }
-
-        decl = ast_sibling(decl);
+        default:
+          pony_assert(false);
+          break;
       }
+
+      decl = ast_sibling(decl);
     }
   }
 
@@ -295,6 +293,18 @@ static ast_t* make_iftype_typeparam(pass_opt_t* opt, ast_t* subtype,
   if((ast_id(current_constraint) != TK_NOMINAL) ||
      (ast_name(ast_childidx(current_constraint, 1)) != name))
   {
+    if(contains_entity_type(new_constraint))
+    {
+      ast_t* entity_less_constraint = remove_entity_types(new_constraint);
+      ast_free_unattached(new_constraint);
+      if(entity_less_constraint == NULL)
+      {
+        return supertype;
+      }
+
+      new_constraint = entity_less_constraint;
+    }
+
     // If the constraint is the type parameter itself, there is no constraint.
     // We can't use type_isect to build the new constraint because we don't have
     // full type information yet.
@@ -343,13 +353,16 @@ static ast_result_t scope_iftype(pass_opt_t* opt, ast_t* ast)
         return AST_ERROR;
       }
 
-      if(!set_scope(opt, ast, ast_child(typeparam), typeparam, true))
+      if(typeparam != supertype)
       {
-        ast_free_unattached(typeparams);
-        return AST_ERROR;
-      }
+        if(!set_scope(opt, ast, ast_child(typeparam), typeparam, true))
+        {
+          ast_free_unattached(typeparams);
+          return AST_ERROR;
+        }
 
-      ast_add(typeparams, typeparam);
+        ast_add(typeparams, typeparam);
+      }
       break;
     }
 
@@ -385,13 +398,16 @@ static ast_result_t scope_iftype(pass_opt_t* opt, ast_t* ast)
           return AST_ERROR;
         }
 
-        if(!set_scope(opt, ast, ast_child(typeparam), typeparam, true))
+        if(typeparam != supertype)
         {
-          ast_free_unattached(typeparams);
-          return AST_ERROR;
-        }
+          if(!set_scope(opt, ast, ast_child(typeparam), typeparam, true))
+          {
+            ast_free_unattached(typeparams);
+            return AST_ERROR;
+          }
 
-        ast_add(typeparams, typeparam);
+          ast_add(typeparams, typeparam);
+        }
 
         sub_child = ast_sibling(sub_child);
         super_child = ast_sibling(super_child);
