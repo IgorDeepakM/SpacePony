@@ -161,35 +161,32 @@ static bool scope_entityif(pass_opt_t* opt, ast_t* scope, ast_t* ast)
       return false;
     }
   }
-  else
+  else if(ast_id(right) == TK_MEMBERS)
   {
-    if(ast_id(right) == TK_MEMBERS)
+    ast_t* decl = ast_child(right);
+
+    while(decl != NULL)
     {
-      ast_t* decl = ast_child(right);
-
-      while(decl != NULL)
+      switch(ast_id(decl))
       {
-        switch(ast_id(decl))
-        {
-          case TK_NEW:
-          case TK_BE:
-          case TK_FUN:
-            if(!scope_method(opt, scope, decl))
-              return false;
-            break;
+        case TK_NEW:
+        case TK_BE:
+        case TK_FUN:
+          if(!scope_method(opt, scope, decl))
+            return false;
+          break;
 
-          case TK_ENTITYIF_SET:
-            if(!scope_entityif(opt, scope, decl))
-              return false;
-            break;
+        case TK_ENTITYIF_SET:
+          if(!scope_entityif(opt, scope, decl))
+            return false;
+          break;
 
-          default:
-            pony_assert(false);
-            break;
-        }
-
-        decl = ast_sibling(decl);
+        default:
+          pony_assert(false);
+          break;
       }
+
+      decl = ast_sibling(decl);
     }
   }
 
