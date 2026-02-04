@@ -1375,6 +1375,19 @@ TEST_F(BadPonyTest, TypeAccessCannotBePartial)
     "a type reference cannot be a partial '?'");
 }
 
+TEST_F(BadPonyTest, AssignToEphemeralCapability)
+{
+  // From issue #4344
+  // Assigning to a variable with an ephemeral capability like iso^ should
+  // produce a clear error message rather than crash the compiler.
+  const char* src =
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    let c: String iso^ = String";
+
+  TEST_ERRORS_1(src, "Invalid type for field of assignment");
+}
+
 TEST_F(BadPonyTest, EphemeralParamWithDefaultArg)
 {
   // From issue #4089
