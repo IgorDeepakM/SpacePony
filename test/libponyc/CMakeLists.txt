@@ -52,6 +52,7 @@ add_executable(libponyc.tests
     type_check_bind.cc
     type_check_subtype.cc
     use.cc
+    userflags.cc
     util.cc
     value_dependent_types.cc
     verify.cc
