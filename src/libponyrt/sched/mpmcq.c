@@ -119,8 +119,8 @@ void ponyint_mpmcq_push_single(mpmcq_t* q, void* data)
 __attribute__((no_sanitize_address))
 void* ponyint_mpmcq_pop(mpmcq_t* q)
 {
-  PONY_ABA_PROTECTED_PTR(mpmcq_node_t) cmp;
-  PONY_ABA_PROTECTED_PTR(mpmcq_node_t) xchg;
+  PONY_ATOMIC_ABA_PROTECTED_PTR(mpmcq_node_t) cmp;
+  PONY_ATOMIC_ABA_PROTECTED_PTR(mpmcq_node_t) xchg;
   mpmcq_node_t* tail;
   // Load the tail non-atomically. If object and counter are out of sync, we'll
   // do an additional CAS iteration which isn't less efficient than doing an
