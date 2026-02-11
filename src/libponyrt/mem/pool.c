@@ -101,7 +101,7 @@ typedef struct pool_block_header_t
 
 #define POOL_CENTRAL_INIT {{NULL, 0}}
 
-static pool_global_t pool_global[POOL_COUNT] =
+static pool_global_t alignas(2 * sizeof(void*)) pool_global[POOL_COUNT] =
 {
   {POOL_MIN << 0, POOL_MAX / (POOL_MIN << 0), POOL_CENTRAL_INIT},
   {POOL_MIN << 1, POOL_MAX / (POOL_MIN << 1), POOL_CENTRAL_INIT},
@@ -730,8 +730,8 @@ static void pool_push(pool_local_t* thread, pool_global_t* global)
   TRACK_PUSH((pool_item_t*)p, p->length, global->size);
 
   pool_central_t* top;
-  PONY_ABA_PROTECTED_PTR(pool_central_t) cmp;
-  PONY_ABA_PROTECTED_PTR(pool_central_t) xchg;
+  PONY_ATOMIC_ABA_PROTECTED_PTR(pool_central_t) cmp;
+  PONY_ATOMIC_ABA_PROTECTED_PTR(pool_central_t) xchg;
   cmp.object = global->central.object;
   cmp.counter = global->central.counter;
 
@@ -754,8 +754,8 @@ static void pool_push(pool_local_t* thread, pool_global_t* global)
 static pool_item_t* pool_pull(pool_local_t* thread, pool_global_t* global)
 {
   pool_central_t* top;
-  PONY_ABA_PROTECTED_PTR(pool_central_t) cmp;
-  PONY_ABA_PROTECTED_PTR(pool_central_t) xchg;
+  PONY_ATOMIC_ABA_PROTECTED_PTR(pool_central_t) cmp;
+  PONY_ATOMIC_ABA_PROTECTED_PTR(pool_central_t) xchg;
   cmp.object = global->central.object;
   cmp.counter = global->central.counter;
   pool_central_t* next;

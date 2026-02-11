@@ -122,7 +122,7 @@ namespace ponyint_atomics
 // non-atomic operations on big objects since big atomic operations (e.g.
 // CMPXCHG16B on x86_64) are very expensive.
 #define PONY_ATOMIC_ABA_PROTECTED_PTR(T) \
-    alignas(sizeof(PONY_ABA_PROTECTED_PTR(T))) PONY_ABA_PROTECTED_PTR(T)
+    alignas(2 * sizeof(void*)) PONY_ABA_PROTECTED_PTR(T)
 
 #ifdef PONY_WANT_ATOMIC_DEFS
 #  ifdef _MSC_VER
