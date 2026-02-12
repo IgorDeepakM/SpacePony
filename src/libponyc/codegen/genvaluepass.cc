@@ -3,6 +3,7 @@
 #include "ponyassert.h"
 #include "genopt.h"
 #include "gencall.h"
+#include "../type/subtype.h"
 #include <array>
 
 #include "llvm_config_begin.h"
@@ -49,6 +50,15 @@ extern "C" bool is_pass_by_value_lowering_supported(pass_opt_t* opt)
   {
     ret = true;
   }
+  else if(target_is_riscv(triple))
+  {
+    if(target_is_lp64(triple))
+    {
+      ret = true;
+    }
+  }
+
+  ret = true;
 
   return ret;
 }
@@ -176,6 +186,14 @@ static bool is_param_value_lowering_needed(compile_t* c, compile_type_t* p_t)
       ret = true;
     }
   }
+  else if(target_is_riscv(triple))
+  {
+    if(target_is_lp64(triple))
+    {
+      // RISC-V is always lowered because byval is not used at all
+      ret = true;
+    }
+  }
 
   return ret;
 }
@@ -239,6 +257,16 @@ extern "C" bool is_return_value_lowering_needed(compile_t* c, reach_type_t* pt)
         ret = true;
       }
       else if(p_t->abi_size <= 16)
+      {
+        ret = true;
+      }
+    }
+  }
+  else if(target_is_riscv(triple))
+  {
+    if(target_is_lp64(triple))
+    {
+      if(p_t->abi_size <= 16)
       {
         ret = true;
       }
@@ -371,6 +399,89 @@ static Type* generate_flattened_type(compile_t* c, RegisterPos_t *pos)
   return StructType::get(*unwrap(c->context), Tys);
 }
 
+
+static Type* lower_riscv64_param_value_from_structure_type(compile_t* c, reach_type_t* pt)
+{
+  Type* ret = nullptr;
+  char* triple = c->opt->triple;
+
+  compile_type_t* p_t = (compile_type_t*)pt->c_type;
+
+  StructType* s = unwrap<StructType>(p_t->structure);
+
+  if(p_t->abi_size <= 16)
+  {
+    unsigned int num_elem = s->getNumElements();
+
+    bool contain_array = false;
+    for(unsigned int i = 0; i < num_elem; i++)
+    {
+      if(is_c_fixed_sized_array(pt->fields[i].ast))
+      {
+        contain_array = true;
+        break;
+      }
+    }
+
+    if(num_elem <= 2 && !contain_array)
+    {
+      if(num_elem == 1)
+      {
+        Type* elem_type = s->getTypeAtIndex(0U);
+        Type::TypeID kind = elem_type->getTypeID();
+        if(kind == Type::TypeID::IntegerTyID)
+        {
+          ret = unwrap(c->i64);
+        }
+        else
+        {
+          ret = elem_type;
+        }
+      }
+      else
+      {
+        bool contain_float = false;
+        for(unsigned int i = 0; i < num_elem; i++)
+        {
+          Type* elem_type = s->getTypeAtIndex(i);
+          Type::TypeID kind = elem_type->getTypeID();
+          if(kind == Type::TypeID::FloatTyID || kind == Type::TypeID::DoubleTyID)
+          {
+            contain_float = true;
+            break;
+          }
+        }
+
+        if(contain_float)
+        {
+          ret = unwrap(p_t->structure);
+        }
+      }
+    }
+
+    if(ret == nullptr)
+    {
+      if(p_t->abi_size <= 8)
+      {
+        ret = unwrap(c->i64);
+      }
+      else
+      {
+        ret = ArrayType::get(unwrap(c->i64), 2);
+      }
+    }
+  }
+  else
+  {
+    ret = unwrap(p_t->use_type);
+  }
+
+  pony_assert(ret != nullptr);
+
+  return ret;
+}
+
+
 extern "C" LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach_type_t* pt)
 {
   Type* ret = nullptr;
@@ -469,6 +580,13 @@ extern "C" LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach
       }
     }
   }
+  else if(target_is_riscv(triple))
+  {
+    if(target_is_lp64(triple))
+    {
+      ret = lower_riscv64_param_value_from_structure_type(c, pt);
+    }
+  }
 
   return wrap(ret);
 }
@@ -539,6 +657,13 @@ extern "C" LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reac
       {
         ret = unwrap(p_t->use_type);
       }
+    }
+  }
+  else if(target_is_riscv(triple))
+  {
+    if(target_is_lp64(triple))
+    {
+      ret = lower_riscv64_param_value_from_structure_type(c, pt);
     }
   }
 
@@ -628,6 +753,23 @@ extern "C" LLVMValueRef load_lowered_param_value_from_ptr(compile_t* c, LLVMValu
       ret = copy_from_ptr_to_value_zero_extend(c, unwrap(ptr), unwrap(param_type), p_c_t);
     }
   }
+  else if(target_is_riscv(triple))
+  {
+    if(target_is_lp64(triple))
+    {
+      if(p_c_t->abi_size <= 16)
+      {
+        ret = copy_from_ptr_to_value_zero_extend(c, unwrap(ptr), unwrap(param_type), p_c_t);
+      }
+      else
+      {
+        AllocaInst* caller_copy = builder->CreateAlloca(unwrap(p_c_t->structure), nullptr, "");
+        ConstantInt* cpy_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), p_c_t->abi_size);
+        gencall_memcpy(c, wrap(caller_copy), ptr, wrap(cpy_size));
+        ret = caller_copy;
+      }
+    }
+  }
   else
   {
     pony_assert(false);
@@ -655,7 +797,8 @@ extern "C" LLVMValueRef load_lowered_return_value_from_ptr(compile_t* c, LLVMVal
     ret = builder->CreateLoad(unwrap(return_type), unwrap(ptr), "");
   }
   else if(target_is_arm(triple) ||
-          (target_is_x86(triple) && target_is_linux(triple) && target_is_lp64(triple)))
+          (target_is_x86(triple) && target_is_linux(triple) && target_is_lp64(triple)) ||
+          (target_is_riscv(triple) && target_is_lp64(triple)))
   {
     ret = copy_from_ptr_to_value_zero_extend(c, unwrap(ptr), unwrap(return_type), p_c_t);
   }
@@ -705,13 +848,14 @@ extern "C" void copy_lowered_param_value_to_ptr(compile_t* c, LLVMValueRef dest_
 
       if(p_c_t->abi_size > 16 && !is_hfa)
       {
-       ConstantInt* l_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), p_c_t->abi_size);
+        ConstantInt* l_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), p_c_t->abi_size);
         gencall_memcpy(c, dest_ptr, param_value, wrap(l_size));
         return;
       }
     }
 
     Type* param_type = unwrap(param_value)->getType();
+
     if(p_c_t->abi_size == (size_t)target_data->getTypeAllocSize(param_type))
     {
       builder->CreateStore(unwrap(param_value), unwrap(dest_ptr));
@@ -722,6 +866,18 @@ extern "C" void copy_lowered_param_value_to_ptr(compile_t* c, LLVMValueRef dest_
       builder->CreateStore(unwrap(param_value), tmp_array);
       ConstantInt* cpy_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), p_c_t->abi_size);
       gencall_memcpy(c, dest_ptr, wrap(tmp_array), wrap(cpy_size));
+    }
+  }
+  else if(target_is_riscv(triple) && target_is_lp64(triple))
+  {
+    if(p_c_t->abi_size <= 16)
+    {
+      builder->CreateStore(unwrap(param_value), unwrap(dest_ptr));
+    }
+    else
+    {
+      ConstantInt* cpy_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), p_c_t->abi_size);
+      gencall_memcpy(c, dest_ptr, param_value, wrap(cpy_size));
     }
   }
   else
@@ -746,7 +902,8 @@ extern "C" void copy_lowered_return_value_to_ptr(compile_t* c, LLVMValueRef dest
     builder->CreateStore(unwrap(return_value), unwrap(dest_ptr));
   }
   else if(target_is_arm(triple) ||
-          (target_is_x86(triple) && target_is_linux(triple) && target_is_lp64(triple)))
+          (target_is_x86(triple) && target_is_linux(triple) && target_is_lp64(triple)) ||
+          (target_is_riscv(triple) && target_is_lp64(triple)))
   {
     Type* return_type = unwrap(return_value)->getType();
     if(p_c_t->abi_size == (size_t)target_data->getTypeAllocSize(return_type))
@@ -771,8 +928,9 @@ extern "C" void copy_lowered_return_value_to_ptr(compile_t* c, LLVMValueRef dest
 extern "C" void apply_function_value_param_attribute(compile_t* c, reach_type_t* pt,
   LLVMValueRef func, LLVMAttributeIndex param_nr)
 {
-  // Aarch64 doesn't use byval
-  if(target_is_arm(c->opt->triple) && target_is_lp64(c->opt->triple))
+  // Aarch64 amd RISC-V doesn't use byval
+  if((target_is_arm(c->opt->triple) && target_is_lp64(c->opt->triple)) ||
+     (target_is_riscv(c->opt->triple) && target_is_lp64(c->opt->triple)))
   {
     return;
   }
@@ -792,8 +950,9 @@ extern "C" void apply_function_value_param_attribute(compile_t* c, reach_type_t*
 extern "C" void apply_call_site_value_param_attribute(compile_t* c, reach_type_t* pt,
   LLVMValueRef func, LLVMAttributeIndex param_nr)
 {
-  // Aarch64 doesn't use byval
-  if(target_is_arm(c->opt->triple) && target_is_lp64(c->opt->triple))
+  // Aarch64 and RISC-V doesn't use byval
+  if((target_is_arm(c->opt->triple) && target_is_lp64(c->opt->triple)) ||
+     (target_is_riscv(c->opt->triple) && target_is_lp64(c->opt->triple)))
   {
     return;
   }

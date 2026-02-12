@@ -1114,37 +1114,29 @@ bool target_is_posix(char* t)
 bool target_is_x86(char* t)
 {
   Triple triple = Triple(t);
-
-  std::string s = Triple::getArchTypePrefix(triple.getArch()).str();
-  const char* arch = s.c_str();
-
-  return !strcmp("x86", arch);
+  std::string arch = Triple::getArchTypePrefix(triple.getArch()).str();
+  return arch == "x86";
 }
 
 bool target_is_arm(char* t)
 {
   Triple triple = Triple(t);
-
-  std::string s = Triple::getArchTypePrefix(triple.getArch()).str();
-  const char* arch = s.c_str();
-
-  return (!strcmp("arm", arch) || !strcmp("aarch64", arch));
+  std::string arch = Triple::getArchTypePrefix(triple.getArch()).str();
+  return (arch == "arm") || (arch == "aarch64");
 }
 
 bool target_is_arm32(char* t)
 {
   Triple triple = Triple(t);
-  std::string s = Triple::getArchTypePrefix(triple.getArch()).str();
-  const char* arch = s.c_str();
-  return !strcmp("arm", arch) && target_is_ilp32(t);
+  std::string arch = Triple::getArchTypePrefix(triple.getArch()).str();
+  return arch == "arm" && target_is_ilp32(t);
 }
 
 bool target_is_riscv(char* t)
 {
   Triple triple = Triple(t);
-  std::string s = Triple::getArchTypePrefix(triple.getArch()).str();
-  const char* arch = s.c_str();
-  return (!strcmp("riscv32", arch) || !strcmp("riscv64", arch));
+  std::string arch = Triple::getArchTypePrefix(triple.getArch()).str();
+  return arch == "riscv";
 }
 
 // This function is used to safeguard against potential oversights on the size
@@ -1155,10 +1147,8 @@ bool target_is_ppc(char* t)
 {
   Triple triple = Triple(t);
 
-  std::string s = Triple::getArchTypePrefix(triple.getArch()).str();
-  const char* arch = s.c_str();
-
-  return !strcmp("ppc", arch);
+  std::string arch = Triple::getArchTypePrefix(triple.getArch()).str();
+  return arch == "ppc";
 }
 
 bool target_is_lp64(char* t)
