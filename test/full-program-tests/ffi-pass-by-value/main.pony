@@ -202,11 +202,11 @@ actor Main
         @FFI_Test_2_double_double(s1, s2)
       })
 
-     test_3_member_struct[I32, I32, F64](
+    test_3_member_struct[I32, I32, F64](
       @{(s1: \byval\ S3Member[I32, I32, F64], s2: \byval\ S3Member[I32, I32, F64]): \byval\ S3Member[I32, I32, F64] =>
         @FFI_Test_3_int32_t_int32_t_double(s1, s2)
       })
-     test_3_member_struct[F32, F32, I64](
+    test_3_member_struct[F32, F32, I64](
       @{(s1: \byval\ S3Member[F32, F32, I64], s2: \byval\ S3Member[F32, F32, I64]): \byval\ S3Member[F32, F32, I64] =>
         @FFI_Test_3_float_float_int64_t(s1, s2)
       })

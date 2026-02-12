@@ -471,7 +471,7 @@ uint64_t ponyint_cpu_tick()
   return (uint64_t)(emscripten_get_now() * 1e6);
 #elif defined PLATFORM_IS_RISCV
   uint64_t cycles;
-  asm("rdcycle %0" : "=r"(cycles));
+  asm("rdtime %0" : "=r"(cycles));
   return cycles;
 #endif
 }

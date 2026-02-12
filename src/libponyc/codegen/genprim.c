@@ -102,7 +102,9 @@ static void pointer_from_usize(compile_t* c, reach_type_t* t)
   params[1] = c->intptr;
   start_function(c, t, m, c_t->use_type, params, 2);
 
-  genfun_build_ret(c, LLVMGetParam(c_m->func, 1));
+  LLVMValueRef result =
+    LLVMBuildIntToPtr(c->builder, LLVMGetParam(c_m->func, 1), c_t->use_type, "");
+  genfun_build_ret(c, result);
   codegen_finishfun(c);
 }
 
