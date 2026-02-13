@@ -977,7 +977,7 @@ static void optimise(compile_t* c, bool pony_specific)
   // Add a linting pass at the start, if requested.
   if (c->opt->lint_llvm) {
     PB.registerOptimizerEarlyEPCallback(
-      [&](ModulePassManager &mpm, OptimizationLevel level) {
+      [&](ModulePassManager &mpm, OptimizationLevel level, ThinOrFullLTOPhase ltoPhase) {
         mpm.addPass(createModuleToFunctionPassAdaptor(LintPass()));
       }
     );
@@ -993,7 +993,7 @@ static void optimise(compile_t* c, bool pony_specific)
   // Add a debug-info-stripping pass at the end, if requested.
   if(c->opt->strip_debug) {
     PB.registerOptimizerLastEPCallback(
-      [&](ModulePassManager &mpm, OptimizationLevel level) {
+      [&](ModulePassManager &mpm, OptimizationLevel level, ThinOrFullLTOPhase ltoPhase) {
         mpm.addPass(StripSymbolsPass());
       }
     );
