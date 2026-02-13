@@ -149,7 +149,7 @@ LLVMValueRef LLVMDIBuilderInsertDeclare(LLVMDIBuilderRef d,
 
     Instruction* inst = pd->insertDeclare(unwrap(value),
       unwrap <DILocalVariable>(info), unwrap<DIExpression>(expr), loc,
-      unwrap(block));
+      unwrap(block)).dyn_cast<Instruction*>();
 
     return wrap(inst);
   }
