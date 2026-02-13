@@ -683,7 +683,10 @@ LLVMValueRef gen_neg(compile_t* c, ast_t* ast, bool safe)
 
   if(sign)
     return LLVMBuildNSWNeg(c->builder, value, "");
-  return LLVMBuildNUWNeg(c->builder, value, "");
+
+  LLVMValueRef ret = LLVMBuildNeg(c->builder, value, "");
+  LLVMSetNUW(ret, true);
+  return ret;
 }
 
 LLVMValueRef gen_shl(compile_t* c, ast_t* left, ast_t* right, bool safe)
