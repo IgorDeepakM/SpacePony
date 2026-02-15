@@ -147,11 +147,11 @@ LLVMValueRef LLVMDIBuilderInsertDeclare(LLVMDIBuilderRef d,
     DILocation* loc = DILocation::get(sc->getContext(), line, col, sc,
       nullptr);
 
-    Instruction* inst = pd->insertDeclare(unwrap(value),
+    DbgInstPtr inst = pd->insertDeclare(unwrap(value),
       unwrap <DILocalVariable>(info), unwrap<DIExpression>(expr), loc,
       unwrap(block)).dyn_cast<Instruction*>();
 
-    return wrap(inst);
+    return wrap(cast<Instruction*>(inst));
   }
   else
   {
