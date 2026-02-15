@@ -722,14 +722,14 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 * Implement function overloading.
 
+* Add extra an expression semantics pass after reification. This has to be done as some checks aren't possible before reification.
+
 
 ### Long term (read never)
 
 * Move to MLIR backend
 
 * GPU offload. The capability/actor model of Pony is very well suited for running parts of the actors in GPUs.
-
-* Improve the Pony type system when it comes to reification.
 
 
 ## The original Pony README is here with instructions how to compile
