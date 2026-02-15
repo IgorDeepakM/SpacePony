@@ -51,7 +51,9 @@ LLVMTargetMachineRef codegen_machine(LLVMTargetRef target, pass_opt_t* opt)
 
   Target* t = reinterpret_cast<Target*>(target);
 
-  TargetMachine* m = t->createTargetMachine(opt->triple, opt->cpu,
+  Triple triple = Triple(opt->triple);
+
+  TargetMachine* m = t->createTargetMachine(triple, opt->cpu,
     opt->features, options, reloc, std::nullopt, opt_level, false);
 
   return reinterpret_cast<LLVMTargetMachineRef>(m);
