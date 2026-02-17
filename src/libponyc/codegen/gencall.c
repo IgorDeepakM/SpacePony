@@ -1256,6 +1256,8 @@ static void declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* f_name,
 
     deferred_reification_t* reify = c->frame->reify;
 
+    LoweringObject lowering_object = init_lowering_object(c);
+
     while((arg != NULL) && (ast_id(arg) != TK_ELLIPSIS))
     {
       ast_t* p_type = ast_type(arg);
@@ -1269,14 +1271,9 @@ static void declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* f_name,
       bool pass_by_value = ast_has_annotation(ast_childidx(arg, 1), "byval");
       ffi_decl->params[param_count].reach_type = pt;
       ffi_decl->params[param_count].pass_by_value = pass_by_value;
-      if(pass_by_value)
-      {
-        f_params[param_count] = lower_param_value_from_structure_type(c, pt);
-      }
-      else
-      {
-        f_params[param_count] = ((compile_type_t*)pt->c_type)->use_type;
-      }
+
+      f_params[param_count] = lower_param(c, &lowering_object, pt, pass_by_value);
+
       param_count++;
       ast_free_unattached(p_type);
       arg = ast_sibling(arg);

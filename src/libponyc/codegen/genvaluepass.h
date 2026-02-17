@@ -6,11 +6,25 @@
 
 PONY_EXTERN_C_BEGIN
 
+typedef struct
+{
+  size_t num_fp_regs_in_use;
+}RiscvLoweringObject;
+
+typedef struct
+{
+  RiscvLoweringObject riscv;
+}LoweringObject;
+
+
 bool is_pass_by_value_lowering_supported(pass_opt_t* opt);
 
 bool is_return_value_lowering_needed(compile_t* c, reach_type_t* pt);
 
-LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach_type_t* pt);
+LoweringObject init_lowering_object(compile_t* c);
+
+LLVMTypeRef lower_param(compile_t* c, LoweringObject* lowering_object,
+  reach_type_t* pt, bool pass_by_value);
 
 LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reach_type_t* pt);
 
