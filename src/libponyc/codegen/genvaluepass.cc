@@ -4,7 +4,7 @@
 #include "genopt.h"
 #include "gencall.h"
 #include "../type/subtype.h"
-#include <array>
+#include <vector>
 
 #include "llvm_config_begin.h"
 
@@ -12,15 +12,7 @@
 
 
 using namespace llvm;
-
-typedef struct
-{
-  size_t current_word;
-  size_t current_byte_in_word;
-  size_t bytes_per_word;
-  Type::TypeID last_type_kind;
-  std::array<Type*, 4> types;
-}RegisterPos_t;
+using namespace std;
 
 
 static bool is_power_of_2(size_t x)
@@ -63,50 +55,8 @@ extern "C" bool is_pass_by_value_lowering_supported(pass_opt_t* opt)
   return ret;
 }
 
-static bool insert_type_hfa_aarch64(RegisterPos_t *pos, Type* type)
-{
-  Type::TypeID kind = type->getTypeID();
 
-  if(pos->current_word == 0)
-  {
-    if(kind != Type::TypeID::FloatTyID && kind != Type::TypeID::DoubleTyID)
-    {
-      return false;
-    }
-
-    pos->current_word++;
-    pos->last_type_kind = kind;
-  }
-  else
-  {
-    pos->current_word++;
-
-    if(pos->last_type_kind != kind || pos->current_word > 4)
-    {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-static bool get_hfa_from_fixed_sized_array_aarch64(ArrayType* array, RegisterPos_t *pos)
-{
-  Type* element_type = array->getElementType();
-  size_t num_elements = (size_t)array->getNumElements();
-
-  for(size_t i = 0; i < num_elements; i++)
-  {
-    if(!insert_type_hfa_aarch64(pos, element_type))
-    {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-static bool get_hfa_from_structure_aarch64(StructType* structure, RegisterPos_t *pos)
+static bool flatten_structure(StructType* structure, vector<Type*>& flattened, size_t max_elements)
 {
   size_t num_elements = (size_t)structure->getNumElements();
 
@@ -117,20 +67,33 @@ static bool get_hfa_from_structure_aarch64(StructType* structure, RegisterPos_t 
     switch(curr_type->getTypeID())
     {
       case Type::TypeID::StructTyID:
-        if(!get_hfa_from_structure_aarch64(dyn_cast<StructType>(curr_type), pos))
-        {
-          return false;
-        }
-        break;
+        return flatten_structure(dyn_cast<StructType>(curr_type), flattened, max_elements);
       case Type::TypeID::ArrayTyID:
-        if(!get_hfa_from_fixed_sized_array_aarch64(dyn_cast<ArrayType>(curr_type), pos))
+      {
+        ArrayType* array = dyn_cast<ArrayType>(curr_type);
+        Type* element_type = array->getElementType();
+        size_t num_elements = (size_t)array->getNumElements();
+
+        for(size_t i = 0; i < num_elements; i++)
         {
-          return false;
+          if(flattened.size() < max_elements)
+          {
+            flattened.push_back(element_type);
+          }
+          else
+          {
+            return false;
+          }
         }
         break;
+      }
       default:
       {
-        if(!insert_type_hfa_aarch64(pos, curr_type))
+        if(flattened.size() < max_elements)
+        {
+          flattened.push_back(curr_type);
+        }
+        else
         {
           return false;
         }
@@ -138,6 +101,53 @@ static bool get_hfa_from_structure_aarch64(StructType* structure, RegisterPos_t 
       }
     }
   }
+
+  return true;
+}
+
+
+static bool get_hfa_from_structure_aarch64(StructType* structure, Type*& type_ret, size_t& num_elem)
+{
+  vector<Type*> flat;
+
+  if(!flatten_structure(structure, flat, 4))
+  {
+    return false;
+  }
+
+  Type::TypeID last_type_kind = Type::TypeID::VoidTyID;
+  size_t current_word = 0;
+
+  for(Type* t : flat)
+  {
+    Type::TypeID kind = t->getTypeID();
+
+    if(current_word == 0)
+    {
+      if(kind != Type::TypeID::FloatTyID && kind != Type::TypeID::DoubleTyID)
+      {
+        return false;
+      }
+      else
+      {
+        type_ret = t;
+      }
+
+      current_word++;
+      last_type_kind = kind;
+    }
+    else
+    {
+      if(last_type_kind != kind)
+      {
+        return false;
+      }
+
+      current_word++;
+    }
+  }
+
+  num_elem = current_word;
 
   return true;
 }
@@ -246,13 +256,10 @@ extern "C" bool is_return_value_lowering_needed(compile_t* c, reach_type_t* pt)
     }
     else if(target_is_lp64(triple))
     {
-      RegisterPos_t reg_pos{ 0, 0, 0, Type::TypeID::VoidTyID};
-      reg_pos.current_word = 0;
-      reg_pos.current_byte_in_word = 0;
-      reg_pos.bytes_per_word = 0; // Not used
-      reg_pos.last_type_kind = Type::TypeID::VoidTyID;
+      Type* hfa_type = nullptr;
+      size_t num_elem = 0;
 
-      if(get_hfa_from_structure_aarch64(unwrap<StructType>(p_t->structure), &reg_pos))
+      if(get_hfa_from_structure_aarch64(unwrap<StructType>(p_t->structure), hfa_type, num_elem))
       {
         ret = true;
       }
@@ -295,6 +302,7 @@ static Type* get_type_from_size(compile_t* c, size_t size)
   }
 }
 
+
 static size_t next_power_of_2(size_t v)
 {
   v--;
@@ -310,93 +318,77 @@ static size_t next_power_of_2(size_t v)
 }
 
 
-static void insert_type_x86_64_systemv(compile_t* c, RegisterPos_t *pos, Type* type)
+static void lower_structure_x86_64_systemv(compile_t* c, StructType* structure,
+  size_t bytes_per_word, vector<Type*>& lowered)
 {
+  vector<Type*> flat;
+
+  flatten_structure(structure, flat, 4);
+
   auto target_data = unwrap(c->target_data);
 
-  Type::TypeID kind = type->getTypeID();
-  size_t size = (size_t)target_data->getTypeAllocSize(type);
+  size_t current_word = 0;
+  size_t current_byte_in_word = 0;
+  Type::TypeID last_type_kind = Type::TypeID::VoidTyID;
 
-  size_t next_byte_in_word = pos->current_byte_in_word + size;
+  for(Type* t : flat)
+  {
+    Type::TypeID kind = t->getTypeID();
+    size_t size = (size_t)target_data->getTypeAllocSize(t);
 
-  if(pos->current_word == 0 || next_byte_in_word > 8 ||
-     kind == Type::TypeID::DoubleTyID)
-  {
-    if(kind == Type::TypeID::IntegerTyID)
+    size_t next_byte_in_word = current_byte_in_word + size;
+
+    if(current_byte_in_word == 0)
     {
-      pos->types.at(pos->current_word) =
-        get_type_from_size(c, next_power_of_2(size));
+      lowered.resize(current_word + 1);
     }
-    else if(kind == Type::TypeID::DoubleTyID)
+
+    if(current_byte_in_word == 0 || kind == Type::TypeID::DoubleTyID)
     {
-      pos->types.at(pos->current_word) = unwrap(c->f64);
-    }
-    else if(kind == Type::TypeID::FloatTyID)
-    {
-      pos->types.at(pos->current_word) = unwrap(c->f32);
-    }
-    pos->current_word++;
-    pos->current_byte_in_word = size;
-    pos->last_type_kind = kind;
-  }
-  else
-  {
-    if(pos->last_type_kind == Type::TypeID::FloatTyID && kind == Type::TypeID::FloatTyID)
-    {
-      pos->types.at(pos->current_word - 1) = unwrap(c->f64);
+      if(kind == Type::TypeID::IntegerTyID)
+      {
+        lowered[current_word] = get_type_from_size(c, next_power_of_2(size));
+      }
+      else if(kind == Type::TypeID::DoubleTyID)
+      {
+        lowered[current_word] = unwrap(c->f64);
+      }
+      else if(kind == Type::TypeID::FloatTyID)
+      {
+        lowered[current_word] = unwrap(c->f32);
+      }
+
+      current_byte_in_word = size;
     }
     else
     {
-      pos->types.at(pos->current_word - 1) =
-        get_type_from_size(c, next_power_of_2(next_byte_in_word));
-    }
-    pos->current_byte_in_word = next_byte_in_word;
-    pos->last_type_kind = kind;
-  }
-}
-
-
-static void lower_fixed_sized_array_x86_64_systemv(compile_t* c, ArrayType* array, RegisterPos_t *pos)
-{
-  Type* element_type = array->getElementType();
-  size_t num_elements = (size_t)array->getNumElements();
-
-  for(size_t i = 0; i < num_elements; i++)
-  {
-    insert_type_x86_64_systemv(c, pos, element_type);
-  }
-}
-
-
-static void lower_structure_x86_64_systemv(compile_t* c, StructType* structure, RegisterPos_t *pos)
-{
-  size_t num_elements = (size_t)structure->getNumElements();
-
-  for(size_t i = 0; i < num_elements; i++)
-  {
-    Type* curr_type = structure->getTypeAtIndex(i);
-
-    switch(curr_type->getTypeID())
-    {
-      case Type::TypeID::StructTyID:
-        lower_structure_x86_64_systemv(c, dyn_cast<StructType>(curr_type), pos);
-        break;
-      case Type::TypeID::ArrayTyID:
-        lower_fixed_sized_array_x86_64_systemv(c, dyn_cast<ArrayType>(curr_type), pos);
-        break;
-      default:
+      if(last_type_kind == Type::TypeID::FloatTyID && kind == Type::TypeID::FloatTyID)
       {
-        insert_type_x86_64_systemv(c, pos, curr_type);
-        break;
+        lowered[current_word] = unwrap(c->f64);
       }
+      else
+      {
+        lowered[current_word] =
+          get_type_from_size(c, next_power_of_2(next_byte_in_word));
+      }
+
+      current_byte_in_word = next_byte_in_word;
+    }
+
+    last_type_kind = kind;
+
+    if(next_byte_in_word >= bytes_per_word)
+    {
+      current_word++;
+      current_byte_in_word = 0;
     }
   }
 }
 
-static Type* generate_flattened_type(compile_t* c, RegisterPos_t *pos)
+
+static Type* generate_flattened_type(compile_t* c, const vector<Type*>& lowered)
 {
-  ArrayRef<Type*> Tys(pos->types.data(), pos->current_word);
-  return StructType::get(*unwrap(c->context), Tys);
+  return StructType::get(*unwrap(c->context), lowered);
 }
 
 
@@ -512,15 +504,10 @@ extern "C" LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach
       {
         size_t ptr_size = (size_t)target_data->getTypeAllocSize(unwrap(c->intptr));
 
-        RegisterPos_t reg_pos{ 0, 0, 0, Type::TypeID::VoidTyID };
-        reg_pos.current_word = 0;
-        reg_pos.current_byte_in_word = 0;
-        reg_pos.bytes_per_word = ptr_size;
-        reg_pos.last_type_kind = Type::TypeID::VoidTyID;
-
-        lower_structure_x86_64_systemv(c, dyn_cast<StructType>(unwrap(p_t->structure)), &reg_pos);
-
-        ret = generate_flattened_type(c, &reg_pos);
+        vector<Type*> lowered;
+        lower_structure_x86_64_systemv(c, dyn_cast<StructType>(unwrap(p_t->structure)),
+          ptr_size, lowered);
+        ret = generate_flattened_type(c, lowered);
       }
     }
   }
@@ -545,26 +532,12 @@ extern "C" LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach
     }
     else if(target_is_lp64(triple))
     {
-      RegisterPos_t reg_pos{ 0, 0, 0, Type::TypeID::VoidTyID };
-      reg_pos.current_word = 0;
-      reg_pos.current_byte_in_word = 0;
-      reg_pos.bytes_per_word = 0; // Not used
-      reg_pos.last_type_kind = Type::TypeID::VoidTyID;
+      Type* hfa_type = nullptr;
+      size_t num_elem = 0;
 
-      if(get_hfa_from_structure_aarch64(unwrap<StructType>(p_t->structure), &reg_pos))
+      if(get_hfa_from_structure_aarch64(unwrap<StructType>(p_t->structure), hfa_type, num_elem))
       {
-        if(reg_pos.last_type_kind == Type::TypeID::FloatTyID)
-        {
-          ret = ArrayType::get(unwrap(c->f32), (uint64_t)reg_pos.current_word);
-        }
-        else if(reg_pos.last_type_kind == Type::TypeID::DoubleTyID)
-        {
-          ret = ArrayType::get(unwrap(c->f64), (uint64_t)reg_pos.current_word);
-        }
-        else
-        {
-          pony_assert(false);
-        }
+        ret = ArrayType::get(hfa_type, num_elem);
       }
       else if(p_t->abi_size <= 8)
       {
@@ -615,15 +588,10 @@ extern "C" LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reac
       {
         size_t ptr_size = (size_t)target_data->getTypeAllocSize(unwrap(c->intptr));
 
-        RegisterPos_t reg_pos{ 0, 0, 0, Type::TypeID::VoidTyID };
-        reg_pos.current_word = 0;
-        reg_pos.current_byte_in_word = 0;
-        reg_pos.bytes_per_word = ptr_size;
-        reg_pos.last_type_kind = Type::TypeID::VoidTyID;
-
-        lower_structure_x86_64_systemv(c, unwrap<StructType>(p_t->structure), &reg_pos);
-
-        ret = generate_flattened_type(c, &reg_pos);
+        vector<Type*> lowered;
+        lower_structure_x86_64_systemv(c, dyn_cast<StructType>(unwrap(p_t->structure)),
+          ptr_size, lowered);
+        ret = generate_flattened_type(c, lowered);
       }
     }
   }
@@ -635,13 +603,10 @@ extern "C" LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reac
     }
     else if(target_is_lp64(triple))
     {
-      RegisterPos_t reg_pos{ 0, 0, 0, Type::TypeID::VoidTyID };
-      reg_pos.current_word = 0;
-      reg_pos.current_byte_in_word = 0;
-      reg_pos.bytes_per_word = 0; // Not used
-      reg_pos.last_type_kind = Type::TypeID::VoidTyID;
+      Type* hfa_type = nullptr;
+      size_t num_elem = 0;
 
-      if(get_hfa_from_structure_aarch64(unwrap<StructType>(p_t->structure), &reg_pos))
+      if(get_hfa_from_structure_aarch64(unwrap<StructType>(p_t->structure), hfa_type, num_elem))
       {
         ret = unwrap(p_t->structure);
       }
@@ -726,13 +691,11 @@ extern "C" LLVMValueRef load_lowered_param_value_from_ptr(compile_t* c, LLVMValu
   {
     if(target_is_lp64(triple) && p_c_t->abi_size > 16)
     {
-      RegisterPos_t reg_pos{ 0, 0, 0, Type::TypeID::VoidTyID };
-      reg_pos.current_word = 0;
-      reg_pos.current_byte_in_word = 0;
-      reg_pos.bytes_per_word = 0; // Not used
-      reg_pos.last_type_kind = Type::TypeID::VoidTyID;
+      Type* hfa_type = nullptr;
+      size_t num_elem = 0;
 
-      bool is_hfa = get_hfa_from_structure_aarch64(unwrap<StructType>(p_c_t->structure), &reg_pos);
+      bool is_hfa = get_hfa_from_structure_aarch64(unwrap<StructType>(p_c_t->structure),
+        hfa_type, num_elem);
 
       if(!is_hfa)
       {
@@ -838,13 +801,11 @@ extern "C" void copy_lowered_param_value_to_ptr(compile_t* c, LLVMValueRef dest_
   {
     if(target_is_arm(triple) && target_is_lp64(triple))
     {
-      RegisterPos_t reg_pos{ 0, 0, 0, Type::TypeID::VoidTyID };
-      reg_pos.current_word = 0;
-      reg_pos.current_byte_in_word = 0;
-      reg_pos.bytes_per_word = 0; // Not used
-      reg_pos.last_type_kind = Type::TypeID::VoidTyID;
+      Type* hfa_type = nullptr;
+      size_t num_elem = 0;
 
-      bool is_hfa = get_hfa_from_structure_aarch64(unwrap<StructType>(p_c_t->structure), &reg_pos);
+      bool is_hfa = get_hfa_from_structure_aarch64(unwrap<StructType>(p_c_t->structure),
+        hfa_type, num_elem);
 
       if(p_c_t->abi_size > 16 && !is_hfa)
       {
