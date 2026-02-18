@@ -392,7 +392,8 @@ static Type* generate_flattened_type(compile_t* c, const vector<Type*>& lowered)
 }
 
 
-static Type* lower_riscv64_param_value_from_structure_type(compile_t* c, reach_type_t* pt)
+static Type* lower_riscv64_param_value_from_structure_type(compile_t* c, LoweringObject& lowering_object,
+  reach_type_t* pt)
 {
   Type* ret = nullptr;
   char* triple = c->opt->triple;
@@ -427,25 +428,30 @@ static Type* lower_riscv64_param_value_from_structure_type(compile_t* c, reach_t
         }
         else
         {
+          if(kind == Type::TypeID::FloatTyID || kind == Type::TypeID::DoubleTyID)
+          {
+            lowering_object.riscv.num_fp_regs_in_use++;
+          }
           ret = elem_type;
         }
       }
       else
       {
-        bool contain_float = false;
+        size_t contain_float = 0;
         for(unsigned int i = 0; i < num_elem; i++)
         {
           Type* elem_type = s->getTypeAtIndex(i);
           Type::TypeID kind = elem_type->getTypeID();
           if(kind == Type::TypeID::FloatTyID || kind == Type::TypeID::DoubleTyID)
           {
-            contain_float = true;
-            break;
+            contain_float++;
           }
         }
 
-        if(contain_float)
+        if((contain_float != 0) &&
+           (contain_float + lowering_object.riscv.num_fp_regs_in_use <= 8))
         {
+          lowering_object.riscv.num_fp_regs_in_use += contain_float;
           ret = unwrap(p_t->structure);
         }
       }
@@ -474,7 +480,38 @@ static Type* lower_riscv64_param_value_from_structure_type(compile_t* c, reach_t
 }
 
 
-extern "C" LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach_type_t* pt)
+static void count_registers(compile_t* c, LoweringObject& lowering_object, Type* type)
+{
+  char* triple = c->opt->triple;
+
+  if(target_is_riscv(triple))
+  {
+    if(target_is_lp64(triple))
+    {
+      Type::TypeID kind = type->getTypeID();
+
+      if(kind == Type::TypeID::FloatTyID || kind == Type::TypeID::DoubleTyID)
+      {
+        lowering_object.riscv.num_fp_regs_in_use++;
+      }
+    }
+  }
+}
+
+
+extern "C" LoweringObject init_lowering_object(compile_t* c)
+{
+  char* triple = c->opt->triple;
+
+  LoweringObject ret;
+  memset(&ret, 0, sizeof(ret));
+
+  return ret;
+}
+
+
+extern "C" LLVMTypeRef lower_param(compile_t* c, LoweringObject* lowering_object,
+  reach_type_t* pt, bool pass_by_value)
 {
   Type* ret = nullptr;
   char* triple = c->opt->triple;
@@ -484,8 +521,9 @@ extern "C" LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach
   auto target_data = unwrap(c->target_data);
 
   // If no lowering is needed then just return with the same pointer to structure type
-  if(!is_param_value_lowering_needed(c, p_t))
+  if(!pass_by_value || !is_param_value_lowering_needed(c, p_t))
   {
+    count_registers(c, *lowering_object, unwrap(p_t->use_type));
     return p_t->use_type;
   }
 
@@ -557,7 +595,7 @@ extern "C" LLVMTypeRef lower_param_value_from_structure_type(compile_t* c, reach
   {
     if(target_is_lp64(triple))
     {
-      ret = lower_riscv64_param_value_from_structure_type(c, pt);
+      ret = lower_riscv64_param_value_from_structure_type(c, *lowering_object, pt);
     }
   }
 
@@ -628,7 +666,8 @@ extern "C" LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reac
   {
     if(target_is_lp64(triple))
     {
-      ret = lower_riscv64_param_value_from_structure_type(c, pt);
+      LoweringObject lo = init_lowering_object(c);
+      ret = lower_riscv64_param_value_from_structure_type(c, lo, pt);
     }
   }
 

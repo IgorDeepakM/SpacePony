@@ -157,20 +157,15 @@ static void make_signature(compile_t* c, reach_type_t* t,
     tparams[0] = c_t->use_type;
   }
 
+  LoweringObject lowering_object = init_lowering_object(c);
+
   // Get a type for each parameter.
   for(size_t i = 0; i < m->param_count; i++)
   {
     reach_type_t* rt = m->params[i].type;
     compile_type_t* p_c_t = (compile_type_t*)m->params[i].type->c_type;
 
-    if(m->params[i].pass_by_value)
-    {
-      tparams[i + offset] = lower_param_value_from_structure_type(c, rt);
-    }
-    else
-    {
-      tparams[i + offset] = p_c_t->use_type;
-    }
+    tparams[i + offset] = lower_param(c, &lowering_object, rt, m->params[i].pass_by_value);
 
     if(message_type)
       mparams[i + offset + 2] = p_c_t->mem_type;
