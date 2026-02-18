@@ -291,6 +291,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   * x86-64 Linux, Windows
   * Aarch64 Linux, Macos
   * Arm32 EABI
+  * RISC-V 64-bit Linux (tested on RVA22)
 
 * These are not supported or tested but should be easy to get working:
   * x86-32 Windows
