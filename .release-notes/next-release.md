@@ -55,3 +55,11 @@ Ponyc will now ignore applications other than Visual Studio itself which use the
 
 On arm64-based Linux systems using musl libc, program linking could fail due to missing libgcc symbols. We've now added linking against libgcc on all arm-based Linux systems to resolve this issue.
 
+## Fix persistent HashMap returning incorrect results for None values
+
+The persistent `HashMap` used `None` as an internal sentinel to signal "key not found" in its lookup methods. This collided with user value types that include `None` (e.g., `Map[String, (String | None)]`). Using `HashMap` with a `None` value could lead to errors in user code as "it was none" and "it wasn't present" were impossible to distinguish.
+
+The internal lookup methods now use `error` instead of `None` to signal a missing key, so all value types work correctly.
+
+This is a breaking change for any code that was depending on the previous (incorrect) behavior. For example, code that expected `apply` to raise for keys mapped to `None`, or that relied on `contains` returning `false` for `None`-valued entries, will now see correct results instead.
+

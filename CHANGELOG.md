@@ -6,6 +6,90 @@ All notable changes to the Pony compiler and standard library will be documented
 
 ### Fixed
 
+- Fix pony-lsp inability to find the standard library ([PR #4829](https://github.com/ponylang/ponyc/pull/4829))
+- Make pony-lsp version dynamic to match ponyc version ([PR #4830](https://github.com/ponylang/ponyc/pull/4830))
+- Fix persistent HashMap returning incorrect results for None values ([PR #4839](https://github.com/ponylang/ponyc/pull/4839))
+
+### Added
+
+
+### Changed
+
+- Changed persistent hash map apply signature ([PR #4839](https://github.com/ponylang/ponyc/pull/4839))
+
+
+## [0.60.6] - 2026-02-06
+
+### Fixed
+
+- Fix crash when ephemeral type used in parameter with default argument ([PR #4796](https://github.com/ponylang/ponyc/pull/4796))
+- Fix incorrect array element type inference for union types ([PR #4794](https://github.com/ponylang/ponyc/pull/4794))
+- Fix segfault when lambda captures uninitialized field ([PR #4791](https://github.com/ponylang/ponyc/pull/4791))
+- Fix compiler crash when assigning to ephemeral capability type ([PR #4790](https://github.com/ponylang/ponyc/pull/4790))
+
+### Added
+
+- Add Alpine 3.23 support ([PR #4803](https://github.com/ponylang/ponyc/pull/4803))
+
+### Changed
+
+- Update Docker Image Base to Alpine 3.23 ([PR #4804](https://github.com/ponylang/ponyc/pull/4804))
+
+## [0.60.5] - 2026-01-31
+
+### Fixed
+
+- Fix crash when partially applying constructors ([PR #4783](https://github.com/ponylang/ponyc/pull/4783))
+- Fix crash when using bare integer literals in array match patterns ([PR #4797](https://github.com/ponylang/ponyc/pull/4797))
+
+### Added
+
+- Add Pony Language Server to the ponyc distribution ([PR #4777](https://github.com/ponylang/ponyc/pull/4777))
+- Handle Bool with exhaustive match ([PR #4782](https://github.com/ponylang/ponyc/pull/4782))
+- Add support for complex type formatting in LSP hover ([PR #4785](https://github.com/ponylang/ponyc/pull/4785))
+- Add hover support for generic types in LSP ([PR #4793](https://github.com/ponylang/ponyc/pull/4793))
+- Add extra hover support to LSP ([PR #4795](https://github.com/ponylang/ponyc/pull/4795))
+- Add hover support for receiver capability to LSP ([PR #4798](https://github.com/ponylang/ponyc/pull/4798))
+- Add support for go to definition for arrow types in LSP ([PR #4792](https://github.com/ponylang/ponyc/pull/4792))
+
+## [0.60.4] - 2025-10-31
+
+### Added
+
+- Add Alpine 3.22 as a supported platform ([PR #4760](https://github.com/ponylang/ponyc/pull/4760))
+
+### Changed
+
+- Stop creating Fedora 41 builds ([PR #4763](https://github.com/ponylang/ponyc/pull/4763))
+
+## [0.60.3] - 2025-10-20
+
+### Added
+
+- Add Multiplatform Versioned Release Docker Images ([PR #4754](https://github.com/ponylang/ponyc/pull/4754))
+
+### Changed
+
+- Stop building -alpine versioned container images ([PR #4751](https://github.com/ponylang/ponyc/pull/4751))
+- Stop Creating Generic musl Builds ([PR #4752](https://github.com/ponylang/ponyc/pull/4752))
+- Stop Creating "Alpine" Docker Images ([PR #4753](https://github.com/ponylang/ponyc/pull/4753))
+
+## [0.60.2] - 2025-10-18
+
+### Changed
+
+- Add Multiplatform Release Docker Images ([PR #4749](https://github.com/ponylang/ponyc/pull/4749))
+
+## [0.60.1] - 2025-10-15
+
+### Fixed
+
+- Fix Arm64 Linux Releases ([#4748])(https://github.com/ponylang/ponyc/pull/4748)
+
+## [0.60.0] - 2025-10-15
+
+### Fixed
+
 - Make the check for Visual Studio more robust ([PR #4722](https://github.com/ponylang/ponyc/pull/4722))
 - Fix linking on Linux arm64 when using musl libc ([PR #4726](https://github.com/ponylang/ponyc/pull/4726))
 
