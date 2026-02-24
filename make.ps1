@@ -33,7 +33,7 @@
 
     [Parameter(HelpMessage="Tests to run")]
     [string]
-    $TestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release,pony-lsp-tests' # ,grammar' do not run grammar for now as there is work on the parser. Reenable later.
+    $TestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release,pony-lsp-tests,pony-lint-tests' # ,grammar' do not run grammar for now as there is work on the parser. Reenable later.
 )
 
 # Function to extract process exit code from LLDB output
@@ -479,6 +479,42 @@ switch ($Command.ToLower())
                 $failedTestSuites += 'compile pony-lsp-tests'
             }
         }
+		
+		# pony-lint-test
+        if ($TestsToRun -match 'pony-lint-tests')
+        {
+            $numTestSuitesRun += 1;
+            Write-Output "$outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\json-ng -b pony-lint-tests -o $outDir $srcDir\tools\pony-lint\test"
+            & $outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\json-ng -b pony-lint-tests -o $outDir $srcDir\tools\pony-lint\test
+            if ($LastExitCode -eq 0)
+            {
+                try
+                {
+                    if ($Uselldb -eq "yes")
+                    {
+                        Write-Output "$lldbcmd $lldbargs $outDir\pony-lint-tests.exe --sequential"
+                        $lldboutput = & $lldbcmd $lldbargs $outDir\pony-lint-tests.exe --sequential
+                        Write-Output $lldboutput
+                        $err = Get-ProcessExitCodeFromLLDB -LLDBOutput $lldboutput
+                    }
+                    else
+                    {
+                        Write-Output "$outDir\pony-lint-tests.exe --sequential"
+                        & $outDir\pony-lint-tests.exe --sequential
+                        $err = $LastExitCode
+                    }
+                }
+                catch
+                {
+                    $err = -1
+                }
+                if ($err -ne 0) { $failedTestSuites += 'pony-lint-tests' }
+            }
+            else
+            {
+                $failedTestSuites += 'compile pony-lint-tests'
+            }
+        }
 
         #
         $numTestSuitesFailed = $failedTestSuites.Length
@@ -629,7 +665,7 @@ switch ($Command.ToLower())
         Write-Output "Creating $buildDir\..\$package"
 
         # Remove unneeded files; we do it this way because Compress-Archive cannot add a single file to anything other than the root directory
-        Get-ChildItem -File -Path "$Prefix\bin\*" | Where-Object { $_.Name -notin 'ponyc.exe','pony-lsp.exe' } | Remove-Item
+        Get-ChildItem -File -Path "$Prefix\bin\*" | Where-Object { $_.Name -notin 'ponyc.exe','pony-lsp.exe','pony-lint.exe' } | Remove-Item
         Compress-Archive -Path "$Prefix\bin", "$Prefix\lib", "$Prefix\packages", "$Prefix\examples" -DestinationPath "$buildDir\..\$package" -Force
         break
     }
@@ -639,7 +675,7 @@ switch ($Command.ToLower())
         Write-Output "Creating $buildDir\..\$package"
 
         # Remove unneeded files; we do it this way because Compress-Archive cannot add a single file to anything other than the root directory
-        Get-ChildItem -File -Path "$Prefix\bin\*" | Where-Object { $_.Name -notin 'ponyc.exe','pony-lsp.exe' } | Remove-Item
+        Get-ChildItem -File -Path "$Prefix\bin\*" | Where-Object { $_.Name -notin 'ponyc.exe','pony-lsp.exe','pony-lint.exe' } | Remove-Item
         Compress-Archive -Path "$Prefix\bin", "$Prefix\lib", "$Prefix\packages", "$Prefix\examples" -DestinationPath "$buildDir\..\$package" -Force
         break
     }
