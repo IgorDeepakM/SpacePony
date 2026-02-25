@@ -37,7 +37,7 @@
 
     [Parameter(HelpMessage="CITests to run")]
     [string]
-    $CiTestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release,pony-lsp-tests' #,pony-lint-tests' pony-lint-tests disabled because temporary directory doesn't work # ,grammar' do not run grammar for now as there is work on th
+    $CiTestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release,pony-lsp-tests,pony-lint-tests' # ,grammar' do not run grammar for now as there is work on th
 )
 
 # Function to extract process exit code from LLDB output
@@ -461,8 +461,8 @@ switch ($Command.ToLower())
         if ($SelectedTestsToRun -match 'pony-lsp-tests')
         {
             $numTestSuitesRun += 1;
-            Write-Output "$outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\peg --path $srcDir\tools\lib\ponylang\pony_compiler --path $srcDir\tools\lib\mfelsche\pony-immutable-json -o $outDir -b pony-lsp-tests $srcDir\tools"
-            & $outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\peg --path $srcDir\tools\lib\ponylang\pony_compiler --path $srcDir\tools\lib\mfelsche\pony-immutable-json -o $outDir -b pony-lsp-tests $srcDir\tools
+            Write-Output "$outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\peg --path $srcDir\tools\lib\ponylang\pony_compiler --path $srcDir\tools\lib\ponylang\json-ng -o $outDir -b pony-lsp-tests $srcDir\tools"
+            & $outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\peg --path $srcDir\tools\lib\ponylang\pony_compiler --path $srcDir\tools\lib\ponylang\json-ng -o $outDir -b pony-lsp-tests $srcDir\tools
             if ($LastExitCode -eq 0)
             {
                 try
@@ -496,6 +496,8 @@ switch ($Command.ToLower())
         # pony-lint-test
         if ($SelectedTestsToRun -match 'pony-lint-tests')
         {
+            $env:PONYPATH = "$srcDir\packages"
+
             $numTestSuitesRun += 1;
             Write-Output "$outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\json-ng --path $srcDir\tools\lib\ponylang\pony_compiler -b pony-lint-tests -o $outDir $srcDir\tools\pony-lint\test"
             & $outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\json-ng --path $srcDir\tools\lib\ponylang\pony_compiler -b pony-lint-tests -o $outDir $srcDir\tools\pony-lint\test
