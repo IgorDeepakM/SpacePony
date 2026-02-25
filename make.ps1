@@ -72,21 +72,21 @@ switch ($Config.ToLower())
 $config_lower = $Config.ToLower()
 
 if ($null -eq (Get-Command "cmake.exe" -ErrorAction SilentlyContinue)) {
-	Write-Output "Warning, unable to find cmake.exe in your PATH, trying to discover one in Visual Studio installation."
-	Push-Location
-	$vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-	if (Test-Path $vswhere -PathType Leaf ) {
-    	$cmakePath = $(Get-Item $( Invoke-Expression '& "$vswhere" -prerelease -latest -requires Microsoft.VisualStudio.Component.VC.CMake.Project -find Common7/IDE/**/cmake.exe ' )).Directory.FullName
-	    if ($null -ne $cmakePath) {
-			$env:Path = "$env:Path;$cmakePath"
-			Write-Output "Success, CMake added to current PATH from $cmakePath"
-		} else {
-			Write-Output "Your latest Visual Studio installation does not include CMake package."
-		}
-	} else {
-		Write-Output "No Visual Studio 2017+ was found in the system."
-	}
-	Pop-Location
+    Write-Output "Warning, unable to find cmake.exe in your PATH, trying to discover one in Visual Studio installation."
+    Push-Location
+    $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+    if (Test-Path $vswhere -PathType Leaf ) {
+        $cmakePath = $(Get-Item $( Invoke-Expression '& "$vswhere" -prerelease -latest -requires Microsoft.VisualStudio.Component.VC.CMake.Project -find Common7/IDE/**/cmake.exe ' )).Directory.FullName
+        if ($null -ne $cmakePath) {
+        $env:Path = "$env:Path;$cmakePath"
+        Write-Output "Success, CMake added to current PATH from $cmakePath"
+    } else {
+        Write-Output "Your latest Visual Studio installation does not include CMake package."
+    }
+  } else {
+      Write-Output "No Visual Studio 2017+ was found in the system."
+  }
+  Pop-Location
 }
 
 if ($Generator -eq "default")
@@ -166,7 +166,7 @@ switch ($Command.ToLower())
         }
 
         $libsSrcDir = Join-Path -Path $srcDir -ChildPath "lib"
-	    $numCpus = [Environment]::ProcessorCount
+        $numCpus = [Environment]::ProcessorCount
         Write-Output "Configuring libraries..."
         if ($Arch.Length -gt 0)
         {
@@ -448,8 +448,8 @@ switch ($Command.ToLower())
         if ($TestsToRun -match 'pony-lsp-tests')
         {
             $numTestSuitesRun += 1;
-            Write-Output "$outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\peg --path $srcDir\tools\lib\mfelsche\pony-ast --path $srcDir\tools\lib\mfelsche\pony-binarysearch --path $srcDir\tools\lib\mfelsche\pony-immutable-json -o $outDir -b pony-lsp-tests $srcDir\tools"
-            & $outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\peg --path $srcDir\tools\lib\mfelsche\pony-ast --path $srcDir\tools\lib\mfelsche\pony-binarysearch --path $srcDir\tools\lib\mfelsche\pony-immutable-json -o $outDir -b pony-lsp-tests $srcDir\tools
+            Write-Output "$outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\peg --path $srcDir\tools\lib\ponylang\pony_compiler --path $srcDir\tools\lib\mfelsche\pony-immutable-json -o $outDir -b pony-lsp-tests $srcDir\tools"
+            & $outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\peg --path $srcDir\tools\lib\ponylang\pony_compiler --path $srcDir\tools\lib\mfelsche\pony-immutable-json -o $outDir -b pony-lsp-tests $srcDir\tools
             if ($LastExitCode -eq 0)
             {
                 try
@@ -479,13 +479,13 @@ switch ($Command.ToLower())
                 $failedTestSuites += 'compile pony-lsp-tests'
             }
         }
-		
-		# pony-lint-test
+
+        # pony-lint-test
         if ($TestsToRun -match 'pony-lint-tests')
         {
             $numTestSuitesRun += 1;
-            Write-Output "$outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\json-ng -b pony-lint-tests -o $outDir $srcDir\tools\pony-lint\test"
-            & $outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\json-ng -b pony-lint-tests -o $outDir $srcDir\tools\pony-lint\test
+            Write-Output "$outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\json-ng --path $srcDir\tools\lib\ponylang\pony_compiler -b pony-lint-tests -o $outDir $srcDir\tools\pony-lint\test"
+            & $outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\json-ng --path $srcDir\tools\lib\ponylang\pony_compiler -b pony-lint-tests -o $outDir $srcDir\tools\pony-lint\test
             if ($LastExitCode -eq 0)
             {
                 try
