@@ -34,9 +34,13 @@ primitive \nodoc\ _ASTTestHelper
 
     let pony_path = _get_ponypath(h.env.vars)
 
-    match ast.Compiler.compile(
-      tmp where package_search_paths = pony_path,
+    let compiler_result = ast.Compiler.compile(tmp where
+      package_search_paths = pony_path,
       limit = ast.PassParse)
+
+    tmp.remove()
+
+    match compiler_result
     | let program: ast.Program val =>
       (program, sf)
     | let errors: Array[ast.Error] val =>
