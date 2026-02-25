@@ -40,13 +40,13 @@ jobs:
           .\make.ps1 -Command configure -Config Debug
           .\make.ps1 -Command build -Config Debug
       - name: Test with Debug Runtime
-        run: .\make.ps1 -Command test -Config Debug -Uselldb yes
+        run: .\make.ps1 -Command testci -Config Debug -Uselldb yes
       - name: Build Release Runtime
         run: |
           .\make.ps1 -Command configure -Config Release
           .\make.ps1 -Command build -Config Release
       - name: Test with Release Runtime
-        run: .\make.ps1 -Command test -Config Release -Uselldb yes
+        run: .\make.ps1 -Command testci -Config Release -Uselldb yes
       - name: Build examples
         run: .\make.ps1 -Command build-examples
   

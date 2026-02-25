@@ -33,7 +33,11 @@
 
     [Parameter(HelpMessage="Tests to run")]
     [string]
-    $TestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release,pony-lsp-tests,pony-lint-tests' # ,grammar' do not run grammar for now as there is work on the parser. Reenable later.
+    $TestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release,pony-lsp-tests', # ,grammar' do not run grammar for now as there is work on the parser. Reenable later.
+
+    [Parameter(HelpMessage="CITests to run")]
+    [string]
+    $CiTestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release,pony-lsp-tests' #,pony-lint-tests' pony-lint-tests disabled because temporary directory doesn't work # ,grammar' do not run grammar for now as there is work on th
 )
 
 # Function to extract process exit code from LLDB output
@@ -250,8 +254,17 @@ switch ($Command.ToLower())
         }
         break
     }
-    "test"
+    {($_ -eq "test") -or ($_ -eq "testci")}
     {
+        if($Command.ToLower() -eq "testci")
+        {
+          $SelectedTestsToRun = $CiTestsToRun
+        }
+        else
+        {
+          $SelectedTestsToRun = $TestsToRun
+        }
+
         $numTestSuitesRun = 0
         $failedTestSuites = @()
 
@@ -264,7 +277,7 @@ switch ($Command.ToLower())
         }
 
         # libponyrt.tests
-        if ($TestsToRun -match 'libponyrt.tests')
+        if ($SelectedTestsToRun -match 'libponyrt.tests')
         {
             $numTestSuitesRun += 1;
             try
@@ -291,7 +304,7 @@ switch ($Command.ToLower())
         }
 
         # libponyc.tests
-        if ($TestsToRun -match 'libponyc.tests')
+        if ($SelectedTestsToRun -match 'libponyc.tests')
         {
             $numTestSuitesRun += 1;
             try
@@ -318,11 +331,11 @@ switch ($Command.ToLower())
         }
 
         # libponyc.run.tests
-        if ($TestsToRun -match 'libponyc.run.tests')
+        if ($SelectedTestsToRun -match 'libponyc.run.tests')
         {
             foreach ($runConfig in ('debug', 'release'))
             {
-                if (-not ($TestsToRun -match "libponyc.run.tests.$runConfig"))
+                if (-not ($SelectedTestsToRun -match "libponyc.run.tests.$runConfig"))
                 {
                     continue
                 }
@@ -348,7 +361,7 @@ switch ($Command.ToLower())
         }
 
         # stdlib-debug
-        if ($TestsToRun -match 'stdlib-debug')
+        if ($SelectedTestsToRun -match 'stdlib-debug')
         {
             $numTestSuitesRun += 1;
             Write-Output "$outDir\ponyc.exe -d --checktree -b stdlib-debug -o $outDir $srcDir\packages\stdlib"
@@ -384,7 +397,7 @@ switch ($Command.ToLower())
         }
 
         # stdlib-release
-        if ($TestsToRun -match 'stdlib-release')
+        if ($SelectedTestsToRun -match 'stdlib-release')
         {
             $numTestSuitesRun += 1;
             Write-Output "$outDir\ponyc.exe --checktree -b stdlib-release -o $outDir $srcDir\packages\stdlib"
@@ -420,7 +433,7 @@ switch ($Command.ToLower())
         }
 
         # grammar
-        if ($TestsToRun -match 'grammar')
+        if ($SelectedTestsToRun -match 'grammar')
         {
             $numTestSuitesRun += 1
             Get-Content -Path "$srcDir\pony.g" -Encoding ASCII | Out-File -Encoding UTF8 "$outDir\pony.g.orig"
@@ -445,7 +458,7 @@ switch ($Command.ToLower())
         }
 
         # pony-lsp-test
-        if ($TestsToRun -match 'pony-lsp-tests')
+        if ($SelectedTestsToRun -match 'pony-lsp-tests')
         {
             $numTestSuitesRun += 1;
             Write-Output "$outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\peg --path $srcDir\tools\lib\ponylang\pony_compiler --path $srcDir\tools\lib\mfelsche\pony-immutable-json -o $outDir -b pony-lsp-tests $srcDir\tools"
@@ -481,7 +494,7 @@ switch ($Command.ToLower())
         }
 
         # pony-lint-test
-        if ($TestsToRun -match 'pony-lint-tests')
+        if ($SelectedTestsToRun -match 'pony-lint-tests')
         {
             $numTestSuitesRun += 1;
             Write-Output "$outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\json-ng --path $srcDir\tools\lib\ponylang\pony_compiler -b pony-lint-tests -o $outDir $srcDir\tools\pony-lint\test"
