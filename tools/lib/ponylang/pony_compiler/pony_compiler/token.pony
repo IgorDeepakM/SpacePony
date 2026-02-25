@@ -18,6 +18,7 @@ use @token_line_position[USize](token: _Token)
 
 struct _Token
   var id: TokenId = TokenIds.tk_eof()
+  var frozen: Bool = false
   var source: NullablePointer[_Source] = source.none()
   var line: USize = 0
   var pos: USize = 0
@@ -39,7 +40,6 @@ struct _Token
     }
     ```
     """
-  var frozen: Bool = false
 
 type TokenId is I32
 
@@ -48,478 +48,506 @@ primitive TokenIds
   Numeric values based upon the order of elements in the
   `token_id` enum in libponyc/ast/token.h
   """
-  fun tk_eof(): I32 => 0
-  fun tk_lex_error(): I32 => 1
-  fun tk_none(): I32 => 2
+  enum I32
+    tk_eof
+    tk_lex_error
+    tk_none
 
-  // Literals
-  fun tk_true(): I32 => 3
-  fun tk_false(): I32 => 4
-  fun tk_string(): I32 => 5
-  fun tk_int(): I32 => 6
-  fun tk_float(): I32 => 7
-  fun tk_id(): I32 => 8
+    // Literals
+    tk_true
+    tk_false
+    tk_string
+    tk_int
+    tk_float
+    tk_id
 
-  // Symbols
-  fun tk_lbrace(): I32 => 9
-  fun tk_rbrace(): I32 => 10
-  fun tk_lparen(): I32 => 11
-  fun tk_rparen(): I32 => 12
-  fun tk_lsquare(): I32 => 13
-  fun tk_rsquare(): I32 => 14
-  fun tk_backslash(): I32 => 15
+    // Symbols
+    tk_lbrace
+    tk_rbrace
+    tk_lparen
+    tk_rparen
+    tk_lsquare
+    tk_rsquare
+    tk_backslash
 
-  fun tk_comma(): I32 => 16
-  fun tk_arrow(): I32 => 17
-  fun tk_dblarrow(): I32 => 18
-  fun tk_dot(): I32 => 19
-  fun tk_tilde(): I32 => 20
-  fun tk_chain(): I32 => 21
-  fun tk_colon(): I32 => 22
-  fun tk_semi(): I32 => 23
-  fun tk_assign(): I32 => 24
+    tk_comma
+    tk_arrow
+    tk_dblarrow
+    tk_dot
+    tk_tilde
+    tk_chain
+    tk_colon
+    tk_semi
+    tk_assign
 
-  fun tk_plus(): I32 => 25
-  fun tk_plus_tilde(): I32 => 26
-  fun tk_minus(): I32 => 27
-  fun tk_minus_tilde(): I32 => 28
-  fun tk_multiply(): I32 => 29
-  fun tk_multiply_tilde(): I32 => 30
-  fun tk_divide(): I32 => 31
-  fun tk_divide_tilde(): I32 => 32
-  fun tk_rem(): I32 => 33
-  fun tk_rem_tilde(): I32 => 34
-  fun tk_mod(): I32 => 35
-  fun tk_mod_tilde(): I32 => 36
-  fun tk_at(): I32 => 37
-  fun tk_at_lbrace(): I32 => 38
+    tk_plus
+    tk_plus_tilde
+    tk_minus
+    tk_minus_tilde
+    tk_multiply
+    tk_multiply_tilde
+    tk_divide
+    tk_divide_tilde
+    tk_rem
+    tk_rem_tilde
+    tk_mod
+    tk_mod_tilde
+    tk_at
+    tk_at_lbrace
 
-  fun tk_lshift(): I32 => 39
-  fun tk_lshift_tilde(): I32 => 40
-  fun tk_rshift(): I32 => 41
-  fun tk_rshift_tilde(): I32 => 42
+    tk_lshift
+    tk_lshift_tilde
+    tk_rshift
+    tk_rshift_tilde
 
-  fun tk_lt(): I32 => 43
-  fun tk_lt_tilde(): I32 => 44
-  fun tk_le(): I32 => 45
-  fun tk_le_tilde(): I32 => 46
-  fun tk_ge(): I32 => 47
-  fun tk_ge_tilde(): I32 => 48
-  fun tk_gt(): I32 => 49
-  fun tk_gt_tilde(): I32 => 50
+    tk_lt
+    tk_lt_tilde
+    tk_le
+    tk_le_tilde
+    tk_ge
+    tk_ge_tilde
+    tk_gt
+    tk_gt_tilde
 
-  fun tk_eq(): I32 => 51
-  fun tk_eq_tilde(): I32 => 52
-  fun tk_ne(): I32 => 53
-  fun tk_ne_tilde(): I32 => 54
+    tk_eq
+    tk_eq_tilde
+    tk_ne
+    tk_ne_tilde
 
-  fun tk_pipe(): I32 => 55
-  fun tk_isecttype(): I32 => 56
-  fun tk_ephemeral(): I32 => 57
-  fun tk_aliased(): I32 => 58
-  fun tk_subtype(): I32 => 59
+    tk_pipe
+    tk_isecttype
+    tk_ephemeral
+    tk_aliased
+    tk_subtype
 
-  fun tk_question(): I32 => 60
-  fun tk_unary_minus(): I32 => 61
-  fun tk_unary_minus_tilde(): I32 => 62
-  fun tk_ellipsis(): I32 => 63
-  fun tk_constant(): I32 => 64
+    tk_question
+    tk_unary_minus
+    tk_unary_minus_tilde
+    tk_ellipsis
+    tk_constant
+    tk_constant_object
+    tk_constant_array
 
-  // Newline symbols only used by lexer and parser
-  fun tk_lparen_new(): I32 => 65
-  fun tk_lsquare_new(): I32 => 66
-  fun tk_minus_new(): I32 => 67
-  fun tk_minus_tilde_new(): I32 => 68
+    // Newline symbols only used by lexer and parser
+    tk_lparen_new
+    tk_lsquare_new
+    tk_minus_new
+    tk_minus_tilde_new
 
-  // Keywords
-  fun tk_compile_intrinsic(): I32 => 69
+    // Keywords
+    tk_compile_intrinsic
 
-  fun tk_use(): I32 => 70
-  fun tk_type(): I32 => 71
-  fun tk_interface(): I32 => 72
-  fun tk_trait(): I32 => 73
-  fun tk_primitive(): I32 => 74
-  fun tk_struct(): I32 => 75
-  fun tk_class(): I32 => 76
-  fun tk_actor(): I32 => 77
-  fun tk_object(): I32 => 78
-  fun tk_lambda(): I32 => 79
-  fun tk_barelambda(): I32 => 80
+    tk_use
+    tk_type
+    tk_interface
+    tk_trait
+    tk_primitive
+    tk_struct
+    tk_class
+    tk_actor
+    tk_object
+    tk_lambda
+    tk_barelambda
+    tk_enum
 
-  fun tk_as(): I32 => 81
-  fun tk_is(): I32 => 82
-  fun tk_isnt(): I32 => 83
+    tk_as
+    tk_is
+    tk_isnt
 
-  fun tk_var(): I32 => 84
-  fun tk_let(): I32 => 85
-  fun tk_embed(): I32 => 86
-  fun tk_dontcare(): I32 => 87
-  fun tk_new(): I32 => 88
-  fun tk_fun(): I32 => 89
-  fun tk_be(): I32 => 90
+    tk_var
+    tk_let
+    tk_embed
+    tk_dontcare
+    tk_new
+    tk_fun
+    tk_be
 
-  fun tk_iso(): I32 => 91
-  fun tk_trn(): I32 => 92
-  fun tk_ref(): I32 => 93
-  fun tk_val(): I32 => 94
-  fun tk_box(): I32 => 95
-  fun tk_tag(): I32 => 96
+    tk_iso
+    tk_trn
+    tk_ref
+    tk_val
+    tk_box
+    tk_tag
+    tk_nhb
 
-  fun tk_cap_read(): I32 => 97
-  fun tk_cap_send(): I32 => 98
-  fun tk_cap_share(): I32 => 99
-  fun tk_cap_alias(): I32 => 100
-  fun tk_cap_any(): I32 => 101
+    tk_cap_read
+    tk_cap_send
+    tk_cap_share
+    tk_cap_alias
+    tk_cap_any
 
-  fun tk_this(): I32 => 102
-  fun tk_return(): I32 => 103
-  fun tk_break(): I32 => 104
-  fun tk_continue(): I32 => 105
-  fun tk_consume(): I32 => 106
-  fun tk_recover(): I32 => 107
+    tk_this
+    tk_return
+    tk_break
+    tk_continue
+    tk_consume
+    tk_recover
+    tk_comptime
 
-  fun tk_if(): I32 => 108
-  fun tk_ifdef(): I32 => 109
-  fun tk_iftype(): I32 => 110
-  fun tk_iftype_set(): I32 => 111
-  fun tk_then(): I32 => 112
-  fun tk_else(): I32 => 113
-  fun tk_elseif(): I32 => 114
-  fun tk_end(): I32 => 115
-  fun tk_while(): I32 => 116
-  fun tk_do(): I32 => 117
-  fun tk_repeat(): I32 => 118
-  fun tk_until(): I32 => 119
-  fun tk_for(): I32 => 120
-  fun tk_in(): I32 => 121
-  fun tk_match(): I32 => 122
-  fun tk_where(): I32 => 123
-  fun tk_try(): I32 => 124
-  fun tk_try_no_check(): I32 => 125
-  fun tk_with(): I32 => 126
-  fun tk_error(): I32 => 127
-  fun tk_compile_error(): I32 => 128
+    tk_if
+    tk_ifdef
+    tk_iftype
+    tk_iftype_set
+    tk_then
+    tk_else
+    tk_elseif
+    tk_end
+    tk_while
+    tk_do
+    tk_repeat
+    tk_until
+    tk_for
+    tk_in
+    tk_match
+    tk_where
+    tk_try
+    tk_try_no_check
+    tk_with
+    tk_error
+    tk_compile_error
+    tk_asm
 
-  fun tk_not(): I32 => 129
-  fun tk_and(): I32 => 130
-  fun tk_or(): I32 => 131
-  fun tk_xor(): I32 => 132
+    tk_not
+    tk_and
+    tk_or
+    tk_xor
 
-  fun tk_digestof(): I32 => 133
-  fun tk_address(): I32 => 134
-  fun tk_location(): I32 => 135
+    tk_digestof
+    tk_address
+    tk_offsetof
+    tk_sizeof
+    tk_location
 
-  // Abstract tokens which don't directly appear in the source
-  fun tk_program(): I32 => 136
-  fun tk_package(): I32 => 137
-  fun tk_module(): I32 => 138
+    // Abstract tokens which don't directly appear in the source
+    tk_program
+    tk_package
+    tk_module
 
-  fun tk_members(): I32 => 139
-  fun tk_fvar(): I32 => 140
-  fun tk_flet(): I32 => 141
-  fun tk_ffidecl(): I32 => 142
-  fun tk_fficall(): I32 => 143
+    tk_members
+    tk_fvar
+    tk_flet
+    tk_ffidecl
+    tk_fficall
+    tk_ffiref
 
-  fun tk_ifdefand(): I32 => 144
-  fun tk_ifdefor(): I32 => 145
-  fun tk_ifdefnot(): I32 => 146
-  fun tk_ifdefflag(): I32 => 147
+    tk_ifdefand
+    tk_ifdefor
+    tk_ifdefnot
+    tk_ifdefflag
 
-  fun tk_provides(): I32 => 148
-  fun tk_uniontype(): I32 => 149
-  fun tk_tupletype(): I32 => 150
-  fun tk_nominal(): I32 => 151
-  fun tk_thistype(): I32 => 152
-  fun tk_funtype(): I32 => 153
-  fun tk_lambdatype(): I32 => 154
-  fun tk_barelambdatype(): I32 => 155
-  fun tk_dontcaretype(): I32 => 156
-  fun tk_infertype(): I32 => 157
-  fun tk_errortype(): I32 => 158
+    tk_provides
+    tk_uniontype
+    tk_tupletype
+    tk_nominal
+    tk_thistype
+    tk_funtype
+    tk_lambdatype
+    tk_barelambdatype
+    tk_dontcaretype
+    tk_infertype
+    tk_errortype
 
-  fun tk_literal(): I32 => 159 // A literal expression whose type is not yet inferred
-  fun tk_literalbranch(): I32 => 160 // Literal branch of a control structure
-  fun tk_operatorliteral(): I32 => 161 // Operator function access to a literal
+    tk_literal
+    tk_literalbranch
+    tk_operatorliteral
 
-  fun tk_typeparams(): I32 => 162
-  fun tk_typeparam(): I32 => 163
-  fun tk_params(): I32 => 164
-  fun tk_param(): I32 => 165
-  fun tk_typeargs(): I32 => 166
-  fun tk_valueformalparam(): I32 => 167
-  fun tk_valueformalarg(): I32 => 168
-  fun tk_positionalargs(): I32 => 169
-  fun tk_namedargs(): I32 => 170
-  fun tk_namedarg(): I32 => 171
-  fun tk_updatearg(): I32 => 172
-  fun tk_lambdacaptures(): I32 => 173
-  fun tk_lambdacapture(): I32 => 174
+    tk_typeparams
+    tk_typeparam
+    tk_params
+    tk_param
+    tk_typeargs
+    tk_valueformalparam
+    tk_valueformalarg
+    tk_positionalargs
+    tk_namedargs
+    tk_namedarg
+    tk_updatearg
+    tk_lambdacaptures
+    tk_lambdacapture
 
-  fun tk_seq(): I32 => 175
-  fun tk_qualify(): I32 => 176
-  fun tk_call(): I32 => 177
-  fun tk_tuple(): I32 => 178
-  fun tk_array(): I32 => 179
-  fun tk_cases(): I32 => 180
-  fun tk_case(): I32 => 181
-  fun tk_match_capture(): I32 => 182
-  fun tk_match_dontcare(): I32 => 183
+    tk_seq
+    tk_qualify
+    tk_call
+    tk_tuple
+    tk_array
+    tk_cases
+    tk_case
+    tk_match_capture
+    tk_match_dontcare
 
-  fun tk_reference(): I32 => 184
-  fun tk_packageref(): I32 => 185
-  fun tk_typeref(): I32 => 186
-  fun tk_typeparamref(): I32 => 187
-  fun tk_newref(): I32 => 188
-  fun tk_newberef(): I32 => 189
-  fun tk_beref(): I32 => 190
-  fun tk_funref(): I32 => 191
-  fun tk_fvarref(): I32 => 192
-  fun tk_fletref(): I32 => 193
-  fun tk_embedref(): I32 => 194
-  fun tk_tupleelemref(): I32 => 195
-  fun tk_varref(): I32 => 196
-  fun tk_letref(): I32 => 197
-  fun tk_paramref(): I32 => 198
-  fun tk_dontcareref(): I32 => 199
-  fun tk_newapp(): I32 => 200
-  fun tk_beapp(): I32 => 201
-  fun tk_funapp(): I32 => 202
-  fun tk_bechain(): I32 => 203
-  fun tk_funchain(): I32 => 204
+    tk_reference
+    tk_packageref
+    tk_typeref
+    tk_typeparamref
+    tk_valueformalparamref
+    tk_newref
+    tk_newberef
+    tk_beref
+    tk_funref
+    tk_fvarref
+    tk_fletref
+    tk_embedref
+    tk_tupleelemref
+    tk_varref
+    tk_letref
+    tk_paramref
+    tk_dontcareref
+    tk_newapp
+    tk_beapp
+    tk_funapp
+    tk_bechain
+    tk_funchain
 
-  fun tk_annotation(): I32 => 205
+    tk_entity_type_class
+    tk_entity_type_struct
+    tk_entity_type_primitive
+    tk_entity_type_actor
 
-  fun tk_disposing_block(): I32 => 206
+    tk_annotation
 
-  // Pseudo tokens that never actually exist
-  fun tk_newline(): I32 => 207  // Used by parser macros
-  fun tk_flatten(): I32 => 208  // Used by parser macros for tree building
+    tk_disposing_block
 
-  // Token types for testing
-  fun tk_test_no_seq(): I32 => 209
-  fun tk_test_seq_scope(): I32 => 210
-  fun tk_test_try_no_check(): I32 => 211
-  fun tk_test_aliased(): I32 => 212
-  fun tk_test_updatearg(): I32 => 213
-  fun tk_test_extra(): I32 => 214
+    // Pseudo tokens that never actually exist
+    tk_newline  // Used by parser macros
+    tk_flatten   // Used by parser macros for tree building
+
+    // Token types for testing
+    tk_test_no_seq
+    tk_test_seq_scope
+    tk_test_try_no_check
+    tk_test_aliased
+    tk_test_updatearg
+    tk_test_extra
+  end
 
   fun string(token_id: TokenId): String val =>
     match token_id
-    | 0 => "TK_EOF"
-    | 1 => "TK_LEX_ERROR"
-    | 2 => "TK_NONE"
-    | 3 => "TK_TRUE"
-    | 4 => "TK_FALSE"
-    | 5 => "TK_STRING"
-    | 6 => "TK_INT"
-    | 7 => "TK_FLOAT"
-    | 8 => "TK_ID"
-    | 9 => "TK_LBRACE"
-    | 10 => "TK_RBRACE"
-    | 11 => "TK_LPAREN"
-    | 12 => "TK_RPAREN"
-    | 13 => "TK_LSQUARE"
-    | 14 => "TK_RSQUARE"
-    | 15 => "TK_BACKSLASH"
-    | 16 => "TK_COMMA"
-    | 17 => "TK_ARROW"
-    | 18 => "TK_DBLARROW"
-    | 19 => "TK_DOT"
-    | 20 => "TK_TILDE"
-    | 21 => "TK_CHAIN"
-    | 22 => "TK_COLON"
-    | 23 => "TK_SEMI"
-    | 24 => "TK_ASSIGN"
-    | 25 => "TK_PLUS"
-    | 26 => "TK_PLUS_TILDE"
-    | 27 => "TK_MINUS"
-    | 28 => "TK_MINUS_TILDE"
-    | 29 => "TK_MULTIPLY"
-    | 30 => "TK_MULTIPLY_TILDE"
-    | 31 => "TK_DIVIDE"
-    | 32 => "TK_DIVIDE_TILDE"
-    | 33 => "TK_REM"
-    | 34 => "TK_REM_TILDE"
-    | 35 => "TK_MOD"
-    | 36 => "TK_MOD_TILDE"
-    | 37 => "TK_AT"
-    | 38 => "TK_AT_LBRACE"
-    | 39 => "TK_LSHIFT"
-    | 40 => "TK_LSHIFT_TILDE"
-    | 41 => "TK_RSHIFT"
-    | 42 => "TK_RSHIFT_TILDE"
-    | 43 => "TK_LT"
-    | 44 => "TK_LT_TILDE"
-    | 45 => "TK_LE"
-    | 46 => "TK_LE_TILDE"
-    | 47 => "TK_GE"
-    | 48 => "TK_GE_TILDE"
-    | 49 => "TK_GT"
-    | 50 => "TK_GT_TILDE"
-    | 51 => "TK_EQ"
-    | 52 => "TK_EQ_TILDE"
-    | 53 => "TK_NE"
-    | 54 => "TK_NE_TILDE"
-    | 55 => "TK_PIPE"
-    | 56 => "TK_ISECTTYPE"
-    | 57 => "TK_EPHEMERAL"
-    | 58 => "TK_ALIASED"
-    | 59 => "TK_SUBTYPE"
-    | 60 => "TK_QUESTION"
-    | 61 => "TK_UNARY_MINUS"
-    | 62 => "TK_UNARY_MINUS_TILDE"
-    | 63 => "TK_ELLIPSIS"
-    | 64 => "TK_CONSTANT"
-    | 65 => "TK_LPAREN_NEW"
-    | 66 => "TK_LSQUARE_NEW"
-    | 67 => "TK_MINUS_NEW"
-    | 68 => "TK_MINUS_TILDE_NEW"
-    | 69 => "TK_COMPILE_INTRINSIC"
-    | 70 => "TK_USE"
-    | 71 => "TK_TYPE"
-    | 72 => "TK_INTERFACE"
-    | 73 => "TK_TRAIT"
-    | 74 => "TK_PRIMITIVE"
-    | 75 => "TK_STRUCT"
-    | 76 => "TK_CLASS"
-    | 77 => "TK_ACTOR"
-    | 78 => "TK_OBJECT"
-    | 79 => "TK_LAMBDA"
-    | 80 => "TK_BARELAMBDA"
-    | 81 => "TK_AS"
-    | 82 => "TK_IS"
-    | 83 => "TK_ISNT"
-    | 84 => "TK_VAR"
-    | 85 => "TK_LET"
-    | 86 => "TK_EMBED"
-    | 87 => "TK_DONTCARE"
-    | 88 => "TK_NEW"
-    | 89 => "TK_FUN"
-    | 90 => "TK_BE"
-    | 91 => "TK_ISO"
-    | 92 => "TK_TRN"
-    | 93 => "TK_REF"
-    | 94 => "TK_VAL"
-    | 95 => "TK_BOX"
-    | 96 => "TK_TAG"
-    | 97 => "TK_CAP_READ"
-    | 98 => "TK_CAP_SEND"
-    | 99 => "TK_CAP_SHARE"
-    | 100 => "TK_CAP_ALIAS"
-    | 101 => "TK_CAP_ANY"
-    | 102 => "TK_THIS"
-    | 103 => "TK_RETURN"
-    | 104 => "TK_BREAK"
-    | 105 => "TK_CONTINUE"
-    | 106 => "TK_CONSUME"
-    | 107 => "TK_RECOVER"
-    | 108 => "TK_IF"
-    | 109 => "TK_IFDEF"
-    | 110 => "TK_IFTYPE"
-    | 111 => "TK_IFTYPE_SET"
-    | 112 => "TK_THEN"
-    | 113 => "TK_ELSE"
-    | 114 => "TK_ELSEIF"
-    | 115 => "TK_END"
-    | 116 => "TK_WHILE"
-    | 117 => "TK_DO"
-    | 118 => "TK_REPEAT"
-    | 119 => "TK_UNTIL"
-    | 120 => "TK_FOR"
-    | 121 => "TK_IN"
-    | 122 => "TK_MATCH"
-    | 123 => "TK_WHERE"
-    | 124 => "TK_TRY"
-    | 125 => "TK_TRY_NO_CHECK"
-    | 126 => "TK_WITH"
-    | 127 => "TK_ERROR"
-    | 128 => "TK_COMPILE_ERROR"
-    | 129 => "TK_NOT"
-    | 130 => "TK_AND"
-    | 131 => "TK_OR"
-    | 132 => "TK_XOR"
-    | 133 => "TK_DIGESTOF"
-    | 134 => "TK_ADDRESS"
-    | 135 => "TK_LOCATION"
-    | 136 => "TK_PROGRAM"
-    | 137 => "TK_PACKAGE"
-    | 138 => "TK_MODULE"
-    | 139 => "TK_MEMBERS"
-    | 140 => "TK_FVAR"
-    | 141 => "TK_FLET"
-    | 142 => "TK_FFIDECL"
-    | 143 => "TK_FFICALL"
-    | 144 => "TK_IFDEFAND"
-    | 145 => "TK_IFDEFOR"
-    | 146 => "TK_IFDEFNOT"
-    | 147 => "TK_IFDEFFLAG"
-    | 148 => "TK_PROVIDES"
-    | 149 => "TK_UNIONTYPE"
-    | 150 => "TK_TUPLETYPE"
-    | 151 => "TK_NOMINAL"
-    | 152 => "TK_THISTYPE"
-    | 153 => "TK_FUNTYPE"
-    | 154 => "TK_LAMBDATYPE"
-    | 155 => "TK_BARELAMBDATYPE"
-    | 156 => "TK_DONTCARETYPE"
-    | 157 => "TK_INFERTYPE"
-    | 158 => "TK_ERRORTYPE"
-    | 159 => "TK_LITERAL"
-    | 160 => "TK_LITERALBRANCH"
-    | 161 => "TK_OPERATORLITERAL"
-    | 162 => "TK_TYPEPARAMS"
-    | 163 => "TK_TYPEPARAM"
-    | 164 => "TK_PARAMS"
-    | 165 => "TK_PARAM"
-    | 166 => "TK_TYPEARGS"
-    | 167 => "TK_VALUEFORMALPARAM"
-    | 168 => "TK_VALUEFORMALARG"
-    | 169 => "TK_POSITIONALARGS"
-    | 170 => "TK_NAMEDARGS"
-    | 171 => "TK_NAMEDARG"
-    | 172 => "TK_UPDATEARG"
-    | 173 => "TK_LAMBDACAPTURES"
-    | 174 => "TK_LAMBDACAPTURE"
-    | 175 => "TK_SEQ"
-    | 176 => "TK_QUALIFY"
-    | 177 => "TK_CALL"
-    | 178 => "TK_TUPLE"
-    | 179 => "TK_ARRAY"
-    | 180 => "TK_CASES"
-    | 181 => "TK_CASE"
-    | 182 => "TK_MATCH_CAPTURE"
-    | 183 => "TK_MATCH_DONTCARE"
-    | 184 => "TK_REFERENCE"
-    | 185 => "TK_PACKAGEREF"
-    | 186 => "TK_TYPEREF"
-    | 187 => "TK_TYPEPARAMREF"
-    | 188 => "TK_NEWREF"
-    | 189 => "TK_NEWBEREF"
-    | 190 => "TK_BEREF"
-    | 191 => "TK_FUNREF"
-    | 192 => "TK_FVARREF"
-    | 193 => "TK_FLETREF"
-    | 194 => "TK_EMBEDREF"
-    | 195 => "TK_TUPLEELEMREF"
-    | 196 => "TK_VARREF"
-    | 197 => "TK_LETREF"
-    | 198 => "TK_PARAMREF"
-    | 199 => "TK_DONTCAREREF"
-    | 200 => "TK_NEWAPP"
-    | 201 => "TK_BEAPP"
-    | 202 => "TK_FUNAPP"
-    | 203 => "TK_BECHAIN"
-    | 204 => "TK_FUNCHAIN"
-    | 205 => "TK_ANNOTATION"
-    | 206 => "TK_DISPOSING_BLOCK"
-    | 207 => "TK_NEWLINE"  // Used by parser macros
-    | 208 => "TK_FLATTEN"  // Used by parser macros for tree building
-    | 209 => "TK_TEST_NO_SEQ"
-    | 210 => "TK_TEST_SEQ_SCOPE"
-    | 211 => "TK_TEST_TRY_NO_CHECK"
-    | 212 => "TK_TEST_ALIASED"
-    | 213 => "TK_TEST_UPDATEARG"
-    | 214 => "TK_TEST_EXTRA"
+    | TokenIds.tk_eof => "TK_EOF"
+    | TokenIds.tk_lex_error => "TK_LEX_ERROR"
+    | TokenIds.tk_none => "TK_NONE"
+    | TokenIds.tk_true => "TK_TRUE"
+    | TokenIds.tk_false => "TK_FALSE"
+    | TokenIds.tk_string => "TK_STRING"
+    | TokenIds.tk_int => "TK_INT"
+    | TokenIds.tk_float => "TK_FLOAT"
+    | TokenIds.tk_id => "TK_ID"
+    | TokenIds.tk_lbrace => "TK_LBRACE"
+    | TokenIds.tk_rbrace => "TK_RBRACE"
+    | TokenIds.tk_lparen => "TK_LPAREN"
+    | TokenIds.tk_rparen => "TK_RPAREN"
+    | TokenIds.tk_lsquare => "TK_LSQUARE"
+    | TokenIds.tk_rsquare => "TK_RSQUARE"
+    | TokenIds.tk_backslash => "TK_BACKSLASH"
+    | TokenIds.tk_comma => "TK_COMMA"
+    | TokenIds.tk_arrow => "TK_ARROW"
+    | TokenIds.tk_dblarrow => "TK_DBLARROW"
+    | TokenIds.tk_dot => "TK_DOT"
+    | TokenIds.tk_tilde => "TK_TILDE"
+    | TokenIds.tk_chain => "TK_CHAIN"
+    | TokenIds.tk_colon => "TK_COLON"
+    | TokenIds.tk_semi => "TK_SEMI"
+    | TokenIds.tk_assign => "TK_ASSIGN"
+    | TokenIds.tk_plus => "TK_PLUS"
+    | TokenIds.tk_plus_tilde => "TK_PLUS_TILDE"
+    | TokenIds.tk_minus => "TK_MINUS"
+    | TokenIds.tk_minus_tilde => "TK_MINUS_TILDE"
+    | TokenIds.tk_multiply => "TK_MULTIPLY"
+    | TokenIds.tk_multiply_tilde => "TK_MULTIPLY_TILDE"
+    | TokenIds.tk_divide => "TK_DIVIDE"
+    | TokenIds.tk_divide_tilde => "TK_DIVIDE_TILDE"
+    | TokenIds.tk_rem => "TK_REM"
+    | TokenIds.tk_rem_tilde => "TK_REM_TILDE"
+    | TokenIds.tk_mod => "TK_MOD"
+    | TokenIds.tk_mod_tilde => "TK_MOD_TILDE"
+    | TokenIds.tk_at => "TK_AT"
+    | TokenIds.tk_at_lbrace => "TK_AT_LBRACE"
+    | TokenIds.tk_lshift => "TK_LSHIFT"
+    | TokenIds.tk_lshift_tilde => "TK_LSHIFT_TILDE"
+    | TokenIds.tk_rshift => "TK_RSHIFT"
+    | TokenIds.tk_rshift_tilde => "TK_RSHIFT_TILDE"
+    | TokenIds.tk_lt => "TK_LT"
+    | TokenIds.tk_lt_tilde => "TK_LT_TILDE"
+    | TokenIds.tk_le => "TK_LE"
+    | TokenIds.tk_le_tilde => "TK_LE_TILDE"
+    | TokenIds.tk_ge => "TK_GE"
+    | TokenIds.tk_ge_tilde => "TK_GE_TILDE"
+    | TokenIds.tk_gt => "TK_GT"
+    | TokenIds.tk_gt_tilde => "TK_GT_TILDE"
+    | TokenIds.tk_eq => "TK_EQ"
+    | TokenIds.tk_eq_tilde => "TK_EQ_TILDE"
+    | TokenIds.tk_ne => "TK_NE"
+    | TokenIds.tk_ne_tilde => "TK_NE_TILDE"
+    | TokenIds.tk_pipe => "TK_PIPE"
+    | TokenIds.tk_isecttype => "TK_ISECTTYPE"
+    | TokenIds.tk_ephemeral => "TK_EPHEMERAL"
+    | TokenIds.tk_aliased => "TK_ALIASED"
+    | TokenIds.tk_subtype => "TK_SUBTYPE"
+    | TokenIds.tk_question => "TK_QUESTION"
+    | TokenIds.tk_unary_minus => "TK_UNARY_MINUS"
+    | TokenIds.tk_unary_minus_tilde => "TK_UNARY_MINUS_TILDE"
+    | TokenIds.tk_ellipsis => "TK_ELLIPSIS"
+    | TokenIds.tk_constant => "TK_CONSTANT"
+    | TokenIds.tk_constant_object => "TK_CONSTANT_OBJECT"
+    | TokenIds.tk_constant_array => "TK_CONSTANT_ARRAY"
+    | TokenIds.tk_lparen_new => "TK_LPAREN_NEW"
+    | TokenIds.tk_lsquare_new => "TK_LSQUARE_NEW"
+    | TokenIds.tk_minus_new => "TK_MINUS_NEW"
+    | TokenIds.tk_minus_tilde_new => "TK_MINUS_TILDE_NEW"
+    | TokenIds.tk_compile_intrinsic => "TK_COMPILE_INTRINSIC"
+    | TokenIds.tk_use => "TK_USE"
+    | TokenIds.tk_type => "TK_TYPE"
+    | TokenIds.tk_interface => "TK_INTERFACE"
+    | TokenIds.tk_trait => "TK_TRAIT"
+    | TokenIds.tk_primitive => "TK_PRIMITIVE"
+    | TokenIds.tk_struct => "TK_STRUCT"
+    | TokenIds.tk_class => "TK_CLASS"
+    | TokenIds.tk_actor => "TK_ACTOR"
+    | TokenIds.tk_object => "TK_OBJECT"
+    | TokenIds.tk_lambda => "TK_LAMBDA"
+    | TokenIds.tk_barelambda => "TK_BARELAMBDA"
+    | TokenIds.tk_as => "TK_AS"
+    | TokenIds.tk_is => "TK_IS"
+    | TokenIds.tk_isnt => "TK_ISNT"
+    | TokenIds.tk_var => "TK_VAR"
+    | TokenIds.tk_let => "TK_LET"
+    | TokenIds.tk_embed => "TK_EMBED"
+    | TokenIds.tk_dontcare => "TK_DONTCARE"
+    | TokenIds.tk_new => "TK_NEW"
+    | TokenIds.tk_fun => "TK_FUN"
+    | TokenIds.tk_be => "TK_BE"
+    | TokenIds.tk_iso => "TK_ISO"
+    | TokenIds.tk_trn => "TK_TRN"
+    | TokenIds.tk_ref => "TK_REF"
+    | TokenIds.tk_val => "TK_VAL"
+    | TokenIds.tk_box => "TK_BOX"
+    | TokenIds.tk_tag => "TK_TAG"
+    | TokenIds.tk_nhb => "TK_NHB"
+    | TokenIds.tk_cap_read => "TK_CAP_READ"
+    | TokenIds.tk_cap_send => "TK_CAP_SEND"
+    | TokenIds.tk_cap_share => "TK_CAP_SHARE"
+    | TokenIds.tk_cap_alias => "TK_CAP_ALIAS"
+    | TokenIds.tk_cap_any => "TK_CAP_ANY"
+    | TokenIds.tk_this => "TK_THIS"
+    | TokenIds.tk_return => "TK_RETURN"
+    | TokenIds.tk_break => "TK_BREAK"
+    | TokenIds.tk_continue => "TK_CONTINUE"
+    | TokenIds.tk_consume => "TK_CONSUME"
+    | TokenIds.tk_recover => "TK_RECOVER"
+    | TokenIds.tk_comptime => "TK_COMPTIME"
+    | TokenIds.tk_if => "TK_IF"
+    | TokenIds.tk_ifdef => "TK_IFDEF"
+    | TokenIds.tk_iftype => "TK_IFTYPE"
+    | TokenIds.tk_iftype_set => "TK_IFTYPE_SET"
+    | TokenIds.tk_then => "TK_THEN"
+    | TokenIds.tk_else => "TK_ELSE"
+    | TokenIds.tk_elseif => "TK_ELSEIF"
+    | TokenIds.tk_end => "TK_END"
+    | TokenIds.tk_while => "TK_WHILE"
+    | TokenIds.tk_do => "TK_DO"
+    | TokenIds.tk_repeat => "TK_REPEAT"
+    | TokenIds.tk_until => "TK_UNTIL"
+    | TokenIds.tk_for => "TK_FOR"
+    | TokenIds.tk_in => "TK_IN"
+    | TokenIds.tk_match => "TK_MATCH"
+    | TokenIds.tk_where => "TK_WHERE"
+    | TokenIds.tk_try => "TK_TRY"
+    | TokenIds.tk_try_no_check => "TK_TRY_NO_CHECK"
+    | TokenIds.tk_with => "TK_WITH"
+    | TokenIds.tk_error => "TK_ERROR"
+    | TokenIds.tk_compile_error => "TK_COMPILE_ERROR"
+    | TokenIds.tk_not => "TK_NOT"
+    | TokenIds.tk_and => "TK_AND"
+    | TokenIds.tk_or => "TK_OR"
+    | TokenIds.tk_xor => "TK_XOR"
+    | TokenIds.tk_digestof => "TK_DIGESTOF"
+    | TokenIds.tk_address => "TK_ADDRESS"
+    | TokenIds.tk_offsetof => "TK_OFFSETOF"
+    | TokenIds.tk_sizeof => "TK_SIZEOF"
+    | TokenIds.tk_location => "TK_LOCATION"
+    | TokenIds.tk_program => "TK_PROGRAM"
+    | TokenIds.tk_package => "TK_PACKAGE"
+    | TokenIds.tk_module => "TK_MODULE"
+    | TokenIds.tk_members => "TK_MEMBERS"
+    | TokenIds.tk_fvar => "TK_FVAR"
+    | TokenIds.tk_flet => "TK_FLET"
+    | TokenIds.tk_ffidecl => "TK_FFIDECL"
+    | TokenIds.tk_fficall => "TK_FFICALL"
+    | TokenIds.tk_ifdefand => "TK_IFDEFAND"
+    | TokenIds.tk_ifdefor => "TK_IFDEFOR"
+    | TokenIds.tk_ifdefnot => "TK_IFDEFNOT"
+    | TokenIds.tk_ifdefflag => "TK_IFDEFFLAG"
+    | TokenIds.tk_provides => "TK_PROVIDES"
+    | TokenIds.tk_uniontype => "TK_UNIONTYPE"
+    | TokenIds.tk_tupletype => "TK_TUPLETYPE"
+    | TokenIds.tk_nominal => "TK_NOMINAL"
+    | TokenIds.tk_thistype => "TK_THISTYPE"
+    | TokenIds.tk_funtype => "TK_FUNTYPE"
+    | TokenIds.tk_lambdatype => "TK_LAMBDATYPE"
+    | TokenIds.tk_barelambdatype => "TK_BARELAMBDATYPE"
+    | TokenIds.tk_dontcaretype => "TK_DONTCARETYPE"
+    | TokenIds.tk_infertype => "TK_INFERTYPE"
+    | TokenIds.tk_errortype => "TK_ERRORTYPE"
+    | TokenIds.tk_literal => "TK_LITERAL"
+    | TokenIds.tk_literalbranch => "TK_LITERALBRANCH"
+    | TokenIds.tk_operatorliteral => "TK_OPERATORLITERAL"
+    | TokenIds.tk_typeparams => "TK_TYPEPARAMS"
+    | TokenIds.tk_typeparam => "TK_TYPEPARAM"
+    | TokenIds.tk_params => "TK_PARAMS"
+    | TokenIds.tk_param => "TK_PARAM"
+    | TokenIds.tk_typeargs => "TK_TYPEARGS"
+    | TokenIds.tk_valueformalparam => "TK_VALUEFORMALPARAM"
+    | TokenIds.tk_valueformalarg => "TK_VALUEFORMALARG"
+    | TokenIds.tk_positionalargs => "TK_POSITIONALARGS"
+    | TokenIds.tk_namedargs => "TK_NAMEDARGS"
+    | TokenIds.tk_namedarg => "TK_NAMEDARG"
+    | TokenIds.tk_updatearg => "TK_UPDATEARG"
+    | TokenIds.tk_lambdacaptures => "TK_LAMBDACAPTURES"
+    | TokenIds.tk_lambdacapture => "TK_LAMBDACAPTURE"
+    | TokenIds.tk_seq => "TK_SEQ"
+    | TokenIds.tk_qualify => "TK_QUALIFY"
+    | TokenIds.tk_call => "TK_CALL"
+    | TokenIds.tk_tuple => "TK_TUPLE"
+    | TokenIds.tk_array => "TK_ARRAY"
+    | TokenIds.tk_cases => "TK_CASES"
+    | TokenIds.tk_case => "TK_CASE"
+    | TokenIds.tk_match_capture => "TK_MATCH_CAPTURE"
+    | TokenIds.tk_match_dontcare => "TK_MATCH_DONTCARE"
+    | TokenIds.tk_reference => "TK_REFERENCE"
+    | TokenIds.tk_packageref => "TK_PACKAGEREF"
+    | TokenIds.tk_typeref => "TK_TYPEREF"
+    | TokenIds.tk_typeparamref => "TK_TYPEPARAMREF"
+    | TokenIds.tk_valueformalparamref => "TK_VALUEFORMALPARAMREF"
+    | TokenIds.tk_newref => "TK_NEWREF"
+    | TokenIds.tk_newberef => "TK_NEWBEREF"
+    | TokenIds.tk_beref => "TK_BEREF"
+    | TokenIds.tk_funref => "TK_FUNREF"
+    | TokenIds.tk_fvarref => "TK_FVARREF"
+    | TokenIds.tk_fletref => "TK_FLETREF"
+    | TokenIds.tk_embedref => "TK_EMBEDREF"
+    | TokenIds.tk_tupleelemref => "TK_TUPLEELEMREF"
+    | TokenIds.tk_varref => "TK_VARREF"
+    | TokenIds.tk_letref => "TK_LETREF"
+    | TokenIds.tk_paramref => "TK_PARAMREF"
+    | TokenIds.tk_dontcareref => "TK_DONTCAREREF"
+    | TokenIds.tk_newapp => "TK_NEWAPP"
+    | TokenIds.tk_beapp => "TK_BEAPP"
+    | TokenIds.tk_funapp => "TK_FUNAPP"
+    | TokenIds.tk_bechain => "TK_BECHAIN"
+    | TokenIds.tk_funchain => "TK_FUNCHAIN"
+    | TokenIds.tk_entity_type_class => "TK_ENTITY_TYPE_CLASS"
+    | TokenIds.tk_entity_type_struct => "TK_ENTITY_TYPE_STRUCT"
+    | TokenIds.tk_entity_type_primitive => "TK_ENTITY_TYPE_PRIMITIVE"
+    | TokenIds.tk_entity_type_actor => "TK_ENTITY_TYPE_ACTOR"
+    | TokenIds.tk_annotation => "TK_ANNOTATION"
+    | TokenIds.tk_disposing_block => "TK_DISPOSING_BLOCK"
+    | TokenIds.tk_newline => "TK_NEWLINE"  // Used by parser macros
+    | TokenIds.tk_flatten => "TK_FLATTEN"  // Used by parser macros for tree building
+    | TokenIds.tk_test_no_seq => "TK_TEST_NO_SEQ"
+    | TokenIds.tk_test_seq_scope => "TK_TEST_SEQ_SCOPE"
+    | TokenIds.tk_test_try_no_check => "TK_TEST_TRY_NO_CHECK"
+    | TokenIds.tk_test_aliased => "TK_TEST_ALIASED"
+    | TokenIds.tk_test_updatearg => "TK_TEST_UPDATEARG"
+    | TokenIds.tk_test_extra => "TK_TEST_EXTRA"
     else
       "TK_UNKNOWN"
     end
