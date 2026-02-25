@@ -63,6 +63,9 @@ struct _PassOpt
 
   var verbosity: I32 = VerbosityQuiet()
 
+  var ctfe_max_recursion: USize = 0
+  var ctfe_max_duration: USize = 0
+
   var ast_print_width: USize = 0
   var allow_test_symbols: Bool = false
   var parse_trace: Bool = false

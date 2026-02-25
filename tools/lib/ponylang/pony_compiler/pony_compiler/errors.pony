@@ -147,6 +147,7 @@ struct _Typecheck
   var frame: NullablePointer[_TypecheckFrame] ref
   embed stats: _TypecheckStats
   var errors: NullablePointer[_Errors]
+  var evaluation_error: Bool
 
   new create() =>
     """
@@ -155,3 +156,4 @@ struct _Typecheck
     frame = NullablePointer[_TypecheckFrame].none()
     stats = _TypecheckStats.create()
     errors = NullablePointer[_Errors].none()
+    evaluation_error = false
