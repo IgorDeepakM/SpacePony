@@ -1353,193 +1353,258 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
   ast_t** astp, pass_opt_t* opt)
 {
   ast_t* ast = *astp;
+  ast_t** astp_i = astp;
 
-  // If this is a method call, mark the method as reachable.
-  switch(ast_id(ast))
+  Stack* stack = NULL;
+
+  // Variable to indicate if we are in sibling iteration and we don't need to save
+  // where we are on the stack.
+  bool in_sibling_iteration = false;
+
+  while(true)
   {
-    case TK_TRUE:
-    case TK_FALSE:
-    case TK_INT:
-    case TK_FLOAT:
-    case TK_STRING:
+    bool traverse_children = true;
+
+    // If this is a method call, mark the method as reachable.
+    switch(ast_id(ast))
     {
-      ast_t* type = ast_type(ast);
+      case TK_TRUE:
+      case TK_FALSE:
+      case TK_INT:
+      case TK_FLOAT:
+      case TK_STRING:
+      {
+        ast_t* type = ast_type(ast);
 
-      // type will be reified in reachable_method
-      if(type != NULL)
-        reachable_method(r, reify, ast, type, stringtab("create"), NULL, opt);
+        // type will be reified in reachable_method
+        if(type != NULL)
+          reachable_method(r, reify, ast, type, stringtab("create"), NULL, opt);
 
-      break;
-    }
+        break;
+      }
 
-    case TK_LET:
-    case TK_VAR:
-    case TK_FLETREF:
-    case TK_FVARREF:
-    case TK_EMBEDREF:
-    case TK_TUPLE:
-    {
-      ast_t* type = deferred_reify(reify, ast_type(ast), opt);
-      add_type(r, type, opt);
-      ast_free_unattached(type);
-      break;
-    }
-
-    case TK_CASE:
-    {
-      AST_GET_CHILDREN(ast, pattern, guard, body);
-      reachable_pattern(r, reify, pattern, opt);
-      reachable_expr(r, reify, &guard, opt);
-      reachable_expr(r, reify, &body, opt);
-      break;
-    }
-
-    case TK_CALL:
-      reachable_call(r, reify, ast, opt);
-      break;
-
-    case TK_FFICALL:
-      reachable_ffi(r, reify, ast, opt);
-      break;
-
-    case TK_ADDRESS:
-      reachable_addressof(r, reify, ast, opt);
-      break;
-
-    case TK_SIZEOF:
-      reachable_sizeof(r, reify, ast, opt);
-      break;
-
-    case TK_ASM:
-      reachable_inline_asm(r, reify, ast, opt);
-      break;
-
-    case TK_IF:
-    {
-      AST_GET_CHILDREN(ast, cond, then_clause, else_clause);
-      pony_assert(ast_id(cond) == TK_SEQ);
-      cond = ast_child(cond);
-
-      if(is_result_needed(ast) && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
+      case TK_LET:
+      case TK_VAR:
+      case TK_FLETREF:
+      case TK_FVARREF:
+      case TK_EMBEDREF:
+      case TK_TUPLE:
       {
         ast_t* type = deferred_reify(reify, ast_type(ast), opt);
         add_type(r, type, opt);
         ast_free_unattached(type);
+        break;
       }
 
-      if(ast_sibling(cond) == NULL)
+      case TK_CASE:
       {
-        if(ast_id(cond) == TK_TRUE)
+        AST_GET_CHILDREN(ast, pattern)  //, guard, body);
+        reachable_pattern(r, reify, pattern, opt);
+        // guard and body are implicitly visited when traversing children
+        break;
+      }
+
+      case TK_CALL:
+        reachable_call(r, reify, ast, opt);
+        break;
+
+      case TK_FFICALL:
+        reachable_ffi(r, reify, ast, opt);
+        break;
+
+      case TK_ADDRESS:
+        reachable_addressof(r, reify, ast, opt);
+        break;
+
+      case TK_SIZEOF:
+        reachable_sizeof(r, reify, ast, opt);
+        break;
+
+      case TK_ASM:
+        reachable_inline_asm(r, reify, ast, opt);
+        break;
+
+      case TK_IF:
+      {
+        AST_GET_CHILDREN(ast, cond, then_clause, else_clause);
+        pony_assert(ast_id(cond) == TK_SEQ);
+        cond = ast_child(cond);
+
+        if(is_result_needed(ast) && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
         {
-          reachable_expr(r, reify, &then_clause, opt);
-          return;
-        } else if(ast_id(cond) == TK_FALSE) {
-          reachable_expr(r, reify, &else_clause, opt);
-          return;
+          ast_t* type = deferred_reify(reify, ast_type(ast), opt);
+          add_type(r, type, opt);
+          ast_free_unattached(type);
         }
+
+        if(ast_sibling(cond) == NULL)
+        {
+          if(ast_id(cond) == TK_TRUE)
+          {
+            reachable_expr(r, reify, &then_clause, opt);
+            traverse_children = false;
+          }
+          else if(ast_id(cond) == TK_FALSE) {
+            reachable_expr(r, reify, &else_clause, opt);
+            traverse_children = false;
+          }
+        }
+        break;
       }
-      break;
-    }
 
-    case TK_IFTYPE_SET:
-    {
-      AST_GET_CHILDREN(ast, left_clause, right);
-      AST_GET_CHILDREN(left_clause, sub, super, left);
-
-
-      if(is_result_needed(ast) && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
+      case TK_IFTYPE_SET:
       {
-        ast_t* type = deferred_reify(reify, ast_type(ast), opt);
+        AST_GET_CHILDREN(ast, left_clause, right);
+        AST_GET_CHILDREN(left_clause, sub, super, left);
+
+
+        if(is_result_needed(ast) && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
+        {
+          ast_t* type = deferred_reify(reify, ast_type(ast), opt);
+          add_type(r, type, opt);
+          ast_free_unattached(type);
+        }
+
+        ast_t* r_sub = deferred_reify(reify, sub, opt);
+        ast_t* r_super = deferred_reify(reify, super, opt);
+
+        if(is_subtype_constraint(r_sub, r_super, NULL, opt))
+          reachable_expr(r, reify, &left, opt);
+        else
+          reachable_expr(r, reify, &right, opt);
+
+        ast_free_unattached(r_sub);
+        ast_free_unattached(r_super);
+
+        traverse_children = false;
+        break;
+      }
+
+      case TK_MATCH:
+      case TK_WHILE:
+      case TK_REPEAT:
+      case TK_TRY:
+      case TK_DISPOSING_BLOCK:
+      case TK_RECOVER:
+      {
+        if(is_result_needed(ast) && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
+        {
+          ast_t* type = deferred_reify(reify, ast_type(ast), opt);
+          add_type(r, type, opt);
+          ast_free_unattached(type);
+        }
+
+        break;
+      }
+
+      case TK_IS:
+      case TK_ISNT:
+      {
+        AST_GET_CHILDREN(ast, left, right);
+
+        ast_t* type = deferred_reify(reify, ast_type(left), opt);
         add_type(r, type, opt);
         ast_free_unattached(type);
+
+        type = deferred_reify(reify, ast_type(right), opt);
+        add_type(r, type, opt);
+        ast_free_unattached(type);
+
+        break;
       }
 
-      ast_t* r_sub = deferred_reify(reify, sub, opt);
-      ast_t* r_super = deferred_reify(reify, super, opt);
+      case TK_DIGESTOF:
+      {
+        ast_t* expr = ast_child(ast);
+        ast_t* type = deferred_reify(reify, ast_type(expr), opt);
+        add_type(r, type, opt);
+        ast_free_unattached(type);
 
-      if(is_subtype_constraint(r_sub, r_super, NULL, opt))
-        reachable_expr(r, reify, &left, opt);
-      else
-        reachable_expr(r, reify, &right, opt);
+        break;
+      }
 
-      ast_free_unattached(r_sub);
-      ast_free_unattached(r_super);
+      case TK_COMPTIME:
+      {
+        ast_t* old_ast = *astp_i;
+        reach_comptime(opt, astp_i, reify);
+        if(!opt->check.evaluation_error)
+        {
+          add_type(r, ast_type(*astp_i), opt);
+        }
+        ast = *astp_i;
+        traverse_children = false;
 
+        // Since the old node it might also linger on the stack
+        // We need to replace it but only if the pointer is the same
+        // as the old one.
+        if(stack != NULL)
+        {
+          ast_t* stack_ast = NULL;
+          stack = ponyint_stack_pop(stack, (void**)&stack_ast);
+          if(old_ast == stack_ast)
+          {
+            stack = ponyint_stack_push(stack, ast);
+          }
+          else
+          {
+            stack = ponyint_stack_push(stack, stack_ast);
+          }
+        }
+        break;
+      }
+
+      case TK_CONSTANT_OBJECT:
+        add_type(r, ast_type(ast), opt);
+        break;
+
+      default: {}
+    }
+
+    if(opt->check.evaluation_error)
+    {
       return;
     }
 
-    case TK_MATCH:
-    case TK_WHILE:
-    case TK_REPEAT:
-    case TK_TRY:
-    case TK_DISPOSING_BLOCK:
-    case TK_RECOVER:
+
+    // Traverse all child expressions looking for calls.
+    ast_t* child = ast_child(ast);
+    if(child != NULL && traverse_children)
     {
-      if(is_result_needed(ast) && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
+      if(in_sibling_iteration)
       {
-        ast_t* type = deferred_reify(reify, ast_type(ast), opt);
-        add_type(r, type, opt);
-        ast_free_unattached(type);
+        stack = ponyint_stack_push(stack, ast);
       }
-
-      break;
+      in_sibling_iteration = false;
+      stack = ponyint_stack_push(stack, child);
+      ast = child;
     }
-
-    case TK_IS:
-    case TK_ISNT:
+    else
     {
-      AST_GET_CHILDREN(ast, left, right);
-
-      ast_t* type = deferred_reify(reify, ast_type(left), opt);
-      add_type(r, type, opt);
-      ast_free_unattached(type);
-
-      type = deferred_reify(reify, ast_type(right), opt);
-      add_type(r, type, opt);
-      ast_free_unattached(type);
-
-      break;
-    }
-
-    case TK_DIGESTOF:
-    {
-      ast_t* expr = ast_child(ast);
-      ast_t* type = deferred_reify(reify, ast_type(expr), opt);
-      add_type(r, type, opt);
-      ast_free_unattached(type);
-
-      break;
-    }
-
-    case TK_COMPTIME:
-    {
-      reach_comptime(opt, astp, reify);
-      if(!opt->check.evaluation_error)
+      while(true)
       {
-        add_type(r, ast_type(*astp), opt);
+        if(!in_sibling_iteration)
+        {
+          if(stack == NULL)
+          {
+            return;
+          }
+
+          stack = ponyint_stack_pop(stack, (void**)&ast);
+        }
+
+        ast = ast_sibling(ast);
+        if(ast != NULL)
+        {
+          in_sibling_iteration = true;
+          break;
+        }
+
+        in_sibling_iteration = false;
       }
-      return;
     }
 
-    case TK_CONSTANT_OBJECT:
-      add_type(r, ast_type(ast), opt);
-      break;
-
-    default: {}
-  }
-
-  if(opt->check.evaluation_error)
-  {
-    return;
-  }
-
-  // Traverse all child expressions looking for calls.
-  ast_t* child = ast_child(ast);
-
-  while(child != NULL)
-  {
-    reachable_expr(r, reify, &child, opt);
-    child = ast_sibling(child);
+    // Just the first iteration should affect the head of the ast
+    astp_i = &ast;
   }
 }
 

@@ -66,9 +66,8 @@ TEST_F(EntityIfTest, TestEntityIfFail)
     "    P[F64].float_op3(0.5)\n"
     "    P[F32].float_op4(0.5)";
 
-  TEST_ERRORS_2(src,
-    "Method float_op3 in type P_F64_val_o not found because it was removed in an entityif expression",
-    "Method float_op4 in type P_F32_val_o not found because it was removed in an entityif expression");
+  TEST_ERROR(src,
+    "Method float_op3 in type P_F64_val_o not found because it was removed in an entityif expression");
 }
 
 TEST_F(EntityIfTest, TestEntityIfNestedOk)
@@ -122,7 +121,6 @@ TEST_F(EntityIfTest, TestEntityIfNestedFail)
     "    P[F64].float_op3(0.5)\n"
     "    P[F32].float_op4(0.5)";
 
-  TEST_ERRORS_2(src,
-    "Method float_op3 in type P_F64_val_o not found because it was removed in an entityif expression",
-    "Method float_op4 in type P_F32_val_o not found because it was removed in an entityif expression");
+  TEST_ERROR(src,
+    "Method float_op3 in type P_F64_val_o not found because it was removed in an entityif expression");
 }
