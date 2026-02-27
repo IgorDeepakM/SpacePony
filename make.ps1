@@ -37,7 +37,7 @@
 
     [Parameter(HelpMessage="CITests to run")]
     [string]
-    $CiTestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release,pony-lsp-tests,pony-lint-tests' # ,grammar' do not run grammar for now as there is work on th
+    $CiTestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release,pony-lsp-tests,pony-lint-tests,pony-doc-tests' # ,grammar' do not run grammar for now as there is work on th
 )
 
 # Function to extract process exit code from LLDB output
@@ -528,6 +528,44 @@ switch ($Command.ToLower())
             else
             {
                 $failedTestSuites += 'compile pony-lint-tests'
+            }
+        }
+
+        # pony-doc-tests
+        if ($SelectedTestsToRun -match 'pony-doc-tests')
+        {
+            $env:PONYPATH = "$srcDir\packages"
+
+            $numTestSuitesRun += 1;
+            Write-Output "$outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\pony_compiler -b pony-doc-tests -o $outDir $srcDir\tools\pony-doc\test"
+            & $outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\pony_compiler -b pony-doc-tests -o $outDir $srcDir\tools\pony-doc\test
+            if ($LastExitCode -eq 0)
+            {
+                try
+                {
+                    if ($Uselldb -eq "yes")
+                    {
+                        Write-Output "$lldbcmd $lldbargs $outDir\pony-doc-tests.exe --sequential"
+                        $lldboutput = & $lldbcmd $lldbargs $outDir\pony-doc-tests.exe --sequential
+                        Write-Output $lldboutput
+                        $err = Get-ProcessExitCodeFromLLDB -LLDBOutput $lldboutput
+                    }
+                    else
+                    {
+                        Write-Output "$outDir\pony-doc-tests.exe --sequential"
+                        & $outDir\pony-doc-tests.exe --sequential
+                        $err = $LastExitCode
+                    }
+                }
+                catch
+                {
+                    $err = -1
+                }
+                if ($err -ne 0) { $failedTestSuites += 'pony-doc-tests' }
+            }
+            else
+            {
+                $failedTestSuites += 'compile pony-doc-tests'
             }
         }
 
