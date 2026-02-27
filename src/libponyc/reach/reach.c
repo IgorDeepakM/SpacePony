@@ -1437,11 +1437,11 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
         {
           if(ast_id(cond) == TK_TRUE)
           {
-            reachable_expr(r, reify, &then_clause, opt);
+            stack = ponyint_stack_push(stack, then_clause);
             traverse_children = false;
           }
           else if(ast_id(cond) == TK_FALSE) {
-            reachable_expr(r, reify, &else_clause, opt);
+            stack = ponyint_stack_push(stack, else_clause);
             traverse_children = false;
           }
         }
@@ -1465,9 +1465,9 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
         ast_t* r_super = deferred_reify(reify, super, opt);
 
         if(is_subtype_constraint(r_sub, r_super, NULL, opt))
-          reachable_expr(r, reify, &left, opt);
+          stack = ponyint_stack_push(stack, left);
         else
-          reachable_expr(r, reify, &right, opt);
+          stack = ponyint_stack_push(stack, right);
 
         ast_free_unattached(r_sub);
         ast_free_unattached(r_super);
@@ -1552,31 +1552,37 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
       return;
     }
 
-
     // Traverse all child expressions looking for calls.
-    ast_t* child = ast_child(ast);
-    if(child != NULL && traverse_children)
+    if(traverse_children)
     {
-      stack = ponyint_stack_push(stack, child);
-      ast = child;
+      ast_t* child = ast_child(ast);
+      if(child != NULL)
+      {
+        stack = ponyint_stack_push(stack, child);
+        ast = child;
+      }
+      else
+      {
+        while(true)
+        {
+          if(stack == NULL)
+          {
+            return;
+          }
+
+          stack = ponyint_stack_pop(stack, (void**)&ast);
+          ast = ast_sibling(ast);
+          if(ast != NULL)
+          {
+            stack = ponyint_stack_push(stack, ast);
+            break;
+          }
+        }
+      }
     }
     else
     {
-      while(true)
-      {
-        if(stack == NULL)
-        {
-          return;
-        }
-
-        stack = ponyint_stack_pop(stack, (void**)&ast);
-        ast = ast_sibling(ast);
-        if(ast != NULL)
-        {
-          stack = ponyint_stack_push(stack, ast);
-          break;
-        }
-      }
+      stack = ponyint_stack_pop(stack, (void**)&ast);
     }
 
     // Just the first iteration should affect the head of the ast
