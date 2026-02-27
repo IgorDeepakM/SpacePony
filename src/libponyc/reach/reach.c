@@ -1522,10 +1522,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
       case TK_COMPTIME:
       {
         reach_comptime(opt, astp_i, reify);
-        if(!opt->check.evaluation_error)
-        {
-          add_type(r, ast_type(*astp_i), opt);
-        }
+        // The resulting type will be added in consecutive iterations
         ast = *astp_i;
         traverse_children = false;
 
