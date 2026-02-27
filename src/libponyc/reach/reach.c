@@ -1521,7 +1521,6 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
 
       case TK_COMPTIME:
       {
-        ast_t* old_ast = *astp_i;
         reach_comptime(opt, astp_i, reify);
         if(!opt->check.evaluation_error)
         {
