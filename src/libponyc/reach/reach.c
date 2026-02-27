@@ -1357,10 +1357,6 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
 
   Stack* stack = NULL;
 
-  // Variable to indicate if we are in sibling iteration and we don't need to save
-  // where we are on the stack.
-  bool in_sibling_iteration = false;
-
   while(true)
   {
     bool traverse_children = true;
@@ -1534,21 +1530,13 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
         ast = *astp_i;
         traverse_children = false;
 
-        // Since the old node it might also linger on the stack
-        // We need to replace it but only if the pointer is the same
-        // as the old one.
+        // The old node also is on the stack so we need to replace it
+        // If the stack is null it means it is the first iteration.
         if(stack != NULL)
         {
-          ast_t* stack_ast = NULL;
-          stack = ponyint_stack_pop(stack, (void**)&stack_ast);
-          if(old_ast == stack_ast)
-          {
-            stack = ponyint_stack_push(stack, ast);
-          }
-          else
-          {
-            stack = ponyint_stack_push(stack, stack_ast);
-          }
+          void* dummy = NULL;
+          stack = ponyint_stack_pop(stack, &dummy);
+          stack = ponyint_stack_push(stack, ast);
         }
         break;
       }
@@ -1570,11 +1558,6 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
     ast_t* child = ast_child(ast);
     if(child != NULL && traverse_children)
     {
-      if(in_sibling_iteration)
-      {
-        stack = ponyint_stack_push(stack, ast);
-      }
-      in_sibling_iteration = false;
       stack = ponyint_stack_push(stack, child);
       ast = child;
     }
@@ -1582,24 +1565,18 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
     {
       while(true)
       {
-        if(!in_sibling_iteration)
+        if(stack == NULL)
         {
-          if(stack == NULL)
-          {
-            return;
-          }
-
-          stack = ponyint_stack_pop(stack, (void**)&ast);
+          return;
         }
 
+        stack = ponyint_stack_pop(stack, (void**)&ast);
         ast = ast_sibling(ast);
         if(ast != NULL)
         {
-          in_sibling_iteration = true;
+          stack = ponyint_stack_push(stack, ast);
           break;
         }
-
-        in_sibling_iteration = false;
       }
     }
 
