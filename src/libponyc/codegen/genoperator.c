@@ -582,7 +582,7 @@ LLVMValueRef gen_add(compile_t* c, ast_t* left, ast_t* right, bool safe)
   bool sign = is_signed(type);
   ast_free_unattached(type);
 
-  return make_binop(c, left, right, NULL, sign ? LLVMBuildNSWAdd : LLVMBuildNUWAdd);
+  return make_binop(c, left, right, make_unsafe_fadd, sign ? LLVMBuildNSWAdd : LLVMBuildNUWAdd);
 }
 
 LLVMValueRef gen_sub(compile_t* c, ast_t* left, ast_t* right, bool safe)
@@ -594,7 +594,7 @@ LLVMValueRef gen_sub(compile_t* c, ast_t* left, ast_t* right, bool safe)
   bool sign = is_signed(type);
   ast_free_unattached(type);
 
-  return make_binop(c, left, right, NULL, sign ? LLVMBuildNSWSub : LLVMBuildNUWSub);
+  return make_binop(c, left, right, make_unsafe_fsub, sign ? LLVMBuildNSWSub : LLVMBuildNUWSub);
 }
 
 LLVMValueRef gen_mul(compile_t* c, ast_t* left, ast_t* right, bool safe)
