@@ -422,7 +422,7 @@ static bool make_c_fixed_sized_array_struct(compile_t* c, reach_type_t* t)
   compile_type_t* elem_reach_c_t = (compile_type_t*)elem_reach_type->c_type;
 
   pony_assert(lexint_cmp64(size_val, UINT32_MAX) <= 0);
-  elements[0] = LLVMArrayType(elem_reach_c_t->use_type,
+  elements[0] = LLVMArrayType2(elem_reach_c_t->use_type,
     (unsigned int)size_val->low);
 
   LLVMStructSetBody(c_t->structure, elements, 1, false);
