@@ -44,7 +44,7 @@ primitive \nodoc\ _ASTTestHelper
 
     tmp.remove()
 
-    match compiler_result
+    match \exhaustive\ compiler_result
     | let program: ast.Program val =>
       (program, sf)
     | let errors: Array[ast.Error] val =>
