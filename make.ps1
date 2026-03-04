@@ -583,7 +583,7 @@ switch ($Command.ToLower())
     "build-examples"
     {
         # Find all .pony files in examples directory, get their unique directories, and build each one
-        $examples = Get-ChildItem -Path "$srcDir\examples\*\*" -Filter "*.pony" -Recurse |
+        $examples = Get-ChildItem -Path "$srcDir\examples" -Filter "*.pony" -Recurse |
                 Select-Object -ExpandProperty Directory -Unique |
                 Where-Object { $_.FullName -notlike "*ffi-*" } |
                 Select-Object -ExpandProperty FullName
