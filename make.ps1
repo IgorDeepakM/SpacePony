@@ -37,7 +37,11 @@
 
     [Parameter(HelpMessage="CITests to run")]
     [string]
-    $CiTestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release,pony-doc-tests' # ,grammar' do not run grammar for now as there is work on th
+    $CiTestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release,pony-doc-tests', # ,grammar' do not run grammar for now as there is work on the parser. Reenable later.
+
+    [Parameter(HelpMessage="Extra CMake defines for LLVM")]
+    [string]
+    $LibsExtraCmakeDefines = ''
 )
 
 # Function to extract process exit code from LLDB output
@@ -174,12 +178,12 @@ switch ($Command.ToLower())
         Write-Output "Configuring libraries..."
         if ($Arch.Length -gt 0)
         {
-            & cmake.exe -B "$libsBuildDir" -S "$libsSrcDir" -G "$Generator" -A $Arch -Thost="$Thost" -DCMAKE_INSTALL_PREFIX="$libsDir" -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="X86;ARM;AArch64;WebAssembly;RISCV" -DCMAKE_BUILD_PARALLEL_LEVEL=$numCpus
+            & cmake.exe -B "$libsBuildDir" -S "$libsSrcDir" -G "$Generator" -A $Arch -Thost="$Thost" -DCMAKE_INSTALL_PREFIX="$libsDir" -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="X86;ARM;AArch64;WebAssembly;RISCV" -DCMAKE_BUILD_PARALLEL_LEVEL=$numCpus $LibsExtraCmakeDefines
             $err = $LastExitCode
         }
         else
         {
-            & cmake.exe -B "$libsBuildDir" -S "$libsSrcDir" -G "$Generator" -Thost="$Thost" -DCMAKE_INSTALL_PREFIX="$libsDir" -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="X86;ARM;AArch64;WebAssembly;RISCV" -DCMAKE_BUILD_PARALLEL_LEVEL=$numCpus
+            & cmake.exe -B "$libsBuildDir" -S "$libsSrcDir" -G "$Generator" -Thost="$Thost" -DCMAKE_INSTALL_PREFIX="$libsDir" -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="X86;ARM;AArch64;WebAssembly;RISCV" -DCMAKE_BUILD_PARALLEL_LEVEL=$numCpus $LibsExtraCmakeDefines
             $err = $LastExitCode
         }
         if ($err -ne 0) { throw "Error: exit code $err" }
