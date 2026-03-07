@@ -78,5 +78,5 @@ else()
 endif (MSVC)
 
 if(NOT PONY_CROSS_LIBPONYRT)
-    target_link_libraries(ponyc PRIVATE ${PONYC_LLVM_LIBS})
+    target_link_libraries(ponyc PRIVATE ${PONYC_LLVM_LIBS} ${PONYC_LLD_LIBS})
 endif()
