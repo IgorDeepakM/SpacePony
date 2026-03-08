@@ -204,6 +204,7 @@ static const lextoken_t keywords[] =
   { "addressof", TK_ADDRESS },
   { "offsetof", TK_OFFSETOF },
   { "sizeof", TK_SIZEOF },
+  { "alignas", TK_ALIGNAS },
   { "__loc", TK_LOCATION },
 
   { "true", TK_TRUE },

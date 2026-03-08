@@ -15,6 +15,7 @@
 #include "../type/lookup.h"
 #include "../type/typeparam.h"
 #include "../ast/astbuild.h"
+#include "../expr/ctfe.h"
 #include "ponyassert.h"
 
 static bool check_provides(pass_opt_t* opt, ast_t* type, ast_t* provides,
@@ -909,6 +910,22 @@ bool expr_sizeof(pass_opt_t* opt, ast_t* ast)
     return false;
 
   ast_t* type = type_builtin(opt, expr_type, "USize");
+
+  ast_settype(ast, type);
+  return true;
+}
+
+bool expr_alignas(pass_opt_t* opt, ast_t* ast)
+{
+  ast_t* type = type_builtin(opt, ast, "USize");
+
+  ast_t* body = ast_child(ast);
+
+  if(!coerce_literals(&body, type, opt))
+    return false;
+
+  if(!expr_ctfe_run(opt, &body))
+    return false;
 
   ast_settype(ast, type);
   return true;

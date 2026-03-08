@@ -2,6 +2,7 @@
 #include "literal.h"
 #include "../pass/expr.h"
 #include "../type/alias.h"
+#include "../ctfe/ctfe_runner.h"
 #include "ponyassert.h"
 
 
@@ -25,4 +26,22 @@ extern "C" bool expr_comptime(pass_opt_t* opt, ast_t** astp)
   ast_settype(ast, expr_type);
 
   return true;
+}
+
+
+extern "C" bool expr_ctfe_run(pass_opt_t* opt, ast_t** astp)
+{
+  if(ast_id(*astp) == TK_COMPTIME)
+  {
+    ast_t* child = ast_pop(*astp);
+    ast_replace(astp, child);
+  }
+
+  if(CtfeRunner::contains_any_typeref(*astp))
+  {
+    return true;
+  }
+
+  CtfeRunner ctfeRunner(opt);
+  return ctfeRunner.run(opt, astp);
 }

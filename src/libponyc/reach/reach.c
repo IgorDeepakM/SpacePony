@@ -685,6 +685,8 @@ static void add_fields(reach_t* r, reach_type_t* t, pass_opt_t* opt)
         ast_add(r_member, name);
         ast_set_scope(type, member);
 
+        t->fields->layout_pos = 0xffffffff;
+
         bool embed = t->fields[index].embed = ast_id(member) == TK_EMBED;
         t->fields[index].ast = reify(ast_type(member), typeparams, typeargs,
           opt, true);
@@ -693,6 +695,27 @@ static void add_fields(reach_t* r, reach_type_t* t, pass_opt_t* opt)
 
         if(embed && !has_finaliser && !needs_finaliser)
           needs_finaliser = embed_has_finaliser(type, str_final);
+
+        // Comptime might previously been aborted because of type parameters in the
+        // alignas expression, then we run this here instead.
+        ast_t* alignas_node = ast_childidx(r_member, 3); // alignas node is now 3 because of previoud ast_pop
+        if(alignas_node != NULL && ast_id(alignas_node) == TK_ALIGNAS)
+        {
+          ast_t* align_amount_node = ast_child(alignas_node);
+          if(ast_id(align_amount_node) != TK_INT)
+          {
+            if(!reach_comptime(opt, &align_amount_node, NULL))
+            {
+              ast_error(opt->check.errors, alignas_node, "Couldn't evaluate alignas expression");
+              return;
+            }
+
+            ast_t* real_align_amount_member = ast_child(ast_childidx(member, 4));
+            ast_unfreeze(ast_parent(real_align_amount_member));
+            ast_replace(&real_align_amount_member, align_amount_node);
+            ast_freeze(ast_parent(real_align_amount_member));
+          }
+        }
 
         ast_free_unattached(r_member);
 

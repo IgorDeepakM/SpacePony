@@ -79,6 +79,7 @@ struct reach_field_t
 {
   ast_t* ast;
   reach_type_t* type;
+  size_t layout_pos;
   bool embed;
 };
 
@@ -107,6 +108,7 @@ struct reach_type_t
   uint64_t serialise_id;
   bool can_be_boxed;
   bool is_trait;
+  bool struct_body_filled;
 
   uint32_t field_count;
   reach_field_t* fields;

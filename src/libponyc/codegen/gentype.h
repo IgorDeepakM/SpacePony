@@ -6,7 +6,7 @@
 
 PONY_EXTERN_C_BEGIN
 
-void get_fieldinfo(ast_t* l_type, ast_t* right, ast_t** l_def,
+void get_fieldinfo(ast_t* l_type, reach_type_t* r_type, ast_t* right, ast_t** l_def,
   ast_t** field, uint32_t* index);
 
 typedef struct compile_type_t

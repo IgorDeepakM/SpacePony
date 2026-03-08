@@ -218,6 +218,7 @@ primitive TokenIds
     tk_address
     tk_offsetof
     tk_sizeof
+    tk_alignas
     tk_location
 
     // Abstract tokens which don't directly appear in the source
@@ -467,6 +468,7 @@ primitive TokenIds
     | TokenIds.tk_address => "TK_ADDRESS"
     | TokenIds.tk_offsetof => "TK_OFFSETOF"
     | TokenIds.tk_sizeof => "TK_SIZEOF"
+    | TokenIds.tk_alignas => "TK_ALIGNAS"
     | TokenIds.tk_location => "TK_LOCATION"
     | TokenIds.tk_program => "TK_PROGRAM"
     | TokenIds.tk_package => "TK_PACKAGE"
