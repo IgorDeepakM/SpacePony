@@ -6,6 +6,29 @@ All notable changes to the Pony compiler and standard library will be documented
 
 ### Fixed
 
+- Fix pool_memalign crash due to insufficient alignment for AVX instructions ([PR #4909](https://github.com/ponylang/ponyc/pull/4909))
+- Fix `assignment-indent` to require RHS indented relative to assignment ([PR #4913](https://github.com/ponylang/ponyc/pull/4913))
+- Fix tool install with `use` flags ([PR #4915](https://github.com/ponylang/ponyc/pull/4915))
+- Fix stack overflow in AST tree checker ([PR #4905](https://github.com/ponylang/ponyc/pull/4905))
+- Fix Scheduler Stats output for memory usage ([PR #4916](https://github.com/ponylang/ponyc/pull/4916))
+- Fix compiler crash when object literal implements enclosing trait ([PR #4919](https://github.com/ponylang/ponyc/pull/4919))
+- Fix TCPListener accept loop spin on persistent errors ([PR #4917](https://github.com/ponylang/ponyc/pull/4917))
+
+### Added
+
+- Compile-time string literal concatenation ([PR #4900](https://github.com/ponylang/ponyc/pull/4900))
+- Add `--sysroot` option for cross-compilation ([PR #4964](https://github.com/ponylang/ponyc/pull/4964))
+
+### Changed
+
+- Update to LLVM 21.1.8 ([PR #4876](https://github.com/ponylang/ponyc/pull/4876))
+- Exempt unsplittable string literals from line length rule ([PR #4923](https://github.com/ponylang/ponyc/pull/4923))
+- Use embedded LLD for cross-compilation to Linux targets ([PR #4964](https://github.com/ponylang/ponyc/pull/4964))
+
+## [0.61.0] - 2026-02-28
+
+### Fixed
+
 - Fix pony-lsp inability to find the standard library ([PR #4829](https://github.com/ponylang/ponyc/pull/4829))
 - Make pony-lsp version dynamic to match ponyc version ([PR #4830](https://github.com/ponylang/ponyc/pull/4830))
 - Fix persistent HashMap returning incorrect results for None values ([PR #4839](https://github.com/ponylang/ponyc/pull/4839))
