@@ -79,7 +79,7 @@ struct reach_field_t
 {
   ast_t* ast;
   reach_type_t* type;
-  size_t layout_pos;
+  uint32_t layout_pos;
   bool embed;
 };
 

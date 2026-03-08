@@ -564,7 +564,7 @@ static bool make_struct(compile_t* c, reach_type_t* t)
     member = ast_child(members);
   }
 
-  size_t extra_pad_fields = 0;
+  uint32_t extra_pad_fields = 0;
   size_t max_alignment = 0;
 
   for(uint32_t i = 0; i < t->field_count; i++)
@@ -600,7 +600,7 @@ static bool make_struct(compile_t* c, reach_type_t* t)
           size_t next_byte_pos = ALIGN_UP(byte_pos, align_amount);
           size_t array_size = next_byte_pos - byte_pos;
 
-          elements[i + extra + extra_pad_fields] = LLVMArrayType(c->i8, array_size);
+          elements[i + extra + extra_pad_fields] = LLVMArrayType(c->i8, (unsigned int)array_size);
           byte_pos += array_size;
           extra_pad_fields++;
         }
@@ -663,7 +663,7 @@ static bool make_struct(compile_t* c, reach_type_t* t)
     size_t next_byte_pos = ALIGN_UP(byte_pos, max_alignment);
     size_t array_size = next_byte_pos - byte_pos;
 
-    elements[t->field_count + extra + extra_pad_fields] = LLVMArrayType(c->i8, array_size);
+    elements[t->field_count + extra + extra_pad_fields] = LLVMArrayType(c->i8, (unsigned int)array_size);
     extra_pad_fields++;
   }
 
@@ -701,7 +701,7 @@ static LLVMMetadataRef make_debug_field(compile_t* c, reach_type_t* t,
     if(t->underlying == TK_ACTOR)
       extra++;
 
-    size_t real_pos = t->fields[i].layout_pos;
+    uint32_t real_pos = t->fields[i].layout_pos;
 
     offset = LLVMOffsetOfElement(c->target_data, c_t->structure, real_pos + extra);
   } else {
