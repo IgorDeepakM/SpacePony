@@ -1070,8 +1070,7 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       else
       {
         ast_error_frame(errors, expression,
-          "The CTFE runner only supports sizeof expressions on machine word types.",
-          ast_get_print(expression));
+          "The CTFE runner only supports sizeof expressions on machine word types");
         throw CtfeFailToEvaluateException();
       }
       break;
