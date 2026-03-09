@@ -96,10 +96,13 @@ static LLVMValueRef make_fieldptr(compile_t* c, LLVMValueRef l_value,
   pony_assert(ast_id(l_type) == TK_NOMINAL);
   pony_assert(ast_id(right) == TK_ID);
 
+  reach_type_t* l_t = reach_type(c->reach, l_type, c->opt);
+  pony_assert(l_t != NULL);
+
   ast_t* def;
   ast_t* field;
   uint32_t index;
-  get_fieldinfo(l_type, right, &def, &field, &index);
+  get_fieldinfo(l_type, l_t, right, &def, &field, &index);
 
   if(ast_id(def) != TK_STRUCT)
     index++;
@@ -107,8 +110,6 @@ static LLVMValueRef make_fieldptr(compile_t* c, LLVMValueRef l_value,
   if(ast_id(def) == TK_ACTOR)
     index++;
 
-  reach_type_t* l_t = reach_type(c->reach, l_type, c->opt);
-  pony_assert(l_t != NULL);
   compile_type_t* l_c_t = (compile_type_t*)l_t->c_type;
 
   return LLVMBuildStructGEP2(c->builder, l_c_t->structure, l_value, index, "");
@@ -119,10 +120,13 @@ static LLVMValueRef make_fieldoffset(compile_t* c, ast_t* l_type, ast_t* right)
   pony_assert(ast_id(l_type) == TK_NOMINAL);
   pony_assert(ast_id(right) == TK_ID);
 
+  reach_type_t* l_t = reach_type(c->reach, l_type, c->opt);
+  pony_assert(l_t != NULL);
+
   ast_t* def;
   ast_t* field;
   uint32_t index;
-  get_fieldinfo(l_type, right, &def, &field, &index);
+  get_fieldinfo(l_type, l_t, right, &def, &field, &index);
 
   if (ast_id(def) != TK_STRUCT)
     index++;
@@ -130,8 +134,6 @@ static LLVMValueRef make_fieldoffset(compile_t* c, ast_t* l_type, ast_t* right)
   if (ast_id(def) == TK_ACTOR)
     index++;
 
-  reach_type_t* l_t = reach_type(c->reach, l_type, c->opt);
-  pony_assert(l_t != NULL);
   compile_type_t* l_c_t = (compile_type_t*)l_t->c_type;
 
   LLVMValueRef zero_ptr = LLVMConstNull(c->intptr);

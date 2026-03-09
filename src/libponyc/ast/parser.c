@@ -1224,16 +1224,25 @@ DEF(method);
   REORDER(0, 1, 2, 3, 4, 5, 7, 6);
   DONE();
 
+DEF(align_as);
+  TOKEN(NULL, TK_ALIGNAS);
+  SKIP(NULL, TK_LPAREN);
+  RULE("alignas expression", defaultarg);
+  TERMINATE("alignas expression", TK_RPAREN);
+  DONE();
+
 // (VAR | LET | EMBED) ID [COLON type] [ASSIGN infix]
 DEF(field);
   TOKEN(NULL, TK_VAR, TK_LET, TK_EMBED);
   MAP_ID(TK_VAR, TK_FVAR);
   MAP_ID(TK_LET, TK_FLET);
+  OPT RULE("alignas", align_as)
   TOKEN("field name", TK_ID);
   SKIP("mandatory type declaration on field", TK_COLON);
   RULE("field type", type);
   IF(TK_ASSIGN, RULE("field value", infix));
   OPT TOKEN("docstring", TK_STRING);
+  REORDER(1, 2, 3, 4, 0);
   DONE();
 
 DEF(enum_expr);

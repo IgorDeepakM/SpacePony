@@ -39,7 +39,7 @@ class CtfeRunner
     CtfeValue &match, ast_t* pattern, ast_t* the_case);
   bool is_operator(pass_opt_t* opt, errorframe_t* errors, ast_t* ast_pos, CtfeValue& left,
     const CtfeValue& right);
-  bool contains_valueparamref(ast_t* ast);
+  static bool contains_valueparamref(ast_t* ast);
 
   CtfeValue handle_ffi_call(pass_opt_t* opt, errorframe_t* errors, ast_t* ast);
   CtfeValue handle_ffi_ptr_ptr_size(pass_opt_t* opt, errorframe_t* errors, ast_t* ast,
@@ -59,4 +59,6 @@ public:
   void add_allocated_reference(const CtfeValue& ref);
 
   ast_t* cache_and_get_built_type(ast_t* ast_type);
+
+  static bool contains_any_typeref(ast_t* ast);
 };

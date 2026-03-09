@@ -17,16 +17,18 @@
 #include "../type/subtype.h"
 #include "../../libponyrt/mem/pool.h"
 #include "ponyassert.h"
+#include "int_utils.h"
 #include <stdlib.h>
 #include <string.h>
 #include <llvm-c/DebugInfo.h>
 
-void get_fieldinfo(ast_t* l_type, ast_t* right, ast_t** l_def,
+void get_fieldinfo(ast_t* l_type, reach_type_t* r_type, ast_t* right, ast_t** l_def,
   ast_t** field, uint32_t* index)
 {
   ast_t* d = (ast_t*)ast_data(l_type);
   ast_t* f = ast_get(d, ast_name(right), NULL);
   uint32_t i = (uint32_t)ast_index(f);
+  i = r_type->fields[i].layout_pos;
 
   *l_def = d;
   *field = f;
@@ -437,6 +439,12 @@ static bool make_struct(compile_t* c, reach_type_t* t)
   int extra = 0;
   bool packed = false;
 
+  // Early return if we already filled the body
+  if(t->struct_body_filled)
+  {
+    return true;
+  }
+
   if(t->bare_method != NULL)
     return true;
 
@@ -446,6 +454,7 @@ static bool make_struct(compile_t* c, reach_type_t* t)
     case TK_ISECTTYPE:
     case TK_INTERFACE:
     case TK_TRAIT:
+      t->struct_body_filled = true;
       return true;
 
     case TK_TUPLETYPE:
@@ -478,6 +487,7 @@ static bool make_struct(compile_t* c, reach_type_t* t)
         // The ABI size for machine words and tuples is the boxed size.
         c_t->abi_size = (size_t)LLVMABISizeOfType(c->target_data,
           c_t->structure);
+        t->struct_body_filled = true;
         return true;
       }
 
@@ -500,34 +510,165 @@ static bool make_struct(compile_t* c, reach_type_t* t)
       return false;
   }
 
-  size_t buf_size = (t->field_count + extra) * sizeof(LLVMTypeRef);
+  size_t buf_size = ((t->field_count * 2) + extra) * sizeof(LLVMTypeRef); // Times 2 because of extra potential pad fields
   LLVMTypeRef* elements = (LLVMTypeRef*)ponyint_pool_alloc_size(buf_size);
+
+  size_t byte_pos = 0;
+
+  // Check if we need to care about custom alignment
+  bool contains_alignas = false;
+  if(t->underlying == TK_STRUCT || t->underlying == TK_CLASS || t->underlying == TK_ACTOR)
+  {
+    ast_t* def = (ast_t*)ast_data(t->ast);
+    ast_t* members = ast_childidx(def, 4);
+    ast_t* member = ast_child(members);
+    while(member != NULL)
+    {
+      ast_t* alignas_node = ast_childidx(member, 4);
+      if(alignas_node != NULL && ast_id(alignas_node) == TK_ALIGNAS)
+      {
+        contains_alignas = true;
+        break;
+      }
+
+      member = ast_sibling(member);
+    }
+  }
 
   // Create the type descriptor as element 0.
   if(extra > 0)
+  {
     elements[0] = c->ptr;
+    if(contains_alignas)
+    {
+      byte_pos += LLVMABISizeOfType(c->target_data, c->ptr);
+    }
+  }
 
   // Create the actor pad as element 1.
   if(extra > 1)
+  {
     elements[1] = c->actor_pad;
+    if(contains_alignas)
+    {
+      byte_pos = ALIGN_UP(byte_pos, (size_t)LLVMABIAlignmentOfType(c->target_data, c->actor_pad));
+      byte_pos += LLVMABISizeOfType(c->target_data, c->actor_pad);
+    }
+  }
+
+  ast_t* member = NULL;
+  if(contains_alignas)
+  {
+    ast_t* def = (ast_t*)ast_data(t->ast);
+    ast_t* members = ast_childidx(def, 4);
+    member = ast_child(members);
+  }
+
+  uint32_t extra_pad_fields = 0;
+  size_t max_alignment = 0;
 
   for(uint32_t i = 0; i < t->field_count; i++)
   {
     compile_type_t* f_c_t = (compile_type_t*)t->fields[i].type->c_type;
 
-    if(t->fields[i].embed)
-      elements[i + extra] = f_c_t->structure;
-    else
-      elements[i + extra] = f_c_t->mem_type;
+    // Insertion of potential pad byte vectors if any custom alignment
+    if(contains_alignas)
+    {
+      ast_t* alignas_node = ast_childidx(member, 4);
+      if(alignas_node != NULL && ast_id(alignas_node) == TK_ALIGNAS)
+      {
+        ast_t* align_amount_node = ast_child(alignas_node);
+        pony_assert(ast_id(align_amount_node) == TK_INT);
+        lexint_t* align_lex = ast_int(align_amount_node);
+        size_t align_amount = align_lex->low;
 
-    if(elements[i + extra] == NULL)
+        if(align_amount < (size_t)LLVMABIAlignmentOfType(c->target_data,
+          t->fields[i].embed ? f_c_t->structure : f_c_t->mem_type))
+        {
+          ast_error(c->opt->check.errors, alignas_node,
+            "Alignment amount cannot be smaller that the ABI alignment of the type");
+          return false;
+        }
+
+        if(align_amount > max_alignment)
+        {
+          max_alignment = align_amount;
+        }
+
+        if(!IS_ALIGNED(byte_pos, align_amount))
+        {
+          size_t next_byte_pos = ALIGN_UP(byte_pos, align_amount);
+          size_t array_size = next_byte_pos - byte_pos;
+
+          elements[i + extra + extra_pad_fields] = LLVMArrayType(c->i8, (unsigned int)array_size);
+          byte_pos += array_size;
+          extra_pad_fields++;
+        }
+      }
+    }
+
+    LLVMTypeRef last_element = NULL;
+    if(t->fields[i].embed)
+    {
+      elements[i + extra + extra_pad_fields] = f_c_t->structure;
+      last_element = f_c_t->structure;
+    }
+    else
+    {
+      elements[i + extra + extra_pad_fields] = f_c_t->mem_type;
+      last_element = f_c_t->mem_type;
+    }
+
+    if(contains_alignas)
+    {
+      // Normally the struct body is filled when looping through all the types in a list.
+      // Since that makes it possible that the body is not filled when we need to know the size
+      // of the body, we need to call it here.
+      if(!t->fields[i].type->struct_body_filled)
+      {
+        if(!make_struct(c, t->fields[i].type))
+        {
+          return false;
+        }
+      }
+
+      if(!packed)
+      {
+        size_t align_of_type = (size_t)LLVMABIAlignmentOfType(c->target_data, last_element);
+        byte_pos = ALIGN_UP(byte_pos, align_of_type);
+      }
+
+      size_t abi_size = (size_t)LLVMABISizeOfType(c->target_data, last_element);
+      byte_pos += abi_size;
+    }
+
+    t->fields[i].layout_pos = i + extra_pad_fields;
+
+    if(elements[i + extra + extra_pad_fields] == NULL)
     {
       pony_assert(0);
       return false;
     }
+
+    if(contains_alignas)
+    {
+      member = ast_sibling(member);
+    }
   }
 
-  LLVMStructSetBody(type, elements, t->field_count + extra, packed);
+  // Add trailing pad field if any custom alignment in order to make the size according to the
+  // max alignment
+  if(contains_alignas && !IS_ALIGNED(byte_pos, max_alignment))
+  {
+    size_t next_byte_pos = ALIGN_UP(byte_pos, max_alignment);
+    size_t array_size = next_byte_pos - byte_pos;
+
+    elements[t->field_count + extra + extra_pad_fields] = LLVMArrayType(c->i8, (unsigned int)array_size);
+    extra_pad_fields++;
+  }
+
+  LLVMStructSetBody(type, elements, t->field_count + extra + extra_pad_fields, packed);
+  t->struct_body_filled = true;
   ponyint_pool_free_size(buf_size, elements);
   return true;
 }
@@ -560,7 +701,9 @@ static LLVMMetadataRef make_debug_field(compile_t* c, reach_type_t* t,
     if(t->underlying == TK_ACTOR)
       extra++;
 
-    offset = LLVMOffsetOfElement(c->target_data, c_t->structure, i + extra);
+    uint32_t real_pos = t->fields[i].layout_pos;
+
+    offset = LLVMOffsetOfElement(c->target_data, c_t->structure, real_pos + extra);
   } else {
     snprintf(buf, 32, "_%d", i + 1);
     name = buf;

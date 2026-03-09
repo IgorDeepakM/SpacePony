@@ -1058,6 +1058,24 @@ CtfeValue CtfeRunner::evaluate(pass_opt_t* opt, errorframe_t* errors, ast_t* exp
       // Comptime inside another comptime, no problem we just evaulate that as well
       return evaluate(opt, errors, ast_child(expression));
 
+    case TK_SIZEOF:
+    {
+      ast_t* expr = ast_child(expression);
+      ast_t* expr_type = ast_type(expr);
+      if(is_machine_word(expr_type))
+      {
+        size_t sz = CtfeAstType::get_size_of_type(expr_type);
+        return CtfeValue(sz, ast_type(expression));
+      }
+      else
+      {
+        ast_error_frame(errors, expression,
+          "The CTFE runner only supports sizeof expressions on machine word types");
+        throw CtfeFailToEvaluateException();
+      }
+      break;
+    }
+
     default:
       ast_error_frame(errors, expression,
         "The CTFE runner does not support the '%s' expression",
@@ -1278,8 +1296,22 @@ bool CtfeRunner::contains_valueparamref(ast_t* ast)
 {
   while(ast != NULL)
   {
-    if(ast_id(ast) == TK_VALUEFORMALPARAMREF ||
-       contains_valueparamref(ast_child(ast)))
+    if(ast_id(ast) == TK_VALUEFORMALPARAMREF || contains_valueparamref(ast_child(ast)))
+    {
+      return true;
+    }
+    ast = ast_sibling(ast);
+  }
+  return false;
+}
+
+
+bool CtfeRunner::contains_any_typeref(ast_t* ast)
+{
+  while(ast != NULL)
+  {
+    if(ast_id(ast) == TK_TYPEPARAMREF || ast_id(ast) == TK_TYPEREF ||
+      contains_any_typeref(ast_child(ast)))
     {
       return true;
     }

@@ -21,6 +21,7 @@ bool expr_valueformalparamref(pass_opt_t* opt, ast_t** astp);
 bool expr_addressof(pass_opt_t* opt, ast_t* ast);
 bool expr_offsetof(pass_opt_t* opt, ast_t* ast);
 bool expr_sizeof(pass_opt_t* opt, ast_t* ast);
+bool expr_alignas(pass_opt_t* opt, ast_t* ast);
 bool expr_digestof(pass_opt_t* opt, ast_t* ast);
 bool expr_this(pass_opt_t* opt, ast_t* ast);
 bool expr_tuple(pass_opt_t* opt, ast_t* ast);

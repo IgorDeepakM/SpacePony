@@ -62,12 +62,18 @@ RULE(members,
   ZERO_OR_MORE(method, enum_block, entityif_set),
   TK_MEMBERS);
 
+RULE(align_as,
+  HAS_TYPE(type)
+  CHILD(expr),
+  TK_ALIGNAS);
+
 RULE(field,
   HAS_TYPE(type)
   CHILD(id)
   CHILD(type, none)  // Field type
   CHILD(expr, none)
-  CHILD(string, none),
+  CHILD(string, none)
+  CHILD(align_as, none),
   TK_FLET, TK_FVAR, TK_EMBED);
 
 RULE(method,

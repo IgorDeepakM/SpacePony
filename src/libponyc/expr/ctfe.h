@@ -9,6 +9,8 @@ PONY_EXTERN_C_BEGIN
 
 bool expr_comptime(pass_opt_t* opt, ast_t** astp);
 
+bool expr_ctfe_run(pass_opt_t* opt, ast_t** astp);
+
 PONY_EXTERN_C_END
 
 #endif
