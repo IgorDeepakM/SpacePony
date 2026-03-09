@@ -23,6 +23,7 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
   * [Property](#property)
   * [iftype on entity types](#iftype-on-entity-types)
   * [entityif](#entityif)
+  * [alignas](#alignas)
 * [Future directions](#future-directions)
   * [Short term](#short-term)
   * [Long term (read never)](#long-term-read-never)
@@ -691,6 +692,22 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 * Why using a new keyword `entityif` and not reuse `if` or `iftype`? The problem is that if `if` or `iftype` would be used, the parser thinks that these keywords would belong to the method body of the previous method. This is a direct effect of that methods don't use an `end` after the definition closing the scope. If `end` would be used, then it would be possible to reuse `if` or `iftype`. However, this would greatly break compatibility with the old Pony compiler and also questionable aesthetics (like `fun v(): I32 => 3 end` instead of just `fun v(): I32 => 3`).
 
+
+### alignas
+
+* Members of a struct/class/actor can have an explicit alignment by using the alignas expression. This works similar to alignas in C.
+  ```pony
+  struct S
+    var x1: I8 = 33
+    var alignas(16) x2: U32 = 44   // x2 will have the position 16 in the struct
+  ```
+
+* alignas supports expressions that can be calculated at compile time, including compile time type parameters.
+  ```pony
+  struct S
+    var x1: I8 = 33
+    var alignas(4 * sizeof U32) x2: U32 = 44   // x2 will have the position 16 in the struct
+  ```
 
 
 ## Future directions
