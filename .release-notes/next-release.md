@@ -63,13 +63,13 @@ The internal lookup methods now use `error` instead of `None` to signal a missin
 
 This is a breaking change for any code that was depending on the previous (incorrect) behavior. For example, code that expected `apply` to raise for keys mapped to `None`, or that relied on `contains` returning `false` for `None`-valued entries, will now see correct results instead.
 
-## Add `--sysroot` option for cross-compilation
+## Add `--sysroot` option
 
-A new `--sysroot` option specifies the target system root when cross-compiling. The compiler uses the sysroot to locate libc CRT objects and system libraries for the target platform. If `--sysroot` is not specified, common cross-toolchain locations are searched automatically.
+A new `--sysroot` option specifies the target system root. The compiler uses the sysroot to locate libc CRT objects and system libraries for the target platform. For native builds, the host root filesystem is used by default; for cross-compilation, common cross-toolchain locations are searched automatically.
 
-## Use embedded LLD for cross-compilation to Linux targets
+## Use embedded LLD for Linux targets
 
-Cross-compilation to Linux targets (RISC-V, ARM, ARMhf) now uses the embedded LLD linker directly instead of invoking an external linker through `system()`. This eliminates the requirement to have a target-specific GCC cross-compiler installed solely for linking, and produces more predictable link behavior across host environments.
+All Linux builds — both native and cross-compilation — now use the embedded LLD linker directly instead of invoking an external compiler driver via `system()`. For cross-compilation, this eliminates the requirement to have a target-specific GCC cross-compiler installed solely for linking.
 
-The embedded LLD path activates automatically when cross-compiling to a Linux target without `--linker` set. To use an external linker instead, pass `--linker=<command>` as an escape hatch to the legacy linking path.
+The embedded LLD path activates automatically for any Linux target without `--linker` set. To use an external linker instead, pass `--linker=<command>` as an escape hatch to the legacy linking path. The `--link-ldcmd` flag is ignored when using embedded LLD; use `--linker` instead to get legacy behavior.
 
