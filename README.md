@@ -71,6 +71,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
     * offsetof
     * sizeof
     * entityif
+    * alignas
 
   * In the class `Iter` in the package `itertools`, the method `enum` was renamed to `enumerate` because `enum` is a reserved keyword in SpacePony.
 
