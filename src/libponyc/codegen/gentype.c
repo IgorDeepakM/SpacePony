@@ -624,11 +624,16 @@ static bool make_struct(compile_t* c, reach_type_t* t)
       // Normally the struct body is filled when looping through all the types in a list.
       // Since that makes it possible that the body is not filled when we need to know the size
       // of the body, we need to call it here.
-      if(!t->fields[i].type->struct_body_filled)
+      LLVMTypeKind type_kind = LLVMGetTypeKind(last_element);
+      if(type_kind == LLVMStructTypeKind)
       {
-        if(!make_struct(c, t->fields[i].type))
+        if(!t->fields[i].type->struct_body_filled)
         {
-          return false;
+          // TODO detect and report circular dependency
+          if(!make_struct(c, t->fields[i].type))
+          {
+            return false;
+          }
         }
       }
 
