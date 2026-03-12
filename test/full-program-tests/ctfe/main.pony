@@ -596,11 +596,11 @@ actor Main
 
   fun union_match(x: (U32 | String | None)): String =>
     match x
-      | None => "none"
-      | 2 => "two"
-      | 3 => "three"
-      | let u: U32 => "other integer"
-      | let s: String => s
+    | None => "none"
+    | 2 => "two"
+    | 3 => "three"
+    | let u: U32 => "other integer"
+    | let s: String => s
     end
 
   fun tuple_match(x: (String | None), y: U32): String =>
@@ -610,8 +610,6 @@ actor Main
     | (let s: String, 3) => s + " three"
     | (let s: String, let u: U32) if u > 14 => s + " other big integer"
     | (let s: String, _) => s + " other small integer"
-    else
-      "something else"
     end
 
   fun test_array(exit_add: I32) =>
