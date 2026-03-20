@@ -1174,7 +1174,7 @@ static reach_type_t* add_nominal(reach_t* r, ast_t* type, pass_opt_t* opt)
         return NULL;
       }
 
-      t->custom_alignment = align_amount;
+      t->custom_alignment = (uint16_t)align_amount;
     }
   }
 

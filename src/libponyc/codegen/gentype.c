@@ -677,7 +677,7 @@ static bool make_struct(compile_t* c, reach_type_t* t)
     // then we adjust the custom alignment of the entire struct
     if(max_alignment > t->custom_alignment)
     {
-      t->custom_alignment = max_alignment;
+      t->custom_alignment = (uint16_t)max_alignment;
     }
 
     if(!IS_ALIGNED(byte_pos, max_alignment))
