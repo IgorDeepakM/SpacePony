@@ -106,6 +106,7 @@ struct reach_type_t
   uint32_t type_id;
   uint32_t vtable_size;
   uint64_t serialise_id;
+  uint16_t custom_alignment;
   bool can_be_boxed;
   bool is_trait;
   bool struct_body_filled;

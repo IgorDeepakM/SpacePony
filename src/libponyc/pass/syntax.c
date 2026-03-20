@@ -1771,6 +1771,33 @@ static ast_result_t syntax_as(pass_opt_t* opt, ast_t* ast)
 }
 
 
+static ast_result_t syntax_alignas(pass_opt_t* opt, ast_t* ast)
+{
+  pony_assert(ast_id(ast) == TK_ALIGNAS);
+
+  ast_t* parent = ast_parent(ast);
+  token_id parent_id = ast_id(parent);
+
+  switch(parent_id)
+  {
+    case TK_FVAR:
+    case TK_FLET:
+    case TK_EMBED:
+    case TK_CLASS:
+    case TK_STRUCT:
+    case TK_ACTOR:
+      break;
+
+    default:
+      ast_error(opt->check.errors, ast,
+        "alignas can only be used with classes, structs, actors and their member variables");
+      return AST_ERROR;
+  }
+
+  return AST_OK;
+}
+
+
 ast_result_t pass_syntax(ast_t** astp, pass_opt_t* options)
 {
   pony_assert(astp != NULL);
@@ -1819,6 +1846,7 @@ ast_result_t pass_syntax(ast_t** astp, pass_opt_t* options)
                         r = syntax_compile_intrinsic(options, ast); break;
     case TK_COMPILE_ERROR:
                         r = syntax_compile_error(options, ast); break;
+    case TK_ALIGNAS:    r = syntax_alignas(options, ast); break;
 
     case TK_ISO:
     case TK_TRN:

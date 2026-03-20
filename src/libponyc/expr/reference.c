@@ -17,6 +17,7 @@
 #include "../ast/astbuild.h"
 #include "../expr/ctfe.h"
 #include "ponyassert.h"
+#include "int_utils.h"
 
 static bool check_provides(pass_opt_t* opt, ast_t* type, ast_t* provides,
   errorframe_t* errorf)
@@ -926,6 +927,23 @@ bool expr_alignas(pass_opt_t* opt, ast_t* ast)
 
   if(!expr_ctfe_run(opt, &body))
     return false;
+
+  if(ast_id(body) == TK_INT)
+  {
+    lexint_t* align_lex = ast_int(body);
+    size_t align_amount = align_lex->low;
+
+    if(!is_power_of_2(align_amount))
+    {
+      ast_error(opt->check.errors, body, "alignment must be a power of 2");
+      return false;
+    }
+    else if(align_amount > 4096)
+    {
+      ast_error(opt->check.errors, body, "Maximum allowed alignment is 4096");
+      return false;
+    }
+  }
 
   ast_settype(ast, type);
   return true;

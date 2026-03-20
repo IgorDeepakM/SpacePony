@@ -517,9 +517,18 @@ static bool make_struct(compile_t* c, reach_type_t* t)
 
   // Check if we need to care about custom alignment
   bool contains_alignas = false;
+  size_t max_alignment = 0;
   if(t->underlying == TK_STRUCT || t->underlying == TK_CLASS || t->underlying == TK_ACTOR)
   {
     ast_t* def = (ast_t*)ast_data(t->ast);
+
+    // First check alignas for the entire struct
+    if(t->custom_alignment != 0)
+    {
+      max_alignment = t->custom_alignment;
+      contains_alignas = true;
+    }
+
     ast_t* members = ast_childidx(def, 4);
     ast_t* member = ast_child(members);
     while(member != NULL)
@@ -565,7 +574,6 @@ static bool make_struct(compile_t* c, reach_type_t* t)
   }
 
   uint32_t extra_pad_fields = 0;
-  size_t max_alignment = 0;
 
   for(uint32_t i = 0; i < t->field_count; i++)
   {
@@ -663,13 +671,23 @@ static bool make_struct(compile_t* c, reach_type_t* t)
 
   // Add trailing pad field if any custom alignment in order to make the size according to the
   // max alignment
-  if(contains_alignas && !IS_ALIGNED(byte_pos, max_alignment))
+  if(contains_alignas)
   {
-    size_t next_byte_pos = ALIGN_UP(byte_pos, max_alignment);
-    size_t array_size = next_byte_pos - byte_pos;
+    // If the members have and alignment that is greater than the struct alignment
+    // then we adjust the custom alignment of the entire struct
+    if(max_alignment > t->custom_alignment)
+    {
+      t->custom_alignment = max_alignment;
+    }
 
-    elements[t->field_count + extra + extra_pad_fields] = LLVMArrayType(c->i8, (unsigned int)array_size);
-    extra_pad_fields++;
+    if(!IS_ALIGNED(byte_pos, max_alignment))
+    {
+      size_t next_byte_pos = ALIGN_UP(byte_pos, max_alignment);
+      size_t array_size = next_byte_pos - byte_pos;
+
+      elements[t->field_count + extra + extra_pad_fields] = LLVMArrayType(c->i8, (unsigned int)array_size);
+      extra_pad_fields++;
+    }
   }
 
   LLVMStructSetBody(type, elements, t->field_count + extra + extra_pad_fields, packed);

@@ -38,7 +38,7 @@ DECL(caseparampattern);
 DECL(annotations);
 DECL(dot);
 DECL(call);
-DECL(iftypeset_method);
+DECL(entityif_set);
 
 /* Precedence
  *
@@ -1268,54 +1268,54 @@ DEF(enum_block);
   TERMINATE("enum block", TK_END);
   DONE();
 
-DEF(iftype_method_seq);
+DEF(entityif_seq);
   AST_NODE(TK_MEMBERS);
-  SEQ("method", method, enum_block, iftypeset_method);
+  SEQ("entity declaration", method, enum_block, entityif_set);
   DONE();
 
-DEF(iftype_method);
+DEF(entityif);
   AST_NODE(TK_ENTITYIF);
   SCOPE();
   RULE("type", type);
   SKIP(NULL, TK_SUBTYPE);
   RULE("type", type);
   SKIP(NULL, TK_THEN);
-  RULE("method seq", iftype_method_seq);
+  RULE("entityif seq", entityif_seq);
   AST_NODE(TK_NONE);
   DONE();
 
-DEF(elseclause_method);
+DEF(entityif_elseclause);
   PRINT_INLINE();
   SKIP(NULL, TK_ELSE);
-  RULE("method seq", iftype_method_seq);
+  RULE("entityif seq", entityif_seq);
   DONE();
 
   // ELSEIF [annotations] iftype [elseiftype | (ELSE seq)]
-DEF(elseiftype_method);
+DEF(entityif_elseif);
   AST_NODE(TK_ENTITYIF_SET);
   SKIP(NULL, TK_ELSEIF);
   ANNOTATE(annotations);
   SCOPE();
-  RULE("iftype clause", iftype_method);
-  OPT RULE("else clause", elseiftype_method, elseclause_method);
+  RULE("entityif clause", entityif);
+  OPT RULE("entityif else clause", entityif_elseif, entityif_elseclause);
   DONE();
 
   // IFTYPE_SET [annotations] iftype [elseiftype | (ELSE seq)] END
-DEF(iftypeset_method);
+DEF(entityif_set);
   PRINT_INLINE();
   TOKEN(NULL, TK_ENTITYIF_SET);
   SCOPE();
   ANNOTATE(annotations);
-  RULE("iftype clause", iftype_method);
-  OPT RULE("else clause", elseiftype_method, elseclause_method);
-  TERMINATE("iftype expression", TK_END);
+  RULE("entityif clause", entityif);
+  OPT RULE("entityif else clause", entityif_elseif, entityif_elseclause);
+  TERMINATE("entityif expression", TK_END);
   DONE();
 
 // {field} {method}
 DEF(members);
   AST_NODE(TK_MEMBERS);
   SEQ("field", field);
-  SEQ("method", method, enum_block, iftypeset_method);
+  SEQ("method", method, enum_block, entityif_set);
   DONE();
 
 // (TYPE | INTERFACE | TRAIT | PRIMITIVE | STRUCT | CLASS | ACTOR) [annotations]
@@ -1327,6 +1327,7 @@ DEF(class_def);
     TK_CLASS, TK_ACTOR);
   ANNOTATE(annotations);
   SCOPE();
+  OPT RULE("alignas", align_as);
   OPT TOKEN(NULL, TK_AT);
   OPT RULE("capability", cap);
   TOKEN("name", TK_ID);
@@ -1336,7 +1337,7 @@ DEF(class_def);
   RULE("members", members);
   // Order should be:
   // id type_params cap provides members c_api docstring
-  REORDER(2, 3, 1, 4, 6, 0, 5);
+  REORDER(3, 4, 2, 5, 7, 1, 6, 0);
   DONE();
 
 // STRING
