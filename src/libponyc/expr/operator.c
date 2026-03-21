@@ -16,6 +16,7 @@
 #include "../type/safeto.h"
 #include "../type/subtype.h"
 #include "ponyassert.h"
+#include "pony_defines.h"
 
 bool expr_identity(pass_opt_t* opt, ast_t* ast)
 {
@@ -270,7 +271,7 @@ static bool is_expr_ffi_return_by_value(ast_t* ast)
       if(ast_id(at) == TK_AT)
       {
         ast_t* ret_decl = ast_childidx(def, 3);
-        if(ast_has_annotation(ret_decl, "byval"))
+        if(ast_has_annotation(ret_decl, PONY_BYVAL_ANNOTATION))
         {
           return true;
         }
@@ -282,7 +283,7 @@ static bool is_expr_ffi_return_by_value(ast_t* ast)
     {
       ast_t* def = (ast_t*)ast_data(ast);
       ast_t* ret_decl = ast_child(ast_childidx(def, 1));
-      if (ast_has_annotation(ret_decl, "byval"))
+      if (ast_has_annotation(ret_decl, PONY_BYVAL_ANNOTATION))
       {
         return true;
       }
