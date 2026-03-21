@@ -17,6 +17,7 @@
 #include "../../libponyrt/mem/pool.h"
 #include "../../libponyrt/mem/heap.h"
 #include "ponyassert.h"
+#include "pony_defines.h"
 #include <string.h>
 
 struct genned_string_t
@@ -57,7 +58,7 @@ LLVMValueRef gen_param(compile_t* c, ast_t* ast)
 
   // Since parameter passed by value generation a heap allocated
   // shadow variable, it must be instead loaded.
-  if(ast_has_annotation(ast_childidx(def, 1), "byval"))
+  if(ast_has_annotation(ast_childidx(def, 1), PONY_BYVAL_ANNOTATION))
   {
     return gen_localload(c, ast);
   }
@@ -75,7 +76,7 @@ LLVMValueRef gen_param(compile_t* c, ast_t* ast)
       // in the frame structure like bare_function.
       ast_t* ret_decl = ast_childidx(fun, 4);
       ast_t* reified_ret = deferred_reify(c->frame->reify, ret_decl, c->opt);
-      if(ast_has_annotation(reified_ret, "byval"))
+      if(ast_has_annotation(reified_ret, PONY_BYVAL_ANNOTATION))
       {
         reach_type_t* t = reach_type(c->reach, reified_ret, c->opt);
         if(!is_return_value_lowering_needed(c, t))

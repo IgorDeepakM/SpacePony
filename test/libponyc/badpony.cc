@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <platform.h>
+#include <pony_defines.h>
 
 #include "util.h"
 
@@ -1462,5 +1463,5 @@ TEST_F(BadPonyTest, AlignasTooBig)
     "class alignas(8192) TT\n";
 
   TEST_ERRORS_1(src,
-    "Maximum allowed alignment is 4096");
+    "Maximum allowed alignment is " TOSTRING(PONY_MAX_ALIGNAS));
 }

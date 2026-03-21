@@ -9,6 +9,7 @@
 #include "../ast/astbuild.h"
 #include "../expr/literal.h"
 #include "ponyassert.h"
+#include "pony_defines.h"
 #include <string.h>
 
 
@@ -394,12 +395,13 @@ static bool is_reified_fun_sub_fun(ast_t* sub, ast_t* super,
 
       // pass by value return types must have the same byval annotation
       // otherwise it is not the same type
-      if(ast_has_annotation(sub_result, "byval") !=
-         ast_has_annotation(super_result, "byval"))
+      if(ast_has_annotation(sub_result, PONY_BYVAL_ANNOTATION) !=
+         ast_has_annotation(super_result, PONY_BYVAL_ANNOTATION))
       {
         if(errorf != NULL)
         {
-          ast_error_frame(errorf, sub, "%s and %s has different byval return type annotations",
+          ast_error_frame(errorf, sub,
+            "%s and %s has different '" PONY_BYVAL_ANNOTATION "' return type annotations",
             ast_print_type(sub), ast_print_type(super));
         }
 
@@ -454,11 +456,12 @@ static bool is_reified_fun_sub_fun(ast_t* sub, ast_t* super,
 
     // pass by value types must have the same byval annotation
     // otherwise it is not the same type
-    if(ast_has_annotation(sub_type, "byval") !=
-       ast_has_annotation(super_type, "byval"))
+    if(ast_has_annotation(sub_type, PONY_BYVAL_ANNOTATION) !=
+       ast_has_annotation(super_type, PONY_BYVAL_ANNOTATION))
     {
-      ast_error_frame(errorf, sub, "%s and %s has different byval annotations",
-          ast_print_type(sub), ast_print_type(super));
+      ast_error_frame(errorf, sub,
+        "%s and %s has different '" PONY_BYVAL_ANNOTATION "' annotations",
+        ast_print_type(sub), ast_print_type(super));
       return false;
     }
 

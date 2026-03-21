@@ -10,6 +10,7 @@
 #include "../../libponyrt/mem/pool.h"
 #include "../codegen/genvaluepass.h"
 #include "ponyassert.h"
+#include "pony_defines.h"
 #include <string.h>
 #include <ctype.h>
 
@@ -677,7 +678,7 @@ static ast_result_t syntax_ffi(pass_opt_t* opt, ast_t* ast,
   if(ast_id(typeargs) != TK_NONE)
   {
     ast_t* return_type = ast_child(typeargs);
-    if(ast_has_annotation(return_type, "byval"))
+    if(ast_has_annotation(return_type, PONY_BYVAL_ANNOTATION))
     {
       if(!pass_by_value_supported)
       {
@@ -704,7 +705,7 @@ static ast_result_t syntax_ffi(pass_opt_t* opt, ast_t* ast,
 
       ast_t* param_type = ast_childidx(p, 1);
 
-      if(ast_has_annotation(param_type, "byval"))
+      if(ast_has_annotation(param_type, PONY_BYVAL_ANNOTATION))
       {
         if(!pass_by_value_supported)
         {
@@ -1168,7 +1169,7 @@ static ast_result_t syntax_lambdatype(pass_opt_t* opt, ast_t* ast)
 {
   AST_GET_CHILDREN(ast, fun_cap, id, typeparams, params, return_type);
 
-  if(ast_has_annotation(return_type, "byval"))
+  if(ast_has_annotation(return_type, PONY_BYVAL_ANNOTATION))
   {
     ast_error(opt->check.errors, return_type,
       "Return by value can only be used in bare lambdas");
@@ -1177,7 +1178,7 @@ static ast_result_t syntax_lambdatype(pass_opt_t* opt, ast_t* ast)
 
   for(ast_t* p = ast_child(params); p != NULL; p = ast_sibling(p))
   {
-    if(ast_has_annotation(p, "byval"))
+    if(ast_has_annotation(p, PONY_BYVAL_ANNOTATION))
     {
       ast_error(opt->check.errors, p,
         "Value parameter passing can only be used in bare lambdas");
@@ -1203,7 +1204,7 @@ static ast_result_t syntax_barelambdatype(pass_opt_t* opt, ast_t* ast)
 
   bool pass_by_value_supported = is_pass_by_value_lowering_supported(opt);
 
-  if(ast_has_annotation(return_type, "byval"))
+  if(ast_has_annotation(return_type, PONY_BYVAL_ANNOTATION))
   {
     if(!pass_by_value_supported)
     {
@@ -1215,7 +1216,7 @@ static ast_result_t syntax_barelambdatype(pass_opt_t* opt, ast_t* ast)
 
   for(ast_t* p = ast_child(params); p != NULL; p = ast_sibling(p))
   {
-    if(ast_has_annotation(p, "byval"))
+    if(ast_has_annotation(p, PONY_BYVAL_ANNOTATION))
     {
       if(!pass_by_value_supported)
       {
@@ -1392,7 +1393,7 @@ static ast_result_t syntax_lambda(pass_opt_t* opt, ast_t* ast)
 
   bool pass_by_value_supported = is_pass_by_value_lowering_supported(opt);
 
-  if(ast_has_annotation(ret_type, "byval"))
+  if(ast_has_annotation(ret_type, PONY_BYVAL_ANNOTATION))
   {
     if(!is_bare_lambda)
     {
@@ -1414,7 +1415,7 @@ static ast_result_t syntax_lambda(pass_opt_t* opt, ast_t* ast)
     {
       ast_t* param_type = ast_childidx(p, 1);
 
-      if(ast_has_annotation(param_type, "byval"))
+      if(ast_has_annotation(param_type, PONY_BYVAL_ANNOTATION))
       {
         if(!is_bare_lambda)
         {
@@ -1615,7 +1616,7 @@ static bool check_annotation_location(pass_opt_t* opt, ast_t* ast,
 
         return false;
     }
-  } else if(strcmp(str, "byval") == 0) {
+  } else if(strcmp(str, PONY_BYVAL_ANNOTATION) == 0) {
     ast_t* parent1 = ast_parent(ast);
     ast_t* parent2 = ast_parent(parent1);
     if(ast_id(parent2) == TK_PARAM)
@@ -1651,7 +1652,7 @@ static bool check_annotation_location(pass_opt_t* opt, ast_t* ast,
     }
 
     ast_error(opt->check.errors, loc,
-      "a 'byval' annotation can only be used on parameter types in FFI "
+      "a '" PONY_BYVAL_ANNOTATION "' annotation can only be used on parameter types in FFI "
       "and bare lambda declarations");
     return false;
   }

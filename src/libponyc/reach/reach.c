@@ -13,6 +13,7 @@
 #include "../ctfe/ctfe_reach.h"
 #include "ponyassert.h"
 #include "int_utils.h"
+#include "pony_defines.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -199,7 +200,7 @@ static void set_method_types(reach_t* r, reach_method_t* m,
       m->params[i].name = ast_name(ast_child(param));
       m->params[i].ast = p_type;
       m->params[i].type = add_type(r, p_type, opt);
-      m->params[i].pass_by_value = ast_has_annotation(p_type, "byval");
+      m->params[i].pass_by_value = ast_has_annotation(p_type, PONY_BYVAL_ANNOTATION);
 
       if((ast_id(p_type) != TK_NOMINAL) && (ast_id(p_type) != TK_TYPEPARAMREF))
         m->params[i].cap = TK_REF;
@@ -429,7 +430,7 @@ static reach_method_t* add_rmethod(reach_t* r, reach_type_t* t,
     pony_assert(fun != NULL);
 
     if(cap == TK_AT &&
-       ast_has_annotation(ast_childidx(fun->ast, 4), "byval"))
+       ast_has_annotation(ast_childidx(fun->ast, 4), PONY_BYVAL_ANNOTATION))
     {
       m->return_by_value = true;
     }
@@ -791,9 +792,10 @@ static void add_fields(reach_t* r, reach_type_t* t, pass_opt_t* opt)
               opt->check.evaluation_error = true;
               return;
             }
-            else if(align_amount > 4096)
+            else if(align_amount > PONY_MAX_ALIGNAS)
             {
-              ast_error(opt->check.errors, alignas_node, "Maximum allowed alignment is 4096");
+              ast_error(opt->check.errors, alignas_node,
+                "Maximum allowed alignment is " TOSTRING(PONY_MAX_ALIGNAS));
               opt->check.evaluation_error = true;
               return;
             }
@@ -1167,9 +1169,10 @@ static reach_type_t* add_nominal(reach_t* r, ast_t* type, pass_opt_t* opt)
         opt->check.evaluation_error = true;
         return NULL;
       }
-      else if(align_amount > 4096)
+      else if(align_amount > PONY_MAX_ALIGNAS)
       {
-        ast_error(opt->check.errors, type_alignas_node, "Maximum allowed alignment is 4096");
+        ast_error(opt->check.errors, type_alignas_node,
+          "Maximum allowed alignment is " TOSTRING(PONY_MAX_ALIGNAS));
         opt->check.evaluation_error = true;
         return NULL;
       }

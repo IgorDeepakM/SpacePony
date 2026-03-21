@@ -18,6 +18,7 @@
 #include "../expr/ctfe.h"
 #include "ponyassert.h"
 #include "int_utils.h"
+#include "pony_defines.h"
 
 static bool check_provides(pass_opt_t* opt, ast_t* type, ast_t* provides,
   errorframe_t* errorf)
@@ -938,9 +939,9 @@ bool expr_alignas(pass_opt_t* opt, ast_t* ast)
       ast_error(opt->check.errors, body, "alignment must be a power of 2");
       return false;
     }
-    else if(align_amount > 4096)
+    else if(align_amount > PONY_MAX_ALIGNAS)
     {
-      ast_error(opt->check.errors, body, "Maximum allowed alignment is 4096");
+      ast_error(opt->check.errors, body, "Maximum allowed alignment is " TOSTRING(PONY_MAX_ALIGNAS));
       return false;
     }
   }
