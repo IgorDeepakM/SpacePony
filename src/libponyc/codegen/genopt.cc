@@ -227,8 +227,20 @@ public:
     // TODO: for variable size alloca, don't insert at the beginning.
     BasicBlock::iterator begin = call.getCaller()->getEntryBlock().begin();
 
+    Align stack_alignment;
+    MDNode* align_node = inst->getMetadata("pony.custom_alignment");
+    if(align_node != NULL)
+    {
+      ConstantInt* align_amount = mdconst::dyn_extract<ConstantInt>(align_node->getOperand(0));
+      stack_alignment = Align(align_amount->getZExtValue());
+    }
+    else
+    {
+      stack_alignment = inst->getPointerAlignment(*unwrap(c->target_data));
+    }
+
     AllocaInst* replace = new AllocaInst(builder.getInt8Ty(), 0, int_size,
-      inst->getPointerAlignment(*unwrap(c->target_data)), "", begin);
+      stack_alignment, "", begin);
 
     replace->setDebugLoc(inst->getDebugLoc());
 

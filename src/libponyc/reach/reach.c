@@ -12,6 +12,7 @@
 #include "../../libponyrt/mem/pool.h"
 #include "../ctfe/ctfe_reach.h"
 #include "ponyassert.h"
+#include "int_utils.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -753,6 +754,7 @@ static void add_fields(reach_t* r, reach_type_t* t, pass_opt_t* opt)
         ast_add(r_member, name);
         ast_set_scope(type, member);
 
+        // Initialize the data layout position to an impossible value
         t->fields->layout_pos = 0xffffffff;
 
         bool embed = t->fields[index].embed = ast_id(member) == TK_EMBED;
@@ -775,6 +777,24 @@ static void add_fields(reach_t* r, reach_type_t* t, pass_opt_t* opt)
             if(!reach_comptime(opt, &align_amount_node, NULL))
             {
               ast_error(opt->check.errors, alignas_node, "Couldn't evaluate alignas expression");
+              return;
+            }
+
+            pony_assert(ast_id(align_amount_node) == TK_INT);
+
+            lexint_t* align_lex = ast_int(align_amount_node);
+            size_t align_amount = align_lex->low;
+
+            if(!is_power_of_2(align_amount))
+            {
+              ast_error(opt->check.errors, alignas_node, "alignment must be a power of 2");
+              opt->check.evaluation_error = true;
+              return;
+            }
+            else if(align_amount > 4096)
+            {
+              ast_error(opt->check.errors, alignas_node, "Maximum allowed alignment is 4096");
+              opt->check.evaluation_error = true;
               return;
             }
 
@@ -1107,6 +1127,55 @@ static reach_type_t* add_nominal(reach_t* r, ast_t* type, pass_opt_t* opt)
       break;
 
     default: {}
+  }
+
+  // Check custom alignment and fill customer_alignment field in reach_type_t
+  if(t->underlying == TK_STRUCT || t->underlying == TK_CLASS || t->underlying == TK_ACTOR)
+  {
+    ast_t* type_alignas_node = ast_childidx(def, 7);
+    if(type_alignas_node != NULL && ast_id(type_alignas_node) == TK_ALIGNAS)
+    {
+      size_t align_amount = 0;
+
+      ast_t* align_amount_node = ast_child(type_alignas_node);
+      if(ast_id(align_amount_node) != TK_INT)
+      {
+        ast_t* typeparams = ast_childidx(def, 1);
+        ast_t* r_align_expr = reify(align_amount_node, typeparams, typeargs, opt, true);
+
+        if(!reach_comptime(opt, &r_align_expr, NULL))
+        {
+          ast_error(opt->check.errors, r_align_expr, "Couldn't evaluate alignas expression");
+          return NULL;
+        }
+
+        pony_assert(ast_id(r_align_expr) == TK_INT);
+        lexint_t* align_lex = ast_int(r_align_expr);
+        align_amount = align_lex->low;
+
+        ast_free_unattached(r_align_expr);
+      }
+      else
+      {
+        lexint_t* align_lex = ast_int(align_amount_node);
+        align_amount = align_lex->low;
+      }
+
+      if(!is_power_of_2(align_amount))
+      {
+        ast_error(opt->check.errors, type_alignas_node, "alignment must be a power of 2");
+        opt->check.evaluation_error = true;
+        return NULL;
+      }
+      else if(align_amount > 4096)
+      {
+        ast_error(opt->check.errors, type_alignas_node, "Maximum allowed alignment is 4096");
+        opt->check.evaluation_error = true;
+        return NULL;
+      }
+
+      t->custom_alignment = (uint16_t)align_amount;
+    }
   }
 
   bool bare = false;

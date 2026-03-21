@@ -1733,6 +1733,14 @@ LLVMValueRef gencall_allocstruct(compile_t* c, reach_type_t* t)
       result = gencall_runtime(c, "pony_alloc_large_final", args, 2, "");
   }
 
+  if(t->custom_alignment != 0)
+  {
+    LLVMValueRef values[1];
+    values[0] = LLVMConstInt(c->intptr, t->custom_alignment, false);
+    LLVMValueRef md = LLVMMDNodeInContext(c->context, values, 1);
+    LLVMSetMetadataStr(result, "pony.custom_alignment", md);
+  }
+
   set_descriptor(c, t, result);
 
   return result;

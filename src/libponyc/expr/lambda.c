@@ -732,6 +732,7 @@ bool expr_object(pass_opt_t* opt, ast_t** astp)
       TREE(provides)
       NODE(TK_MEMBERS)
       NONE
+      NONE
       NONE));
 
   // We will have a create method in the type.

@@ -1174,7 +1174,8 @@ static ast_result_t sugar_lambdatype(pass_opt_t* opt, ast_t** astp)
           NONE  // Body
           NONE))// Doc string
       NONE    // @
-      NONE)); // Doc string
+      NONE    // Doc string
+      NONE)); // alignas
 
   printbuf_free(buf);
 

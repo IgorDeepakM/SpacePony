@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "llvm_config_begin.h"
+#include "int_utils.h"
 
 #include <llvm/IR/IRBuilder.h>
 
@@ -14,11 +15,6 @@
 using namespace llvm;
 using namespace std;
 
-
-static bool is_power_of_2(size_t x)
-{
-  return x > 0 && !(x & (x - 1));
-}
 
 extern "C" bool is_pass_by_value_lowering_supported(pass_opt_t* opt)
 {

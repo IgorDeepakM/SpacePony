@@ -51,7 +51,8 @@ RULE(class_def,
   CHILD(provides, none)
   CHILD(members, none)
   CHILD(at, none)
-  CHILD(string, none), // Doc
+  CHILD(string, none) // Doc
+  CHILD(align_as, none),
   TK_TYPE, TK_INTERFACE, TK_TRAIT, TK_PRIMITIVE, TK_STRUCT, TK_CLASS,
   TK_ACTOR);
 
@@ -64,7 +65,7 @@ RULE(members,
 
 RULE(align_as,
   HAS_TYPE(type)
-  CHILD(expr),
+  CHILD(seq),
   TK_ALIGNAS);
 
 RULE(field,

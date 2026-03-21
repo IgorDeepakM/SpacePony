@@ -1437,3 +1437,30 @@ TEST_F(BadPonyTest, MatchArrayPatternWithBareIntegerLiterals)
     "couldn't find 'eq' in 'Array'",
     "this pattern element doesn't support structural equality");
 }
+
+TEST_F(BadPonyTest, AlignasOnWrongEntity)
+{
+  const char* src =
+    "primitive alignas(16) TT\n";
+
+  TEST_ERRORS_1(src,
+    "alignas can only be used with classes, structs, actors and their member variables");
+}
+
+TEST_F(BadPonyTest, AlignasNotPowerOf2)
+{
+  const char* src =
+    "class alignas(33) TT\n";
+
+  TEST_ERRORS_1(src,
+    "alignment must be a power of 2");
+}
+
+TEST_F(BadPonyTest, AlignasTooBig)
+{
+  const char* src =
+    "class alignas(8192) TT\n";
+
+  TEST_ERRORS_1(src,
+    "Maximum allowed alignment is 4096");
+}

@@ -111,6 +111,7 @@ add_library(libponyc STATIC
     verify/control.c
     verify/fun.c
     verify/type.c
+    ../common/int_utils.c
 )
 
 target_compile_definitions(libponyc PRIVATE
