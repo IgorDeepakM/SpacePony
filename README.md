@@ -709,6 +709,32 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
     var alignas(4 * sizeof U32) x2: U32 = 44   // x2 will have the position 16 in the struct
   ```
 
+* alignas can also be used in order to control the alignment of the entire struct/class/actor
+  ```pony
+  struct alignas(64) S
+    var x1: I8 = 33
+    var x2: U32 = 44
+  ```
+
+* Just as with members alignas for structs/classes/actors support expressions evaluated at compile time including type parameters.
+  ```pony
+  struct alignas((sizeof A) * 4) S[A]
+    var x1: I8 = 33
+    var x2: U32 = 44
+  ```
+
+* The actual alignment that a structure receives is the maximum alignment of the structure or alignment of a member.
+
+* The size of the structure will be aligned to the next max alignment.
+
+  ```pony
+  struct alignas(64) S
+    var x1: I8 = 33
+    var alignas(256) x2: U32 = 44  // This struct will be aligned at 256 bytes and will have a size of 512 bytes
+  ```
+
+* Maximum alignment is 4096 and must be a power of 2.
+
 
 ## Future directions
 
