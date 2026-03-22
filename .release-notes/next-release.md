@@ -1,75 +1,9 @@
-## Drop Ubuntu 20.04 support
+## Fix IOCP use-after-free crash
 
-Ubuntu 20.04 has reached its end of life date. We've dropped it as a supported platform. That means, we no longer test against it when doing CI and we no longer create prebuilt binaries for installation via `ponyup` for Ubuntu 20.04.
+The fix for this issue in 0.62.0 was incomplete. That fix checked for specific Windows error codes (`ERROR_OPERATION_ABORTED` and `ERROR_NETNAME_DELETED`) in the IOCP completion callback to detect orphaned I/O operations. However, Windows can deliver completions with other error codes after the socket is closed, and `ERROR_NETNAME_DELETED` can also arrive from legitimate remote peer disconnects — making error-code matching the wrong approach entirely.
 
-We will maintain best effort to keep Ubuntu 20.04 continuing to work for anyone who wants to use it and builds `ponyc` from source.
+The new fix addresses the root cause: IOCP completion callbacks can fire on Windows thread pool threads after the owning actor has destroyed the ASIO event via `pony_asio_event_destroy`, leaving the callback with a dangling pointer to freed memory.
 
-## Don't set ld.gold as the default Linux linker
+Each ASIO event now allocates a small shared liveness token (`iocp_token_t`) containing an atomic dead flag and a reference count. Every in-flight IOCP operation holds a pointer to the token and increments the reference count. When `pony_asio_event_destroy` runs, it sets the dead flag (release store) before freeing the event. Completion callbacks check the dead flag (acquire load) before touching the event — if dead, they clean up the IOCP operation struct without accessing the freed event. The last callback to decrement the reference count to zero frees the token.
 
-Previously, we were setting ld.gold as our default linker on Linux. If you wanted to use a different linker, you had to override it using the ponyc option `--link-ldcmd`.
-
-ld.gold was contributed to the GNU project many years ago by Google. Over the years, Google has moved away from supporting it and to investing in LLVM and other tools. ld.gold has no active maintainers at this point in time and has been removed from the most recent version of binutils.
-
-It is no longer reasonable going forward to set gold as the default Linux linker as many Linux distributions will not have it easily available. We have switched to using the default Linux linker on the given system. On most systems, that is ld.bfd unless it has been configured otherwise. If you would like to use a different linker you can do the following as part of ponyc command line:
-
-Use gold:
-
-- `ponyc --link-ldcmd=gold`
-
-Use mold:
-
-- `ponyc --link-ldcmd=mold`
-
-## Alpine 3.20 added as a supported platform
-
-We've added Alpine 3.20 as a supported platform. We'll be building ponyc releases for it until it stops receiving security updates in 2026. At that point, we'll stop building releases for it.
-
-## Alpine 3.21 added as a supported platform
-
-We've added Alpine 3.21 as a supported platform. We'll be building ponyc releases for it until it stops receiving security updates in 2026. At that point, we'll stop building releases for it.
-
-## Ubuntu 24.04 on arm64 added as a supported platform
-
-We've added Ubuntu 24.04 on arm64 as a supported platform. We'll be building ponyc releases for it until it stops receiving security updates in 2029. At that point, we'll stop building releases for it.
-
-## Alpine 3.21 on arm64 added as a supported platform
-
-We've added Alpine 3.21 on arm64 as a supported platform. We'll be building ponyc releases for it until it stops receiving security updates in 2026. At that point, we'll stop building releases for it.
-## Update to LLVM 18.1.8
-
-We've updated the LLVM version used to build Pony to 18.1.8.
-
-## Support building ponyc natively on arm64 Windows
-
-We've added support for building Pony for arm64 Windows.
-
-## Arm64 Windows added as a supported platform
-
-We've added arm64 Windows as a supported platform. Builds for it are available in [Cloudsmith](https://cloudsmith.io/~ponylang/repos/). Corral and ponyup support will be coming soon.
-
-## Make finding Visual Studio more robust
-
-Ponyc will now ignore applications other than Visual Studio itself which use the Visual Studio installation system (e.g. SQL Server Management Studio) when looking for `link.exe`.
-
-## Fix linking on Linux arm64 when using musl libc
-
-On arm64-based Linux systems using musl libc, program linking could fail due to missing libgcc symbols. We've now added linking against libgcc on all arm-based Linux systems to resolve this issue.
-
-## Fix persistent HashMap returning incorrect results for None values
-
-The persistent `HashMap` used `None` as an internal sentinel to signal "key not found" in its lookup methods. This collided with user value types that include `None` (e.g., `Map[String, (String | None)]`). Using `HashMap` with a `None` value could lead to errors in user code as "it was none" and "it wasn't present" were impossible to distinguish.
-
-The internal lookup methods now use `error` instead of `None` to signal a missing key, so all value types work correctly.
-
-This is a breaking change for any code that was depending on the previous (incorrect) behavior. For example, code that expected `apply` to raise for keys mapped to `None`, or that relied on `contains` returning `false` for `None`-valued entries, will now see correct results instead.
-
-## Add `--sysroot` option
-
-A new `--sysroot` option specifies the target system root. The compiler uses the sysroot to locate libc CRT objects and system libraries for the target platform. For native builds, the host root filesystem is used by default; for cross-compilation, common cross-toolchain locations are searched automatically.
-
-## Use embedded LLD for Linux targets
-
-All Linux builds — both native and cross-compilation — now use the embedded LLD linker directly instead of invoking an external compiler driver via `system()`. For cross-compilation, this eliminates the requirement to have a target-specific GCC cross-compiler installed solely for linking.
-
-The embedded LLD path activates automatically for any Linux target without `--linker` set. To use an external linker instead, pass `--linker=<command>` as an escape hatch to the legacy linking path. The `--link-ldcmd` flag is ignored when using embedded LLD; use `--linker` instead to get legacy behavior.
-
+This correctly handles all error codes and all IOCP operation types (connect, accept, send, recv) without swallowing events the actor needs to see.
