@@ -6,6 +6,39 @@ All notable changes to the Pony compiler and standard library will be documented
 
 ### Fixed
 
+- Fix IOCP use-after-free crash ([PR #5055](https://github.com/ponylang/ponyc/pull/5055))
+
+### Added
+
+
+### Changed
+
+
+## [0.62.0] - 2026-03-21
+
+### Fixed
+
+- Fix incorrect CLOCK_MONOTONIC value on OpenBSD ([PR #5035](https://github.com/ponylang/ponyc/pull/5035))
+- Fix illegal instruction crashes in pony-lint, pony-lsp, and pony-doc ([PR #5041](https://github.com/ponylang/ponyc/pull/5041))
+- Fix failure to build pony tools with Homebrew ([PR #5042](https://github.com/ponylang/ponyc/pull/5042))
+- Fix memory leak and re-enable immutable-send GC optimization ([PR #4944](https://github.com/ponylang/ponyc/pull/4944))
+- Fix intermittent hang during runtime shutdown ([PR #5037](https://github.com/ponylang/ponyc/pull/5037))
+- Fix tuple literals not matching correctly in union-of-tuples types ([PR #4970](https://github.com/ponylang/ponyc/pull/4970))
+- Fix false positive in _final send checking for generic classes ([PR #4982](https://github.com/ponylang/ponyc/pull/4982))
+- Fix `#share` capability constraint intersection ([PR #4998](https://github.com/ponylang/ponyc/pull/4998))
+- Fix use-after-free crash in IOCP runtime on Windows ([PR #5046](https://github.com/ponylang/ponyc/pull/5046))
+- Fix pony_os_ip_string returning NULL for valid IP addresses ([PR #5049](https://github.com/ponylang/ponyc/pull/5049))
+- Fix pony-lint ignore matching on Windows ([PR #5050](https://github.com/ponylang/ponyc/pull/5050))
+- Fix pony-lsp on Windows ([PR #5050](https://github.com/ponylang/ponyc/pull/5050))
+
+### Changed
+
+- Don't allow --path to override standard library ([PR #5040](https://github.com/ponylang/ponyc/pull/5040))
+
+## [0.61.1] - 2026-03-14
+
+### Fixed
+
 - Fix pool_memalign crash due to insufficient alignment for AVX instructions ([PR #4909](https://github.com/ponylang/ponyc/pull/4909))
 - Fix `assignment-indent` to require RHS indented relative to assignment ([PR #4913](https://github.com/ponylang/ponyc/pull/4913))
 - Fix tool install with `use` flags ([PR #4915](https://github.com/ponylang/ponyc/pull/4915))
