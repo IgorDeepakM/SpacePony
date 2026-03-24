@@ -204,7 +204,7 @@ LLVMValueRef gen_iftype(compile_t* c, ast_t* ast)
   if(needed && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
   {
     ast_t* type = deferred_reify(reify, ast_type(ast), c->opt);
-    compile_type_t* c_t = (compile_type_t*)reach_type(c->reach, type)->c_type;
+    compile_type_t* c_t = (compile_type_t*)reach_type(c->reach, type, c->opt)->c_type;
 
     ast_t* branch_type = deferred_reify(reify, ast_type(branch), c->opt);
     value = gen_assign_cast(c, c_t->use_type, value, branch_type);
