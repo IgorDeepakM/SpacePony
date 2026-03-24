@@ -500,6 +500,9 @@ LLVMValueRef gen_funptr(compile_t* c, ast_t* ast)
   // Generate the receiver.
   LLVMValueRef value = gen_expr(c, receiver);
 
+  if(value == NULL)
+    return NULL;
+
   // Get the receiver type.
   ast_t* type = deferred_reify(c->frame->reify, ast_type(receiver), c->opt);
   reach_type_t* t = reach_type(c->reach, type, c->opt);
@@ -1116,7 +1119,15 @@ LLVMValueRef gen_pattern_eq(compile_t* c, ast_t* pattern, LLVMValueRef r_value)
 
   // Generate the receiver.
   LLVMValueRef l_value = gen_expr(c, pattern);
+
+  if(l_value == NULL)
+  {
+    ast_free_unattached(pattern_type);
+    return NULL;
+  }
+
   reach_type_t* t = reach_type(c->reach, pattern_type, c->opt);
+
   pony_assert(t != NULL);
 
   // Static or virtual dispatch.
