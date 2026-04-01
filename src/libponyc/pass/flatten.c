@@ -361,7 +361,8 @@ ast_result_t pass_flatten(ast_t** astp, pass_opt_t* options)
       AST_GET_CHILDREN(ast, id, type, init);
       bool ok = true;
 
-      if(ast_id(type) != TK_NOMINAL || is_pointer(type) || is_nullable_pointer(type))
+      if(ast_id(type) != TK_NOMINAL || is_pointer(type) || is_nullable_pointer(type) ||
+         is_optional(type))
         ok = false;
 
       ast_t* def = (ast_t*)ast_data(type);

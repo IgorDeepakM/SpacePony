@@ -1003,7 +1003,12 @@ void gentrace_prototype(compile_t* c, reach_type_t* t)
   bool need_trace = false;
 
   // CFixedSizedArray don't have fields but may need tracing
-  if (is_c_fixed_sized_array(t->ast))
+  if(is_c_fixed_sized_array(t->ast))
+  {
+    ast_t* typeargs = ast_childidx(t->ast, 2);
+    need_trace = gentrace_needed(c, ast_child(typeargs), ast_child(typeargs));
+  }
+  if(is_optional(t->ast))
   {
     ast_t* typeargs = ast_childidx(t->ast, 2);
     need_trace = gentrace_needed(c, ast_child(typeargs), ast_child(typeargs));

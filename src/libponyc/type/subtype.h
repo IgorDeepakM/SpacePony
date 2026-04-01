@@ -35,6 +35,8 @@ bool is_nullable_pointer(ast_t* type);
 
 bool is_c_fixed_sized_array(ast_t* type);
 
+bool is_optional(ast_t* type);
+
 bool is_none(ast_t* type);
 
 bool is_env(ast_t* type);
@@ -70,6 +72,8 @@ bool contains_struct(ast_t* type);
 bool contains_entity_type(ast_t* type);
 
 ast_t* remove_entity_types(ast_t* type);
+
+bool is_pointer_referenced_object(ast_t* type);
 
 PONY_EXTERN_C_END
 

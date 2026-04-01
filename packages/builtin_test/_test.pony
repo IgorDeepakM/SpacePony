@@ -107,6 +107,7 @@ actor \nodoc\ Main is TestList
     test(_TestNestedFixedSizedArray)
     test(_TestFixedSizedArrayTrace)
     test(_TestAtomic)
+    test(_TestOptional)
 
   fun @runtime_override_defaults(rto: RuntimeOptions) =>
      rto.ponynoblock = true
@@ -3100,3 +3101,108 @@ class \nodoc\ iso _TestAtomic is UnitTest
     h.assert_eq[Bool](res, false)
     h.assert_eq[U32](expected, 3)
     h.assert_eq[U32](a.load(), 3)
+
+
+struct _OptionalTestStruct
+  var x1: U32 = 11
+  var x2: U32 = 22
+
+class \nodoc\ iso _TestOptional is UnitTest
+  fun name(): String => "builtin/Optional"
+
+  fun apply(h: TestHelper) =>
+
+    let o1_new = Optional[I64].none()
+
+    let o1 = in_and_out_I64(o1_new)
+
+    h.assert_eq[Bool](o1.is_none(), true)
+    h.assert_eq[Bool](o1.is_some(), false)
+
+    var v1: I64 = 0
+    try
+      v1 = o1()?
+    else
+      v1 = 66
+    end
+
+    h.assert_eq[I64](v1, 66)
+
+    let o2_new = Optional[I64](22)
+
+    let o2 = in_and_out_I64(o2_new)
+
+    h.assert_eq[Bool](o2.is_none(), false)
+    h.assert_eq[Bool](o2.is_some(), true)
+
+    var v2: I64 = 0
+    try
+      v2 = o2()?
+    else
+      v2 = 66
+    end
+
+    h.assert_eq[I64](v2, 23)
+
+    v2 = o2.get_no_check()
+
+    h.assert_eq[I64](v2, 23)
+
+    let o3_new = Optional[_OptionalTestStruct].none()
+
+    let o3 = in_and_out_OptionalTestStruct(o3_new)
+
+    h.assert_eq[Bool](o3.is_none(), true)
+    h.assert_eq[Bool](o3.is_some(), false)
+
+    var v3: _OptionalTestStruct = _OptionalTestStruct
+    try
+      v3 = o3()?
+    else
+      v3.x1 = 44
+      v3.x2 = 55
+    end
+
+    h.assert_eq[U32](v3.x1, 44)
+    h.assert_eq[U32](v3.x2, 55)
+
+    let o4_new = Optional[_OptionalTestStruct](_OptionalTestStruct)
+
+    let o4 = in_and_out_OptionalTestStruct(o4_new)
+
+    h.assert_eq[Bool](o4.is_none(), false)
+    h.assert_eq[Bool](o4.is_some(), true)
+
+    var v4: _OptionalTestStruct = _OptionalTestStruct
+    try
+      v4 = o4()?
+    else
+      v4.x1 = 44
+      v4.x2 = 55
+    end
+
+    h.assert_eq[U32](v4.x1, 12)
+    h.assert_eq[U32](v4.x2, 23)
+
+    v4 = o4.get_no_check()
+
+    h.assert_eq[U32](v4.x1, 12)
+    h.assert_eq[U32](v4.x2, 23)
+
+  fun in_and_out_I64(x: Optional[I64]): Optional[I64] =>
+    try
+      let v = x()?
+      Optional[I64](v + 1)
+    else
+      x
+    end
+
+  fun in_and_out_OptionalTestStruct(x: Optional[_OptionalTestStruct]): Optional[_OptionalTestStruct] =>
+    try
+      let v = x()?
+      v.x1 = v.x1 + 1
+      v.x2 = v.x2 + 1
+      Optional[_OptionalTestStruct](v)
+    else
+      x
+    end
