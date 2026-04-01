@@ -105,7 +105,7 @@ ast_t* CtfeRunner::get_builtin_type(pass_opt_t* opt, ast_t* ast_pos, const char*
   auto it = m_cached_ast.find(hash);
   if(it == m_cached_ast.end())
   {
-    ast_t* type_ast = type_builtin(opt, ast_pos, "Bool");
+    ast_t* type_ast = type_builtin(opt, ast_pos, type_name);
     m_cached_ast.insert({hash, type_ast});
 
     return type_ast;

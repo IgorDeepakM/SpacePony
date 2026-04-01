@@ -811,7 +811,8 @@ static bool genfun_allocator(compile_t* c, reach_type_t* t)
   compile_type_t* c_t = (compile_type_t*)t->c_type;
 
   // No allocator for machine word types or pointers.
-  if((c_t->primitive != NULL) || is_pointer(t->ast) || is_nullable_pointer(t->ast))
+  if((c_t->primitive != NULL) || is_pointer(t->ast) || is_nullable_pointer(t->ast) ||
+     is_optional(t->ast))
     return true;
 
   const char* funname = genname_alloc(t->name);

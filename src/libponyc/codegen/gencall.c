@@ -343,7 +343,7 @@ static bool call_needs_receiver(ast_t* postfix, reach_type_t* t)
         return false;
 
       // No receiver if a new Pointer or NullablePointer.
-      if(is_pointer(t->ast) || is_nullable_pointer(t->ast))
+      if(is_pointer(t->ast) || is_nullable_pointer(t->ast) || is_optional(t->ast))
         return false;
 
       return true;
@@ -1709,7 +1709,7 @@ LLVMValueRef gencall_alloc(compile_t* c, reach_type_t* t, ast_t* call)
     return NULL;
 
   // Do nothing for Pointer and NullablePointer.
-  if(is_pointer(t->ast) || is_nullable_pointer(t->ast))
+  if(is_pointer(t->ast) || is_nullable_pointer(t->ast) || is_optional(t->ast))
     return NULL;
 
   // Use the global instance if we have one.

@@ -2196,6 +2196,11 @@ bool is_c_fixed_sized_array(ast_t* type)
   return is_literal(type, "CFixedSizedArray");
 }
 
+bool is_optional(ast_t* type)
+{
+  return is_literal(type, "Optional");
+}
+
 bool is_none(ast_t* type)
 {
   return is_literal(type, "None");
@@ -2804,4 +2809,42 @@ ast_t* remove_entity_types(ast_t* type)
   }
 
   return ast_dup(type);
+}
+
+
+bool is_pointer_referenced_object(ast_t* type)
+{
+  if(is_machine_word(type) || is_optional(type))
+  {
+    return false;
+  }
+  else if(is_pointer(type) || is_nullable_pointer(type))
+  {
+    return true;
+  }
+
+  switch(ast_id(type))
+  {
+    case TK_UNIONTYPE:
+    case TK_ISECTTYPE:
+      return true;
+
+    case TK_NOMINAL:
+    {
+      ast_t* def = (ast_t*)ast_data(type);
+      token_id underlying = ast_id(def);
+      if(underlying == TK_STRUCT || underlying == TK_CLASS || underlying == TK_ACTOR ||
+         underlying == TK_TRAIT || underlying == TK_INTERFACE)
+      {
+        return true;
+      }
+
+      break;
+    }
+
+    default:
+      break;
+  }
+
+  return false;
 }
