@@ -69,7 +69,6 @@ add_library(libponyc STATIC
     expr/reference.c
     options/options.c
     pass/completeness.c
-    pass/docgen.c
     pass/expr.c
     pass/finalisers.c
     pass/flatten.c
