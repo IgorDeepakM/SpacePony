@@ -20,7 +20,7 @@ static void reify_typeparamref(ast_t** astp, ast_t* typeparam, ast_t* typearg)
   pony_assert(ast_id(ast) == TK_TYPEPARAMREF);
 
   // Value type parameters cannot be checked against type parameters.
-  if (ast_id(typeparam) == TK_VALUEFORMALPARAM)
+  if(ast_id(typeparam) == TK_VALUEFORMALPARAM)
   {
     return;
   }
@@ -147,17 +147,20 @@ static void reify_reference(ast_t** astp, ast_t* typeparam, ast_t* typearg)
   // reify_typeparamref. A single-level follow is insufficient when type
   // parameters are copied multiple times by collect_type_params for nested
   // lambdas/object literals.
-  if(ast_id(ref_def) == TK_TYPEPARAM)
+  if(ast_id(ref_def) == TK_TYPEPARAM || ast_id(ref_def) == TK_VALUEFORMALPARAM)
   {
     while((ast_t*)ast_data(ref_def) != ref_def)
       ref_def = (ast_t*)ast_data(ref_def);
   }
 
   pony_assert(typeparam != NULL);
-  while((ast_t*)ast_data(typeparam) != typeparam)
-    typeparam = (ast_t*)ast_data(typeparam);
 
-  if(ref_def != typeparam)
+  ast_t* param_def = typeparam;
+
+  while((ast_t*)ast_data(param_def) != param_def)
+    param_def = (ast_t*)ast_data(param_def);
+
+  if(ref_def != param_def)
     return;
 
   if(ast_id(ref_def) == TK_VALUEFORMALPARAM)
