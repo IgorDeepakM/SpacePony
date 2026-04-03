@@ -1515,6 +1515,11 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
 
   // Generate the arguments.
   int count = (int)ast_childcount(args);
+  if(return_by_value && !return_value_lowering)
+  {
+    count++;
+  }
+
   size_t buf_size = count * sizeof(LLVMValueRef);
   LLVMValueRef* f_args = (LLVMValueRef*)ponyint_pool_alloc_size(buf_size);
 
@@ -1526,11 +1531,6 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
 
   if(!vararg)
   {
-    if(return_by_value && !return_value_lowering)
-    {
-      llvm_arg_count++;
-    }
-
     if(llvm_arg_count != (int)LLVMCountParamTypes(f_type))
     {
       ast_error(c->opt->check.errors, ast,
