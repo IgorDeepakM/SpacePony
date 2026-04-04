@@ -1,12 +1,17 @@
 struct box Optional[A: AnyNoCheck]
   """
   An Optional is a low level primitive that allows a value or not a value.
-  Iternally, if the value is a pointer to a primitive then it is stored as
+  Internally, if the value is a pointer to a primitive then it is stored as
   one word, where null indiciated unvalid value. If it is a machine word
   type other than pointer then it is stored as the type + bool telling if
   the value is valid. This is order to avoid boxing as it is possible to use
   (T | None) as an optional but it requires boxing for certain types. Also
   (T | None) doesn't work for structs.
+
+  If A is a pointer Optional is a pointer
+  If A is another type Optional is a { T, Bool }
+
+  Optional is of value type and cannot be sent to another actor.
 
   This type is used for return values of partial functions.
   """
