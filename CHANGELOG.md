@@ -7,12 +7,37 @@ All notable changes to the Pony compiler and standard library will be documented
 ### Fixed
 
 - Fix IOCP use-after-free crash ([PR #5055](https://github.com/ponylang/ponyc/pull/5055))
+- Fix use-after-free in IOCP ASIO system ([PR #5091](https://github.com/ponylang/ponyc/pull/5091))
+- Fix with tuple only processing first binding in build_with_dispose ([PR #5095](https://github.com/ponylang/ponyc/pull/5095))
+- Fix memory leak in Windows networking subsystem ([PR #5096](https://github.com/ponylang/ponyc/pull/5096))
+- Fix spurious error when assigning to a field on an `as` cast in a try block ([PR #5070](https://github.com/ponylang/ponyc/pull/5070))
+- Fix segfault when using Generator.map with PonyCheck shrinking ([PR #5006](https://github.com/ponylang/ponyc/pull/5006))
+- Fix pony-lint blank-lines rule false positives on multi-line docstrings ([PR #5109](https://github.com/ponylang/ponyc/pull/5109))
+- Fix `FloatingPoint.frexp` returning unsigned exponent ([PR #5113](https://github.com/ponylang/ponyc/pull/5113))
 
 ### Added
 
 
 ### Changed
 
+- Remove support for Alpine 3.20 ([PR #5094](https://github.com/ponylang/ponyc/pull/5094))
+- Remove docgen pass ([PR #5097](https://github.com/ponylang/ponyc/pull/5097))
+- Change `FloatingPoint.frexp` exponent return type from `U32` to `I32` ([PR #5113](https://github.com/ponylang/ponyc/pull/5113))
+
+## [0.62.1] - 2026-03-28
+
+### Fixed
+
+- Fix IOCP use-after-free crash ([PR #5055](https://github.com/ponylang/ponyc/pull/5055))
+- Fix pony-lint FileNaming false positives on Windows ([PR #5059](https://github.com/ponylang/ponyc/pull/5059))
+- Enforce documented maximum for --ponysuspendthreshold ([PR #5061](https://github.com/ponylang/ponyc/pull/5061))
+- Fix compiler crash when calling methods on invalid shift expressions ([PR #5063](https://github.com/ponylang/ponyc/pull/5063))
+- Enforce documented bounds for --ponycdinterval ([PR #5065](https://github.com/ponylang/ponyc/pull/5065))
+- Fix code generation failure for iftype with union return type ([PR #5066](https://github.com/ponylang/ponyc/pull/5066))
+- Add missing NULL checks for gen_expr results in gencall.c ([PR #5067](https://github.com/ponylang/ponyc/pull/5067))
+- Fix type system soundness hole ([PR #4963](https://github.com/ponylang/ponyc/pull/4963))
+- Fix cap_isect_constraint returning incorrect capability for empty intersections ([PR #4999](https://github.com/ponylang/ponyc/pull/4999))
+- Fix POOL_FREE first argument in painter_tidy ([PR #5082](https://github.com/ponylang/ponyc/pull/5082))
 
 ## [0.62.0] - 2026-03-21
 
