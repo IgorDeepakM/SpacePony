@@ -96,6 +96,7 @@ typedef struct pony_ctx_t
   serialise_alloc_fn serialise_alloc;
   serialise_alloc_fn serialise_alloc_final;
   serialise_throw_fn serialise_throw;
+  bool serialise_error;
 } pony_ctx_t;
 
 struct scheduler_t

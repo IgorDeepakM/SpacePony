@@ -1940,6 +1940,24 @@ PONY_API pony_ctx_t* pony_ctx()
   return &this_scheduler->ctx;
 }
 
+PONY_API void pony_clear_serialisation_error()
+{
+  pony_assert(this_scheduler != NULL);
+  this_scheduler->ctx.serialise_error = false;
+}
+
+PONY_API void pony_set_serialisation_error()
+{
+  pony_assert(this_scheduler != NULL);
+  this_scheduler->ctx.serialise_error = true;
+}
+
+PONY_API bool pony_get_serialisation_error()
+{
+  pony_assert(this_scheduler != NULL);
+  return this_scheduler->ctx.serialise_error;
+}
+
 /**
  * Gets whether the pinned actor scheduler is suspended or not
  */

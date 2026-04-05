@@ -172,6 +172,7 @@ typedef enum token_id
   TK_WHERE,
   TK_TRY,
   TK_TRY_NO_CHECK,
+  TK_TRY_GUARD,
   TK_WITH,
   TK_ERROR,
   TK_COMPILE_ERROR,

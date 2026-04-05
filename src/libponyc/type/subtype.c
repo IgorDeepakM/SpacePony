@@ -2206,6 +2206,11 @@ bool is_none(ast_t* type)
   return is_literal(type, "None");
 }
 
+bool is_any(ast_t* type)
+{
+  return is_literal(type, "Any");
+}
+
 bool is_env(ast_t* type)
 {
   return is_literal(type, "Env");

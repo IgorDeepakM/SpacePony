@@ -39,6 +39,8 @@ bool is_optional(ast_t* type);
 
 bool is_none(ast_t* type);
 
+bool is_any(ast_t* type);
+
 bool is_env(ast_t* type);
 
 bool is_runtime_options(ast_t* type);

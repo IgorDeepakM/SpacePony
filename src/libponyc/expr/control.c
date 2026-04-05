@@ -7,6 +7,7 @@
 #include "../pass/pass.h"
 #include "../pass/expr.h"
 #include "../pkg/ifdef.h"
+#include "../pkg/package.h"
 #include "../type/assemble.h"
 #include "../type/subtype.h"
 #include "../type/alias.h"
@@ -299,6 +300,100 @@ bool expr_try(pass_opt_t* opt, ast_t* ast)
   ast_settype(ast, type);
 
   literal_unify_control(ast, opt);
+
+  return true;
+}
+
+bool expr_try_guard(pass_opt_t* opt, ast_t* ast)
+{
+  ast_t* call = ast_child(ast);
+
+  if(ast_id(call) == TK_FFICALL)
+  {
+    ast_t* ret_type = ast_type(call);
+    ast_t* decl = (ast_t*)ast_data(call);
+
+    if(ret_type == NULL)
+    {
+      return false;
+    }
+
+    ast_t* bool_expr = NULL;
+    ast_t* get_expr = NULL;
+    const char* let_name = package_hygienic_id(&opt->check);
+
+    // The type of the return type is unpacked to the real return type
+    // being used by the destination
+    if(is_bool(ret_type))
+    {
+      ast_t* none_type = type_builtin(opt, ret_type, "None");
+      ast_settype(ast, none_type);
+
+      BUILD(b_expr, call,
+        NODE(TK_NOT, NODE(TK_REFERENCE, ID(let_name)))
+      );
+
+      bool_expr = b_expr;
+    }
+    else
+    {
+      ast_t* opt_typeargs = ast_childidx(ret_type, 2);
+      ast_t* opt_type = ast_child(opt_typeargs);
+      ast_settype(ast, opt_type);
+
+      BUILD(b_expr, call,
+        NODE(TK_CALL,
+          NODE(TK_DOT, NODE(TK_REFERENCE, ID(let_name)) ID("is_none"))
+          NONE
+          NONE
+          NONE
+        )
+      );
+
+      bool_expr = b_expr;
+
+      BUILD(g_expr, call,
+        NODE(TK_CALL,
+          NODE(TK_DOT, NODE(TK_REFERENCE, ID(let_name)) ID("get_no_check"))
+          NONE
+          NONE
+          NONE
+        )
+      );
+
+      get_expr = g_expr;
+    }
+
+    BUILD(if_error, call,
+      NODE(TK_SEQ, AST_SCOPE
+        NODE(TK_ASSIGN,
+          NODE(TK_LET, ID(let_name) NONE)
+          TREE(call)
+        )
+        NODE(TK_IF, AST_SCOPE
+          NODE(TK_SEQ,
+            TREE(bool_expr)
+          )
+          NODE(TK_SEQ, AST_SCOPE
+            NODE(TK_ERROR)
+          )
+          NONE
+        )
+      )
+    );
+
+    ast_replace(&call, if_error);
+
+    if(get_expr != NULL)
+    {
+      ast_append(call, get_expr);
+    }
+
+    if(!ast_passes_subtree(&call, opt, PASS_EXPR))
+    {
+      return false;
+    }
+  }
 
   return true;
 }
