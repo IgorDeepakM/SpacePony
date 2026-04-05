@@ -35,10 +35,13 @@ use @pony_alloc[Pointer[U8]](ctx: Pointer[None], size: USize)
 use @pony_alloc_final[Pointer[U8]](ctx: Pointer[None], size: USize)
 use @pony_serialise[None](ctx: Pointer[None], data: Any box, typ: Pointer[None],
   arr_out: Array[U8] tag, alloc_fn: @{(Pointer[None], USize): Pointer[U8]},
-  throw_fn: @{(): None ?}) ?
+  throw_fn: Pointer[None])
 use @pony_deserialise[Any iso^](ctx: Pointer[None], typ: Pointer[None],
   arr_in: Array[U8] val, alloc_fn: @{(Pointer[None], USize): Pointer[U8]},
-  alloc_final_fn: @{(Pointer[None], USize): Pointer[U8]}, throw_fn: @{(): None ?}) ?
+  alloc_final_fn: @{(Pointer[None], USize): Pointer[U8]}, throw_fn: Pointer[None])
+use @pony_clear_serialisation_error[None]()
+use @pony_set_serialisation_error[None]()
+use @pony_get_serialisation_error[Bool]()
 
 primitive Serialise
   fun signature(): Array[U8] val =>
@@ -104,8 +107,10 @@ class val Serialised
       @{(ctx: Pointer[None], size: USize): Pointer[U8] =>
         @pony_alloc(ctx, size)
       }
-    let throw_fn = @{() ? => error }
-    @pony_serialise(@pony_ctx(), data, Pointer[None], r, alloc_fn, throw_fn) ?
+    @pony_serialise(@pony_ctx(), data, Pointer[None], r, alloc_fn, Pointer[None])
+    if @pony_get_serialisation_error() then
+      error
+    end
     _data = consume r
 
   new input(auth: InputSerialisedAuth, data: Array[U8] val) =>
@@ -131,9 +136,13 @@ class val Serialised
       @{(ctx: Pointer[None], size: USize): Pointer[U8] =>
         @pony_alloc_final(ctx, size)
       }
-    let throw_fn = @{() ? => error }
-    @pony_deserialise(@pony_ctx(), Pointer[None], _data, alloc_fn,
-      alloc_final_fn, throw_fn) ?
+    let ret: Any iso = @pony_deserialise(@pony_ctx(), Pointer[None], _data, alloc_fn,
+      alloc_final_fn, Pointer[None])
+    if @pony_get_serialisation_error() then
+      error
+    end
+
+    ret
 
   fun output(auth: OutputSerialisedAuth): Array[U8] val =>
     """

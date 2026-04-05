@@ -674,6 +674,9 @@ ast_result_t pass_expr(ast_t** astp, pass_opt_t* options)
       r = expr_comptime(options, astp);
       break;
 
+    case TK_TRY_GUARD:
+      r = expr_try_guard(options, ast);
+
     default: {}
   }
 

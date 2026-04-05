@@ -159,7 +159,6 @@ void ponyint_serialise_actor(pony_ctx_t* ctx, pony_actor_t* actor)
   (void)actor;
   serialise_cleanup(ctx);
   ctx->serialise_throw();
-  abort();
 }
 
 PONY_API void pony_serialise_reserve(pony_ctx_t* ctx, void* p, size_t size)
@@ -224,12 +223,26 @@ PONY_API void pony_serialise(pony_ctx_t* ctx, void* p, pony_type_t* t,
   ctx->trace_actor = ponyint_serialise_actor;
   ctx->serialise_size = 0;
   ctx->serialise_alloc = alloc_fn;
-  ctx->serialise_throw = throw_fn;
+  if(throw_fn != NULL)
+  {
+    ctx->serialise_throw = throw_fn;
+  }
+  else
+  {
+    ctx->serialise_throw = pony_set_serialisation_error;
+  }
+
+  ctx->serialise_error = false;
 
   if(t != NULL)
     pony_traceknown(ctx, p, t, PONY_TRACE_MUTABLE);
   else
     pony_traceunknown(ctx, p, PONY_TRACE_MUTABLE);
+
+  if(ctx->serialise_error == true)
+  {
+    return;
+  }
 
   ponyint_gc_handlestack(ctx);
 
@@ -399,9 +412,23 @@ PONY_API void* pony_deserialise(pony_ctx_t* ctx, pony_type_t* t,
   ctx->serialise_size = in->size;
   ctx->serialise_alloc = alloc_fn;
   ctx->serialise_alloc_final = alloc_final_fn;
-  ctx->serialise_throw = throw_fn;
+  if(throw_fn != NULL)
+  {
+    ctx->serialise_throw = throw_fn;
+  }
+  else
+  {
+    ctx->serialise_throw = pony_set_serialisation_error;
+  }
+
+  ctx->serialise_error = false;
 
   void* object = pony_deserialise_offset(ctx, t, 0);
+  if(ctx->serialise_error == true)
+  {
+    return NULL;
+  }
+
   ponyint_gc_handlestack(ctx);
 
   custom_deserialise(ctx);
