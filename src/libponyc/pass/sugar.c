@@ -1030,11 +1030,8 @@ static ast_result_t sugar_ffi(pass_opt_t* opt, ast_t* ast)
         ast_t* ret_type = ast_child(ret_typeargs);
         if(ret_type != NULL)
         {
-          if(ast_id(ret_type) != NULL)
-          {
-            ast_t* new_ret_type = get_wrapped_partial_return_type(ret_type);
-            ast_replace(&ret_type, new_ret_type);
-          }
+          ast_t* new_ret_type = get_wrapped_partial_return_type(ret_type);
+          ast_replace(&ret_type, new_ret_type);
         }
       }
     }
@@ -1045,6 +1042,7 @@ static ast_result_t sugar_ffi(pass_opt_t* opt, ast_t* ast)
 
 static ast_result_t sugar_ffi_call_post(pass_opt_t* opt, ast_t** astp)
 {
+  (void)opt;
   ast_t* question = ast_childidx(*astp, 4);
 
   if(ast_id(question) == TK_QUESTION)

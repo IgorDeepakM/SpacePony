@@ -387,6 +387,7 @@ LLVMValueRef gen_assign_cast(compile_t* c, LLVMTypeRef l_type,
       return r_value;
 
     case LLVMStructTypeKind:
+    {
       if(LLVMGetTypeKind(r_type) == LLVMPointerTypeKind)
       {
         if(ast_id(type) == TK_TUPLETYPE)
@@ -397,8 +398,17 @@ LLVMValueRef gen_assign_cast(compile_t* c, LLVMTypeRef l_type,
         pony_assert(LLVMGetTypeKind(LLVMTypeOf(r_value)) == LLVMStructTypeKind);
       }
 
-      return assign_to_tuple(c, l_type, r_value, type);
-
+      ast_t* def = (ast_t*)ast_data(type);
+      if(def != NULL && ast_id(def) == TK_STRUCT)
+      {
+        // For structs that pretends to be a value type
+        return r_value;
+      }
+      else
+      {
+       return assign_to_tuple(c, l_type, r_value, type);
+      }
+    }
     default: {}
   }
 

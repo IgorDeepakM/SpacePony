@@ -1386,7 +1386,6 @@ static LLVMValueRef cast_ffi_arg(compile_t* c, ffi_decl_t* decl, ast_t* ast,
       break;
 
     case LLVMStructTypeKind:
-      pony_assert(LLVMGetTypeKind(arg_type) == LLVMStructTypeKind);
       return arg;
 
     default: {}
@@ -1484,7 +1483,6 @@ LLVMValueRef generate_and_get_ffi_decl(compile_t* c, ast_t* use, ast_t* decl,
 LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
 {
   AST_GET_CHILDREN(ast, id, typeargs, args, named_args, can_err);
-  bool err = (ast_id(can_err) == TK_QUESTION);
 
   deferred_reification_t* reify = c->frame->reify;
 
