@@ -24,6 +24,7 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
   * [iftype on entity types](#iftype-on-entity-types)
   * [entityif](#entityif)
   * [alignas](#alignas)
+  * [Return value exceptions](#return-value-exceptions)
 * [Future directions](#future-directions)
   * [Short term](#short-term)
   * [Long term (read never)](#long-term-read-never)
@@ -734,6 +735,104 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   ```
 
 * Maximum alignment is 4096 and must be a power of 2.
+
+
+### Return value exceptions
+
+* SpacePony supports partial FFI functions. Previously this was implemented by throwing an exception (by calling _Unwind_RaiseException using libunwind or similar function for the platform in question). SpacePony has transitioned from using unwind exception to using return values for FFI functions. This is similar to how for example Swift works, by using return values under the hood but they look like traditional exceptions for the programmer. In order to implement partial FFI funtions, the return value needs to be taken into consideration.
+
+* When a partial FFI function returns nothing (void), the function should signal success/error by using a bool.
+
+  ```pony
+  use @FFI_Func[None]()?
+
+  ...
+
+  try
+    @FFI_Func()?
+    env.out.print("success")
+  else
+    env.out.print("error")
+  end
+  ```
+
+  ```c
+  bool FFI_Func()
+  {
+    return true; // return true for success
+    ...
+    return false; // return false for error
+  }
+  ```
+
+* When a partial FFI function returns a struct or anything else represented by a pointer, the function should signal success/error by returning a valid pointer or NULL.
+
+  ```pony
+  use @FFI_Func[S]()?
+  
+  struct S
+    ...
+
+  var s: S = S
+  try
+    s = @FFI_Func()?
+    env.out.print("success")
+  else
+    env.out.print("error")
+  end
+  ```
+
+  ```c
+  typedef struct
+  {
+     ...
+  }S;
+
+  S* FFI_Func()
+  {
+    S s* = ...
+    return s; // return valid pointer for success
+    ...
+    return NULL; // return NULL for error
+  }
+  ```
+
+* When a partial FFI function returns anything other than a pointer, the function should signal success/error by returning a struct by value with the return type T and a bool like the example below. The value of T when error is disregarded and can be
+set to anything but typically 0.
+
+  ```pony
+  use @FFI_Func[USize]()?
+
+  ...
+
+  var v: USize = 0
+  try
+    v = @FFI_Func()?
+    env.out.print("success")
+  else
+    env.out.print("error")
+  end
+  ```
+
+  ```c
+  typedef struct
+  {
+    size_t value;
+    bool success;
+  }ReturnStruct;
+
+  ReturnStruct FFI_Func()
+  {
+    size_t v = ...
+    ReturnStruct rs = { v, true };  // return { size_t, true } for success
+    return rs;
+    ...
+    ReturnStruct rs = { 0, false };  // return { size_t, false } for error
+    return rs;
+  }
+  ```
+
+* Return value exception will also be implemented for functions inside pony, totally eleminating unwind exceptions. This will happen under the hood and doesn't require any attention of the programmer.
 
 
 ## Future directions
