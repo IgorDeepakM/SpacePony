@@ -374,7 +374,9 @@ bool expr_try_guard(pass_opt_t* opt, ast_t* ast)
             TREE(bool_expr)
           )
           NODE(TK_SEQ, AST_SCOPE
-            NODE(TK_ERROR)
+            NODE(TK_ERROR,
+              NONE
+            )
           )
           NONE
         )
