@@ -10,6 +10,7 @@ This language server is communicating with LSP-clients (editors) via stdout/stdi
 | **Hover** | Additional information is shown for: entities, methods, fields, local variables and references. |
 | **Go To Definition** | For most language constructs, you can go from a reference to its definition. |
 | **Document Symbols** | pony-lsp provides a list of available symbols for each opened document. |
+| **Document Highlight** | All occurrences of the symbol under the cursor are highlighted simultaneously across the document. |
 
 We are constantly working on adding new features, but also welcome all contributions and offer help and guidance for implementing any feature.
 
