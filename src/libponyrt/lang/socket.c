@@ -1009,7 +1009,7 @@ PONY_API OsResult pony_os_writev(asio_event_t* ev, LPWSABUF wsa, int wsacnt)
     }
   }
 
-  ret = { (size_t)wsacnt, true };
+  OsResult ret = { (size_t)wsacnt, true };
   return ret;
 }
 #else
