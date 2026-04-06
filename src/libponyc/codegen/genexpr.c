@@ -234,6 +234,10 @@ LLVMValueRef gen_expr(compile_t* c, ast_t* ast)
       ret = gen_inlineasm(c, ast);
       break;
 
+    case TK_TRY_GUARD:
+      ret = gen_expr(c, ast_child(ast));
+      break;
+
     default:
       ast_error(c->opt->check.errors, ast, "not implemented (codegen unknown)");
       return NULL;
@@ -383,6 +387,7 @@ LLVMValueRef gen_assign_cast(compile_t* c, LLVMTypeRef l_type,
       return r_value;
 
     case LLVMStructTypeKind:
+    {
       if(LLVMGetTypeKind(r_type) == LLVMPointerTypeKind)
       {
         if(ast_id(type) == TK_TUPLETYPE)
@@ -393,8 +398,17 @@ LLVMValueRef gen_assign_cast(compile_t* c, LLVMTypeRef l_type,
         pony_assert(LLVMGetTypeKind(LLVMTypeOf(r_value)) == LLVMStructTypeKind);
       }
 
-      return assign_to_tuple(c, l_type, r_value, type);
-
+      ast_t* def = (ast_t*)ast_data(type);
+      if(def != NULL && ast_id(def) == TK_STRUCT)
+      {
+        // For structs that pretends to be a value type
+        return r_value;
+      }
+      else
+      {
+       return assign_to_tuple(c, l_type, r_value, type);
+      }
+    }
     default: {}
   }
 

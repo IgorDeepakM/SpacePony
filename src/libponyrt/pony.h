@@ -204,6 +204,12 @@ typedef struct pony_language_features_init_t
 /// The currently executing context.
 PONY_API pony_ctx_t* pony_ctx();
 
+// Pony serialisation error function which can be used to indicate serialisation
+// error
+PONY_API void pony_clear_serialisation_error();
+PONY_API void pony_set_serialisation_error();
+PONY_API bool pony_get_serialisation_error();
+
 /** Create a new actor.
  *
  * When an actor is created, the type is set. This specifies the trace function

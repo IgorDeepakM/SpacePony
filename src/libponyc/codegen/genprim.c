@@ -457,6 +457,8 @@ static void pointer_to_reftype(compile_t* c, void* data, token_id cap)
 
   LLVMPositionBuilderAtEnd(c->builder, is_true);
   gencall_error(c);
+  // For future error
+  //genfun_build_ret(c, LLVMConstNull(t_elem->use_type));
 
   codegen_finishfun(c);
 }
@@ -601,6 +603,8 @@ static void nullable_pointer_apply(compile_t* c, void* data, token_id cap)
 
   LLVMPositionBuilderAtEnd(c->builder, is_true);
   gencall_error(c);
+  // For future error
+  //genfun_build_ret(c, LLVMConstNull(t_elem->use_type));
 
   codegen_finishfun(c);
 }
@@ -635,9 +639,11 @@ void genprim_nullable_pointer_methods(compile_t* c, reach_type_t* t)
   BOX_FUNCTION(nullable_pointer_is_none, t);
 }
 
-static void optional_none(compile_t* c, reach_type_t* t, compile_type_t* t_elem)
+static void optional_none(compile_t* c, reach_type_t* t, reach_type_t* t_elem)
 {
   FIND_METHOD("none", TK_NONE, c->opt);
+
+  compile_type_t* c_t_elem = (compile_type_t*)t_elem->c_type;
 
   LLVMTypeRef params[1];
   params[0] = c_t->use_type;
@@ -645,7 +651,7 @@ static void optional_none(compile_t* c, reach_type_t* t, compile_type_t* t_elem)
 
   LLVMValueRef ret = NULL;
 
-  if(c_t->structure == NULL)
+  if(c_t->structure == NULL || is_pointer(t_elem->ast) || is_any(t_elem->ast))
   {
     ret = LLVMConstNull(c_t->use_type);
   }
@@ -655,7 +661,7 @@ static void optional_none(compile_t* c, reach_type_t* t, compile_type_t* t_elem)
     compile_type_t* bool_reach_c_t = (compile_type_t*)bool_type->c_type;
 
     LLVMValueRef tuple = LLVMGetParam(c_m->func, 0);
-    tuple = LLVMBuildInsertValue(c->builder, tuple, LLVMConstNull(t_elem->mem_type), 0, "");
+    tuple = LLVMBuildInsertValue(c->builder, tuple, LLVMConstNull(c_t_elem->mem_type), 0, "");
     ret = LLVMBuildInsertValue(c->builder, tuple, LLVMConstInt(bool_reach_c_t->mem_type, 0, false), 1, "");
   }
 
@@ -663,18 +669,20 @@ static void optional_none(compile_t* c, reach_type_t* t, compile_type_t* t_elem)
   codegen_finishfun(c);
 }
 
-static void optional_create(compile_t* c, reach_type_t* t, compile_type_t* t_elem)
+static void optional_create(compile_t* c, reach_type_t* t, reach_type_t* t_elem)
 {
   FIND_METHOD("create", TK_NONE, c->opt);
 
+  compile_type_t* c_t_elem = (compile_type_t*)t_elem->c_type;
+
   LLVMTypeRef params[2];
   params[0] = c_t->use_type;
-  params[1] = t_elem->use_type;
+  params[1] = c_t_elem->use_type;
   start_function(c, t, m, c_t->use_type, params, 2);
 
   LLVMValueRef ret = NULL;
 
-  if(c_t->structure == NULL)
+  if(c_t->structure == NULL || is_pointer(t_elem->ast) || is_any(t_elem->ast))
   {
     ret = LLVMBuildBitCast(c->builder, LLVMGetParam(c_m->func, 1), c_t->use_type, "");
   }
@@ -684,7 +692,7 @@ static void optional_create(compile_t* c, reach_type_t* t, compile_type_t* t_ele
     compile_type_t* bool_reach_c_t = (compile_type_t*)bool_type->c_type;
 
     LLVMValueRef tuple = LLVMGetParam(c_m->func, 0);
-    LLVMValueRef elem = gen_assign_cast(c, t_elem->use_type, LLVMGetParam(c_m->func, 1), m->params[1].ast);
+    LLVMValueRef elem = gen_assign_cast(c, c_t_elem->use_type, LLVMGetParam(c_m->func, 1), m->params[1].ast);
     tuple = LLVMBuildInsertValue(c->builder, tuple, elem, 0, "");
     ret = LLVMBuildInsertValue(c->builder, tuple, LLVMConstInt(bool_reach_c_t->mem_type, 1, false), 1, "");
   }
@@ -696,7 +704,9 @@ static void optional_create(compile_t* c, reach_type_t* t, compile_type_t* t_ele
 static void optional_is_none(compile_t* c, void* data, token_id cap)
 {
   reach_type_t* t = ((reach_type_t**)data)[0];
-  compile_type_t* t_elem = ((compile_type_t**)data)[1];
+  reach_type_t* t_elem = ((reach_type_t**)data)[1];
+
+  compile_type_t* c_t_elem = (compile_type_t*)t_elem->c_type;
 
   FIND_METHOD("is_none", cap, c->opt);
 
@@ -710,9 +720,9 @@ static void optional_is_none(compile_t* c, void* data, token_id cap)
 
   LLVMValueRef valid = NULL;
 
-  if(c_t->structure == NULL)
+  if(c_t->structure == NULL || is_pointer(t_elem->ast) || is_any(t_elem->ast))
   {
-    LLVMValueRef val = LLVMBuildBitCast(c->builder, LLVMGetParam(c_m->func, 0), t_elem->use_type, "");
+    LLVMValueRef val = LLVMBuildBitCast(c->builder, LLVMGetParam(c_m->func, 0), c_t_elem->use_type, "");
     valid = LLVMBuildIsNull(c->builder, val, "");
   }
   else
@@ -730,17 +740,19 @@ static void optional_is_none(compile_t* c, void* data, token_id cap)
 static void optional_get_no_check(compile_t* c, void* data, token_id cap)
 {
   reach_type_t* t = ((reach_type_t**)data)[0];
-  compile_type_t* t_elem = ((compile_type_t**)data)[1];
+  reach_type_t* t_elem = ((reach_type_t**)data)[1];
+
+  compile_type_t* c_t_elem = (compile_type_t*)t_elem->c_type;
 
   FIND_METHOD("get_no_check", cap, c->opt);
 
   LLVMTypeRef params[1];
   params[0] = c_t->use_type;
-  start_function(c, t, m, t_elem->use_type, params, 1);
+  start_function(c, t, m, c_t_elem->use_type, params, 1);
 
   LLVMValueRef value = NULL;
 
-  if(c_t->structure == NULL)
+  if(c_t->structure == NULL || is_pointer(t_elem->ast) || is_any(t_elem->ast))
   {
     value = LLVMGetParam(c_m->func, 0);
   }
@@ -748,7 +760,7 @@ static void optional_get_no_check(compile_t* c, void* data, token_id cap)
   {
     LLVMValueRef tuple = LLVMGetParam(c_m->func, 0);
     value = LLVMBuildExtractValue(c->builder, tuple, 0, "");
-    value = gen_assign_cast(c, t_elem->use_type, value, m->result->ast);
+    value = gen_assign_cast(c, c_t_elem->use_type, value, m->result->ast);
   }
 
   genfun_build_ret(c, value);
@@ -759,8 +771,7 @@ void genprim_optional_methods(compile_t* c, reach_type_t* t)
 {
   ast_t* typeargs = ast_childidx(t->ast, 2);
   ast_t* typearg = ast_child(typeargs);
-  compile_type_t* t_elem =
-    (compile_type_t*)reach_type(c->reach, typearg, c->opt)->c_type;
+  reach_type_t* t_elem = reach_type(c->reach, typearg, c->opt);
 
   void* box_args[2];
   box_args[0] = t;

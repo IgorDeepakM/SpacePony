@@ -119,7 +119,15 @@ static const char* const _builtin =
   "  fun apply[A](obj: A) => compile_intrinsic\n"
   "struct NullablePointer[A]\n"
   "  new create(that: A) => compile_intrinsic\n"
-  "struct RuntimeOptions\n";
+  "struct RuntimeOptions\n"
+  "struct box Optional[A: AnyNoCheck]"
+  "  new none() => compile_intrinsic\n"
+  "  new create(init: A) => compile_intrinsic\n"
+  "  fun is_none() : Bool => compile_intrinsic\n"
+  "  fun is_some(): Bool => compile_intrinsic\n"
+  "  fun apply(): A? => error\n"
+  "  fun get_no_check(): A => compile_intrinsic\n";
+
 
 void Main_runtime_override_defaults_oo(void* opt)
 {
