@@ -311,7 +311,6 @@ bool expr_try_guard(pass_opt_t* opt, ast_t* ast)
   if(ast_id(call) == TK_FFICALL)
   {
     ast_t* ret_type = ast_type(call);
-    ast_t* decl = (ast_t*)ast_data(call);
 
     if(ret_type == NULL)
     {
