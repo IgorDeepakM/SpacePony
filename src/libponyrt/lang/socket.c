@@ -972,8 +972,15 @@ PONY_API bool pony_os_host_ip6(const char* host)
   return inet_pton(AF_INET6, host, &addr) == 1;
 }
 
+typedef struct
+{
+  size_t res;
+  bool success;
+}OsResult;
+
 #ifdef PLATFORM_IS_WINDOWS
-PONY_API size_t pony_os_writev(asio_event_t* ev, LPWSABUF wsa, int wsacnt)
+
+PONY_API OsResult pony_os_writev(asio_event_t* ev, LPWSABUF wsa, int wsacnt)
 {
   SOCKET s = (SOCKET)ev->fd;
   iocp_t* iocp = iocp_create(IOCP_SEND, ev);
@@ -984,37 +991,50 @@ PONY_API size_t pony_os_writev(asio_event_t* ev, LPWSABUF wsa, int wsacnt)
     switch (GetLastError())
     {
       case WSA_IO_PENDING:
-        return wsacnt;
+      {
+        OsResult ret = { (size_t)wsacnt, true };
+        return ret;
+      }
       case WSAEWOULDBLOCK :
-        iocp_destroy(iocp);
-        return 0;
+      {
+        OsResult ret = { 0, true };
+        return ret;
+      }
       default:
+      {
         iocp_destroy(iocp);
-        pony_error();
-        return 0;
+        OsResult ret = { 0, false };
+        return ret;
+      }
     }
   }
 
-  return wsacnt;
+  OsResult ret = { (size_t)wsacnt, true };
+  return ret;
 }
 #else
-PONY_API size_t pony_os_writev(asio_event_t* ev, const struct iovec *iov, int iovcnt)
+PONY_API OsResult pony_os_writev(asio_event_t* ev, const struct iovec *iov, int iovcnt)
 {
   ssize_t sent = writev(ev->fd, iov, iovcnt);
 
   if(sent < 0)
   {
     if(errno == EWOULDBLOCK || errno == EAGAIN)
-      return 0;
+    {
+      OsResult ret = { 0, true };
+      return ret;
+    }
 
-    pony_error();
+    OsResult ret = { 0, false };
+    return ret;
   }
 
-  return (size_t)sent;
+  OsResult ret = { (size_t)sent, true };
+  return ret;
 }
 #endif
 
-PONY_API size_t pony_os_send(asio_event_t* ev, const char* buf, size_t len)
+PONY_API OsResult pony_os_send(asio_event_t* ev, const char* buf, size_t len)
 {
 #ifdef PLATFORM_IS_WINDOWS
   SOCKET s = (SOCKET)ev->fd;
@@ -1030,70 +1050,100 @@ PONY_API size_t pony_os_send(asio_event_t* ev, const char* buf, size_t len)
     switch (GetLastError())
     {
       case WSA_IO_PENDING:
-        return len;
-      case WSAEWOULDBLOCK :
-        iocp_destroy(iocp);
-        return 0;
+      {
+        OsResult ret = { len, true };
+        return ret;
+      }
+      case WSAEWOULDBLOCK:
+      {
+        OsResult ret = { 0, true };
+        return ret;
+      }
       default:
+      {
         iocp_destroy(iocp);
-        pony_error();
-        return 0;
+        OsResult ret = { 0, false };
+        return ret;
+      }
     }
   }
 
-  return sent;
+  OsResult ret = { (size_t)sent, true };
+  return ret;
 #else
   ssize_t sent = send(ev->fd, buf, len, 0);
 
   if(sent < 0)
   {
     if(errno == EWOULDBLOCK || errno == EAGAIN)
-      return 0;
+    {
+      OsResult ret = { 0, true };
+      return ret;
+    }
 
-    pony_error();
+    OsResult ret = { 0, false };
+    return ret;
   }
 
-  return (size_t)sent;
+  OsResult ret = { (size_t)sent, true };
+  return ret;
 #endif
 }
 
-PONY_API size_t pony_os_recv(asio_event_t* ev, char* buf, size_t len)
+PONY_API OsResult pony_os_recv(asio_event_t* ev, char* buf, size_t len)
 {
 #ifdef PLATFORM_IS_WINDOWS
   if(!iocp_recv(ev, buf, len))
-    pony_error();
+  {
+    OsResult ret = { 0 , false };
+    return ret;
+  }
 
-  return 0;
+  OsResult ret = { 0, true };
+  return ret;
 #else
   ssize_t received = recv(ev->fd, buf, len, 0);
 
   if(received < 0)
   {
     if(errno == EWOULDBLOCK || errno == EAGAIN)
-      return 0;
+    {
+      OsResult ret = { 0, true };
+      return ret;
+    }
 
-    pony_error();
+    OsResult ret = { 0, false };
+    return ret;
   } else if(received == 0) {
-    pony_error();
+    OsResult ret = { 0, false };
+    return ret;
   }
 
-  return (size_t)received;
+  OsResult ret = { (size_t)received, true };
+  return ret;
 #endif
 }
 
-PONY_API size_t pony_os_sendto(int fd, const char* buf, size_t len,
+PONY_API OsResult pony_os_sendto(int fd, const char* buf, size_t len,
   ipaddress_t* ipaddr)
 {
 #ifdef PLATFORM_IS_WINDOWS
   if(!iocp_sendto(fd, buf, len, ipaddr))
-    pony_error();
+  {
+    OsResult ret = { 0, false };
+    return ret;
+  }
 
-  return 0;
+  OsResult ret = { 0, true };
+  return ret;
 #else
   socklen_t addrlen = ponyint_address_length(ipaddr);
 
   if(addrlen == (socklen_t)-1)
-    pony_error();
+  {
+    OsResult ret = { 0, false };
+    return ret;
+  }
 
   ssize_t sent = sendto(fd, buf, len, 0, (struct sockaddr*)&ipaddr->addr,
     addrlen);
@@ -1101,23 +1151,32 @@ PONY_API size_t pony_os_sendto(int fd, const char* buf, size_t len,
   if(sent < 0)
   {
     if(errno == EWOULDBLOCK || errno == EAGAIN)
-      return 0;
+    {
+      OsResult ret = { 0, true };
+      return ret;
+    }
 
-    pony_error();
+    OsResult ret = { 0, false };
+    return ret;
   }
 
-  return (size_t)sent;
+  OsResult ret = { (size_t)sent, true };
+  return ret;
 #endif
 }
 
-PONY_API size_t pony_os_recvfrom(asio_event_t* ev, char* buf, size_t len,
+PONY_API OsResult pony_os_recvfrom(asio_event_t* ev, char* buf, size_t len,
   ipaddress_t* ipaddr)
 {
 #ifdef PLATFORM_IS_WINDOWS
   if(!iocp_recvfrom(ev, buf, len, ipaddr))
-    pony_error();
+  {
+    OsResult ret = { 0, false };
+    return ret;
+  }
 
-  return 0;
+  OsResult ret = { 0, true };
+  return ret;
 #else
   socklen_t addrlen = sizeof(struct sockaddr_storage);
 
@@ -1127,14 +1186,20 @@ PONY_API size_t pony_os_recvfrom(asio_event_t* ev, char* buf, size_t len,
   if(recvd < 0)
   {
     if(errno == EWOULDBLOCK || errno == EAGAIN)
-      return 0;
+    {
+      OsResult ret = { 0, true };
+      return ret;
+    }
 
-    pony_error();
+    OsResult ret = { 0, false };
+    return ret;
   } else if(recvd == 0) {
-    pony_error();
+    OsResult ret = { 0, false };
+    return ret;
   }
 
-  return (size_t)recvd;
+  OsResult ret = { (size_t)recvd, true };
+  return ret;
 #endif
 }
 

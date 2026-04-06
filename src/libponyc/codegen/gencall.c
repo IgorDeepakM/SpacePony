@@ -1229,9 +1229,16 @@ static void declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* f_name,
   pony_assert(reified_ret != NULL);
   ast_free_unattached(ret_type);
 
+  compile_type_t* ret_c_t = (compile_type_t*)reified_ret->c_type;
+
   ffi_decl->ret_reach_type = reified_ret;
 
-  ffi_decl->return_by_value = ast_has_annotation(ast_child(ret_ast), PONY_BYVAL_ANNOTATION);
+  // The Optional type is a struct but of value type. When something is of struct type
+  // (LLVMStructTypeKind) then we know it is a struct but of value type.
+  // However, there are FFI functions that are intrinsics that don't need to follow the C
+  // value pass ABI and the use_type can therefore be used directly without any C FFI lowering.
+  ffi_decl->return_by_value = ast_has_annotation(ast_child(ret_ast), PONY_BYVAL_ANNOTATION) ||
+    ((LLVMGetTypeKind(ret_c_t->use_type) == LLVMStructTypeKind) && !intrinsic);
   if(ffi_decl->return_by_value)
   {
     ffi_decl->return_value_lowered = is_return_value_lowering_needed(c, reified_ret);
@@ -1265,9 +1272,8 @@ static void declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* f_name,
 
     if(ffi_decl->return_by_value && !ffi_decl->return_value_lowered)
     {
-      compile_type_t* ret_c_t = (compile_type_t*)reified_ret->c_type;
       ffi_decl->params[param_count].reach_type = reified_ret;
-      f_params[param_count] = ret_c_t->use_type;
+      f_params[param_count] = ret_c_t->structure_ptr;
       param_count++;
     }
 
@@ -1380,7 +1386,6 @@ static LLVMValueRef cast_ffi_arg(compile_t* c, ffi_decl_t* decl, ast_t* ast,
       break;
 
     case LLVMStructTypeKind:
-      pony_assert(LLVMGetTypeKind(arg_type) == LLVMStructTypeKind);
       return arg;
 
     default: {}
@@ -1478,7 +1483,6 @@ LLVMValueRef generate_and_get_ffi_decl(compile_t* c, ast_t* use, ast_t* decl,
 LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
 {
   AST_GET_CHILDREN(ast, id, typeargs, args, named_args, can_err);
-  bool err = (ast_id(can_err) == TK_QUESTION);
 
   deferred_reification_t* reify = c->frame->reify;
 
@@ -1508,9 +1512,20 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
   pony_assert(t != NULL);
   ast_free_unattached(type);
 
+  compile_type_t* ret_c_t = (compile_type_t*)t->c_type;
+
+  LLVMTypeKind return_type_kind = LLVMGetTypeKind(ret_c_t->use_type);
+
   if (return_by_value)
   {
-    assign_side = gen_alloc_return_value(c, t, ast);
+    if(return_type_kind == LLVMStructTypeKind)
+    {
+      assign_side = LLVMBuildAlloca(c->builder, ret_c_t->use_type,"");
+    }
+    else
+    {
+      assign_side = gen_alloc_return_value(c, t, ast);
+    }
   }
 
   // Generate the arguments.
@@ -1605,10 +1620,7 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
   LLVMValueRef result;
   codegen_debugloc(c, ast);
 
-  if(err && (c->frame->invoke_target != NULL))
-    result = invoke_fun(c, f_type, func, f_args, llvm_arg_count, "", false);
-  else
-    result = LLVMBuildCall2(c->builder, f_type, func, f_args, llvm_arg_count, "");
+  result = LLVMBuildCall2(c->builder, f_type, func, f_args, llvm_arg_count, "");
 
   // Go through each parameter and add byval attribute if passed by value
   if(ffi_decl != NULL)
@@ -1649,11 +1661,21 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
 
   if(return_by_value)
   {
-    if(return_value_lowering)
+    if(return_type_kind == LLVMStructTypeKind)
     {
-      copy_lowered_return_value_to_ptr(c, assign_side, result, t);
+      if(!return_value_lowering)
+      {
+        result = LLVMBuildLoad2(c->builder, c_t->use_type, assign_side, "");
+      }
     }
-    result = assign_side;
+    else
+    {
+      if(return_value_lowering)
+      {
+        copy_lowered_return_value_to_ptr(c, assign_side, result, t);
+      }
+      result = assign_side;
+    }
   }
   else if(isnone && isvoid)
   {

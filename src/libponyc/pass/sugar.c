@@ -952,6 +952,41 @@ static ast_result_t sugar_unop(ast_t** astp, const char* fn_name)
   return AST_OK;
 }
 
+static ast_t* get_wrapped_partial_return_type(ast_t* ret_type)
+{
+  ast_t* ret = NULL;
+
+  if(is_none(ret_type))
+  {
+    BUILD(new_ret_type, ret_type,
+      NODE(TK_NOMINAL,
+        NONE
+        ID("Bool")
+        NONE
+        NONE
+        NONE
+      )
+    );
+
+    ret = new_ret_type;
+  }
+  else
+  {
+    BUILD(new_ret_type, ret_type,
+      NODE(TK_NOMINAL,
+        NONE
+        ID("Optional")
+        NODE(TK_TYPEARGS, TREE(ret_type))
+        NONE
+        NONE
+      )
+    );
+
+    ret = new_ret_type;
+  }
+
+  return ret;
+}
 
 static ast_result_t sugar_ffi(pass_opt_t* opt, ast_t* ast)
 {
@@ -981,6 +1016,47 @@ static ast_result_t sugar_ffi(pass_opt_t* opt, ast_t* ast)
   if(ast_id(ast_parent(ast)) == TK_ADDRESS)
   {
     ast_setid(ast, TK_FFIREF);
+  }
+  else
+  {
+    AST_GET_CHILDREN(ast, id, ret_typeargs, params, named_params, question);
+
+    // If the FFI call/declaration is a partial, then change the return value to an
+    // Optional type or Bool depending on the existing return type
+    if(ast_id(question) == TK_QUESTION)
+    {
+      if(ast_id(ret_typeargs) != TK_NONE)
+      {
+        ast_t* ret_type = ast_child(ret_typeargs);
+        if(ret_type != NULL)
+        {
+          ast_t* new_ret_type = get_wrapped_partial_return_type(ret_type);
+          ast_replace(&ret_type, new_ret_type);
+        }
+      }
+    }
+  }
+
+  return AST_OK;
+}
+
+static ast_result_t sugar_ffi_call_post(pass_opt_t* opt, ast_t** astp)
+{
+  (void)opt;
+  ast_t* question = ast_childidx(*astp, 4);
+
+  if(ast_id(question) == TK_QUESTION)
+  {
+    // This is just the first part of the try guard sugar because we need
+    // to continue to create the if clause as well but we cannot that here
+    // as we don't know the actual return type here.
+    BUILD(try_guard_wrap, *astp,
+      NODE(TK_TRY_GUARD,
+        TREE(*astp)
+      )
+    );
+
+    ast_replace(astp, try_guard_wrap);
   }
 
   return AST_OK;
@@ -1510,6 +1586,9 @@ ast_result_t pass_sugar_post(ast_t** astp, pass_opt_t* options)
       if(!fold_string_concat(astp))
         return sugar_binop(astp, "add", "add_partial");
       return AST_OK;
+
+    case TK_FFICALL:
+      return sugar_ffi_call_post(options, astp);
 
     default:
       return AST_OK;
