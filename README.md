@@ -824,10 +824,10 @@ set to anything but typically 0.
   ReturnStruct FFI_Func()
   {
     size_t v = ...
-    ReturnStruct rs = { v, true };  // return { size_t, true } for success
+    ReturnStruct rs = { v, true };  // return { value, true } for success
     return rs;
     ...
-    ReturnStruct rs = { 0, false };  // return { size_t, false } for error
+    ReturnStruct rs = { 0, false };  // return { 0, false } for error
     return rs;
   }
   ```
