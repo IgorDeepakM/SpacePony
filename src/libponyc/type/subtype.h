@@ -77,6 +77,8 @@ ast_t* remove_entity_types(ast_t* type);
 
 bool is_pointer_referenced_object(ast_t* type);
 
+bool is_allowed_pointer_conversion(ast_t* l_type, ast_t* r_type, pass_opt_t* opt, errorframe_t* frame);
+
 PONY_EXTERN_C_END
 
 #endif

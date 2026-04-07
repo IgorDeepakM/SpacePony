@@ -303,48 +303,51 @@ static bool check_arg_types(pass_opt_t* opt, ast_t* params, ast_t* positional,
 
       return false;
     }
-    else if(!is_subtype(arg_type, wp_type, &info, opt) && (!is_bare || (!void_star_param(wp_type, arg_type))))
+    else if(!is_allowed_pointer_conversion(arg_type, wp_type, opt, &info))
     {
-      errorframe_t frame = NULL;
-      ast_error_frame(&frame, arg, "argument not assignable to parameter");
-      ast_error_frame(&frame, arg, "argument type is %s",
-                      ast_print_type(arg_type));
-      ast_error_frame(&frame, param, "parameter type requires %s",
-                      ast_print_type(wp_type));
+      if(!is_subtype(arg_type, wp_type, &info, opt) && (!is_bare || (!void_star_param(wp_type, arg_type))))
+      {
+        errorframe_t frame = NULL;
+        ast_error_frame(&frame, arg, "argument not assignable to parameter");
+        ast_error_frame(&frame, arg, "argument type is %s",
+          ast_print_type(arg_type));
+        ast_error_frame(&frame, param, "parameter type requires %s",
+          ast_print_type(wp_type));
 
-      if (ast_childcount(arg) > 1)
-        ast_error_frame(&frame, arg,
-          "note that arguments must be separated by a comma");
+        if(ast_childcount(arg) > 1)
+          ast_error_frame(&frame, arg,
+            "note that arguments must be separated by a comma");
 
-      if(ast_checkflag(ast_type(arg), AST_FLAG_INCOMPLETE))
-        ast_error_frame(&frame, arg,
-          "this might be possible if all fields were already defined");
+        if(ast_checkflag(ast_type(arg), AST_FLAG_INCOMPLETE))
+          ast_error_frame(&frame, arg,
+            "this might be possible if all fields were already defined");
 
-      errorframe_append(&frame, &info);
-      errorframe_report(&frame, opt->check.errors);
-      ast_free_unattached(wp_type);
-      return false;
-    }
-    else if((ast_id(wp_type) == TK_UNIONTYPE || ast_id(wp_type) == TK_ISECTTYPE) &&
-            contains_struct(wp_type))
-    {
-      errorframe_t frame = NULL;
-      ast_error_frame(&frame, wp_type,
-        "Cannot assign to a parameter with a union or isect type that contains a struct");
+        errorframe_append(&frame, &info);
+        errorframe_report(&frame, opt->check.errors);
+        ast_free_unattached(wp_type);
+        return false;
+      }
+      else if((ast_id(wp_type) == TK_UNIONTYPE || ast_id(wp_type) == TK_ISECTTYPE) &&
+        contains_struct(wp_type))
+      {
+        errorframe_t frame = NULL;
+        ast_error_frame(&frame, wp_type,
+          "Cannot assign to a parameter with a union or isect type that contains a struct");
 
-      errorframe_append(&frame, &info);
-      errorframe_report(&frame, opt->check.errors);
-      return false;
-    }
-    else if(contains_entity_type(wp_type))
-    {
-      errorframe_t frame = NULL;
-      ast_error_frame(&frame, wp_type,
-        "Cannot assign to a parameter type that contains an entity type");
+        errorframe_append(&frame, &info);
+        errorframe_report(&frame, opt->check.errors);
+        return false;
+      }
+      else if(contains_entity_type(wp_type))
+      {
+        errorframe_t frame = NULL;
+        ast_error_frame(&frame, wp_type,
+          "Cannot assign to a parameter type that contains an entity type");
 
-      errorframe_append(&frame, &info);
-      errorframe_report(&frame, opt->check.errors);
-      return false;
+        errorframe_append(&frame, &info);
+        errorframe_report(&frame, opt->check.errors);
+        return false;
+      }
     }
 
     ast_free_unattached(wp_type);
