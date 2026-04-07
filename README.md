@@ -152,19 +152,34 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   var ptr: Pointer[U32].from_any[MyStruct](my_struct)
   ```
 
-* A class or a struct can be implicitly converted to a Pointer. A Pointer[None] will accept any class or struct type.
+* A class/struct/actor can implicitly be converted from/to Pointer[None] and Pointer[T] where T is the type of the class/struct/actor.
 
   ```pony
   struct S
 
   ...
 
-  let s: S = S
-  var ps: Pointer[S] = s
-  var ps2: Pointer[None] = s
+  let s: S = Pointer[None]
+  let p: Pointer[None] = s
+
+  let s2: S = Pointer[S]
 
   ```
+* A bare lambda can also implicitly be converted from/to Pointer[None] and Pointer[T] where T is the type of the bare lambda.
 
+  ```pony
+  struct S
+
+  ...
+
+  let l: @{(USize): USize} = Pointer[None] // This is shorter than Pointer[@{(USize): USize}] which can save
+                                           // you some typing with long lambda types
+  let p: Pointer[None] = l
+
+  let s2: @{(USize): USize} = Pointer[@{(USize): USize}]
+
+  ```
+  
 ### addressof
 
 * addressof can be used **everywhere**
