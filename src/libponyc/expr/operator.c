@@ -623,37 +623,40 @@ bool expr_assign(pass_opt_t* opt, ast_t** astp)
     errorframe_report(&frame, opt->check.errors);
     return false;
   }
-  else if(!is_subtype(r_type, wl_type, &info, opt))
+  else if(!is_allowed_pointer_conversion(wl_type, r_type, opt, &info))
   {
-    ast_error_frame(&frame, ast, "right side must be a subtype of left side");
+    if(!is_subtype(r_type, wl_type, &info, opt))
+    {
+      ast_error_frame(&frame, ast, "right side must be a subtype of left side");
 
-    if(ast_checkflag(ast_type(right), AST_FLAG_INCOMPLETE))
-      ast_error_frame(&frame, right,
-        "this might be possible if all fields were already defined");
+      if(ast_checkflag(ast_type(right), AST_FLAG_INCOMPLETE))
+        ast_error_frame(&frame, right,
+          "this might be possible if all fields were already defined");
 
-    errorframe_append(&frame, &info);
-    errorframe_report(&frame, opt->check.errors);
-    ast_free_unattached(wl_type);
-    return false;
-  }
-  else if((ast_id(wl_type) == TK_UNIONTYPE || ast_id(wl_type) == TK_ISECTTYPE) &&
-          contains_struct(wl_type))
-  {
-    ast_error_frame(&frame, wl_type,
-      "Cannot assign to a union or isect type that contains a struct");
+      errorframe_append(&frame, &info);
+      errorframe_report(&frame, opt->check.errors);
+      ast_free_unattached(wl_type);
+      return false;
+    }
+    else if((ast_id(wl_type) == TK_UNIONTYPE || ast_id(wl_type) == TK_ISECTTYPE) &&
+      contains_struct(wl_type))
+    {
+      ast_error_frame(&frame, wl_type,
+        "Cannot assign to a union or isect type that contains a struct");
 
-    errorframe_append(&frame, &info);
-    errorframe_report(&frame, opt->check.errors);
-    return false;
-  }
-  else if(contains_entity_type(wl_type))
-  {
-    ast_error_frame(&frame, wl_type,
-      "Cannot assign to a type that contains an entity type");
+      errorframe_append(&frame, &info);
+      errorframe_report(&frame, opt->check.errors);
+      return false;
+    }
+    else if(contains_entity_type(wl_type))
+    {
+      ast_error_frame(&frame, wl_type,
+        "Cannot assign to a type that contains an entity type");
 
-    errorframe_append(&frame, &info);
-    errorframe_report(&frame, opt->check.errors);
-    return false;
+      errorframe_append(&frame, &info);
+      errorframe_report(&frame, opt->check.errors);
+      return false;
+    }
   }
 
   if((ast_id(left) == TK_TUPLE) && (ast_id(r_type) != TK_TUPLETYPE))

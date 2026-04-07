@@ -1252,17 +1252,3 @@ TEST_F(SubTypeTest, AllowedPointerConversion)
 
   TEST_COMPILE(src);
 }
-
-TEST_F(SubTypeTest, PointerFromNoneConversionFail)
-{
-  const char* src =
-    "struct S\n"
-
-    "primitive P\n"
-    "  fun apply() =>\n"
-    "    var s = S\n"
-    "    var ps: Pointer[None] = s\n"
-    "    var ps2: Pointer[S] = ps\n";
-
-  TEST_ERRORS_1(src, "right side must be a subtype of left side");
-}

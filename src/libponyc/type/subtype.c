@@ -1073,27 +1073,6 @@ static bool is_nominal_sub_entity(ast_t* sub, ast_t* super,
   ast_t* super_def = (ast_t*)ast_data(super);
   bool ret = true;
 
-  if(is_bare(sub) && is_pointer(super))
-  {
-    ast_t* super_typeargs = ast_childidx(super, 2);
-    ast_t* super_typearg = ast_child(super_typeargs);
-
-    // A bare type is a subtype of Pointer[None].
-    if(is_none(super_typearg))
-      return true;
-  }
-  // Implicit struct/class to pointer conversion
-  else if(is_pointer(super) &&
-          (ast_id(sub) == TK_NOMINAL && (ast_id(sub_def) == TK_STRUCT || ast_id(sub_def) == TK_CLASS)))
-  {
-    ast_t* pointer_elem_type = ast_child(ast_childidx(super, 2));
-
-    if(is_none(pointer_elem_type) || is_eqtype(pointer_elem_type, sub, errorf, opt))
-    {
-      return true;
-    }
-  }
-
   if(sub_def != super_def)
   {
     if(errorf != NULL)
@@ -2849,6 +2828,73 @@ bool is_pointer_referenced_object(ast_t* type)
 
     default:
       break;
+  }
+
+  return false;
+}
+
+
+bool is_allowed_pointer_conversion(ast_t* l_type, ast_t* r_type, pass_opt_t* opt, errorframe_t* frame)
+{
+  if(is_bare(l_type))
+  {
+    // Implicit pointer to lambda conversion
+    if(is_pointer(r_type))
+    {
+      ast_t* pointer_typeargs = ast_childidx(r_type, 2);
+      ast_t* pointer_typearg = ast_child(pointer_typeargs);
+
+      if(is_none(pointer_typearg) || is_eqtype(pointer_typearg, l_type, frame, opt))
+      {
+        return true;
+      }
+    }
+  }
+  else if(is_pointer(l_type))
+  {
+    // Implicit lambda to pointer conversion
+    if(is_bare(r_type))
+    {
+      ast_t* pointer_typeargs = ast_childidx(l_type, 2);
+      ast_t* pointer_typearg = ast_child(pointer_typeargs);
+
+      if(is_none(pointer_typearg) || is_eqtype(pointer_typearg, r_type, frame, opt))
+      {
+        return true;
+      }
+    }
+    // Implicit struct/class/actor to pointer conversion
+
+    ast_t* r_def = (ast_t*)ast_data(r_type);
+
+    if(ast_id(r_type) == TK_NOMINAL &&
+       (ast_id(r_def) == TK_STRUCT || ast_id(r_def) == TK_CLASS || ast_id(r_def) == TK_ACTOR))
+    {
+      ast_t* pointer_elem_type = ast_child(ast_childidx(l_type, 2));
+
+      if(is_none(pointer_elem_type) || is_eqtype(pointer_elem_type, r_type, frame, opt))
+      {
+        return true;
+      }
+    }
+  }
+
+  // Implicit pointer to struct/class/actor conversion
+
+  ast_t* l_def = (ast_t*)ast_data(l_type);
+
+  if(ast_id(l_type) == TK_NOMINAL &&
+    (ast_id(l_def) == TK_STRUCT || ast_id(l_def) == TK_CLASS || ast_id(l_def) == TK_ACTOR))
+  {
+    if(is_pointer(r_type))
+    {
+      ast_t* pointer_elem_type = ast_child(ast_childidx(r_type, 2));
+
+      if(is_none(pointer_elem_type) || is_eqtype(pointer_elem_type, l_type, frame, opt))
+      {
+        return true;
+      }
+    }
   }
 
   return false;

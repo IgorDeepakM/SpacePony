@@ -116,19 +116,42 @@ static bool declared_ffi(pass_opt_t* opt, ast_t* call, ast_t* decl)
     ast_t* a_type = alias(arg_type);
     errorframe_t info = NULL;
 
-    if(!void_star_param(p_type, a_type) &&
-      !is_subtype(a_type, p_type, &info, opt))
+    if(!is_allowed_pointer_conversion(a_type, p_type, opt, &info))
     {
       errorframe_t frame = NULL;
-      ast_error_frame(&frame, arg, "argument not a assignable to parameter");
-      ast_error_frame(&frame, arg, "argument type is %s",
-                      ast_print_type(a_type));
-      ast_error_frame(&frame, param, "parameter type requires %s",
-                      ast_print_type(p_type));
-      errorframe_append(&frame, &info);
-      errorframe_report(&frame, opt->check.errors);
-      ast_free_unattached(a_type);
-      return false;
+
+      if(!void_star_param(p_type, a_type) &&
+         !is_subtype(a_type, p_type, &info, opt))
+      {
+        ast_error_frame(&frame, arg, "argument not a assignable to parameter");
+        ast_error_frame(&frame, arg, "argument type is %s",
+          ast_print_type(a_type));
+        ast_error_frame(&frame, param, "parameter type requires %s",
+          ast_print_type(p_type));
+        errorframe_append(&frame, &info);
+        errorframe_report(&frame, opt->check.errors);
+        ast_free_unattached(a_type);
+        return false;
+      }
+      else if((ast_id(a_type) == TK_UNIONTYPE || ast_id(a_type) == TK_ISECTTYPE) &&
+        contains_struct(a_type))
+      {
+        ast_error_frame(&info, a_type,
+          "Cannot assign to a union or isect type that contains a struct");
+
+        errorframe_append(&frame, &info);
+        errorframe_report(&frame, opt->check.errors);
+        return false;
+      }
+      else if(contains_entity_type(a_type))
+      {
+        ast_error_frame(&info, a_type,
+          "Cannot assign to a type that contains an entity type");
+
+        errorframe_append(&frame, &info);
+        errorframe_report(&frame, opt->check.errors);
+        return false;
+      }
     }
 
     ast_free_unattached(a_type);
