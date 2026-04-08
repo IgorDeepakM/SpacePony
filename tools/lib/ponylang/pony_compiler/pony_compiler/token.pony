@@ -284,6 +284,7 @@ primitive TokenIds
     tk_typeref
     tk_typeparamref
     tk_valueformalparamref
+    tk_typealiasref
     tk_newref
     tk_newberef
     tk_beref
@@ -525,6 +526,7 @@ primitive TokenIds
     | TokenIds.tk_typeref => "TK_TYPEREF"
     | TokenIds.tk_typeparamref => "TK_TYPEPARAMREF"
     | TokenIds.tk_valueformalparamref => "TK_VALUEFORMALPARAMREF"
+    | TokenIds.tk_typealiasref => "TK_TYPEALIASREF"
     | TokenIds.tk_newref => "TK_NEWREF"
     | TokenIds.tk_newberef => "TK_NEWBEREF"
     | TokenIds.tk_beref => "TK_BEREF"

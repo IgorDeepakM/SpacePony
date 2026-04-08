@@ -692,7 +692,7 @@ static void optional_create(compile_t* c, reach_type_t* t, reach_type_t* t_elem)
     compile_type_t* bool_reach_c_t = (compile_type_t*)bool_type->c_type;
 
     LLVMValueRef tuple = LLVMGetParam(c_m->func, 0);
-    LLVMValueRef elem = gen_assign_cast(c, c_t_elem->use_type, LLVMGetParam(c_m->func, 1), m->params[1].ast);
+    LLVMValueRef elem = gen_assign_cast(c, c_t_elem->use_type, LLVMGetParam(c_m->func, 1), m->params[0].ast);
     tuple = LLVMBuildInsertValue(c->builder, tuple, elem, 0, "");
     ret = LLVMBuildInsertValue(c->builder, tuple, LLVMConstInt(bool_reach_c_t->mem_type, 1, false), 1, "");
   }

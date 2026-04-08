@@ -1,4 +1,5 @@
 #include "cap.h"
+#include "typealias.h"
 #include "../ast/ast.h"
 #include "../ast/token.h"
 #include "../ast/astbuild.h"
@@ -598,6 +599,9 @@ ast_t* cap_fetch(ast_t* type)
     case TK_TYPEPARAMREF:
       return ast_childidx(type, 1);
 
+    case TK_TYPEALIASREF:
+      return ast_childidx(type, 2);
+
     default: {}
   }
 
@@ -666,6 +670,18 @@ token_id cap_dispatch(ast_t* type)
 
     case TK_NOMINAL:
       return cap_single(type);
+
+    case TK_TYPEALIASREF:
+    {
+      ast_t* unfolded = typealias_unfold(type);
+
+      if(unfolded == NULL)
+        return TK_NONE;
+
+      token_id result = cap_dispatch(unfolded);
+      ast_free_unattached(unfolded);
+      return result;
+    }
 
     default: {}
   }
@@ -1134,6 +1150,21 @@ ast_t* modified_cap(ast_t* type, cap_mutation* mutation)
     case TK_NOMINAL:
     case TK_TYPEPARAMREF:
       return modified_cap_single(type, mutation);
+
+    case TK_TYPEALIASREF:
+    {
+      ast_t* unfolded = typealias_unfold(type);
+
+      if(unfolded == NULL)
+        return NULL;
+
+      ast_t* result = modified_cap(unfolded, mutation);
+
+      if(result != unfolded)
+        ast_free_unattached(unfolded);
+
+      return result;
+    }
 
     case TK_ARROW:
     {
