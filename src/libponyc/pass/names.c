@@ -153,6 +153,9 @@ static bool names_valueparam(pass_opt_t* opt, ast_t** astp, ast_t* def)
   AST_GET_CHILDREN(ast, package, id);
   pony_assert(ast_id(package) == TK_NONE);
 
+  // This is not a nominal type but a value formal param reference.
+  // Let's change it to that here
+
   REPLACE(astp,
     NODE(TK_VALUEFORMALPARAMREF, TREE(id)));
 

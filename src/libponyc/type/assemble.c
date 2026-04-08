@@ -294,11 +294,13 @@ ast_t* type_for_class(pass_opt_t* opt, ast_t* def, ast_t* ast,
     {
       ast_t* typeparam_id = ast_child(typeparam);
 
-      if (ast_id(typeparam) == TK_VALUEFORMALPARAM)
+      if(ast_id(typeparam) == TK_VALUEFORMALPARAM)
       {
         BUILD(typearg, ast,
           NODE(TK_VALUEFORMALPARAMREF,
             TREE(typeparam_id)));
+
+        ast_setdata(typearg, typeparam);
 
         ast_append(typeargs, typearg);
       }
