@@ -12,6 +12,7 @@ This language server is communicating with LSP-clients (editors) via stdout/stdi
 | **Document Symbols** | pony-lsp provides a list of available symbols for each opened document. |
 | **Document Highlight** | All occurrences of the symbol under the cursor are highlighted simultaneously across the document. |
 | **Inlay Hints** | Inferred types are shown inline after the variable name for `let` and `var` declarations with no explicit type annotation. |
+| **Find References** | All references to the symbol under the cursor are returned, with optional inclusion of the declaration site. |
 
 We are constantly working on adding new features, but also welcome all contributions and offer help and guidance for implementing any feature.
 
