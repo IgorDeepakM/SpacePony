@@ -10,6 +10,7 @@
 #include "genreference.h"
 #include "geninlineasm.h"
 #include "../type/subtype.h"
+#include "../type/typealias.h"
 #include "../../libponyrt/mem/pool.h"
 #include "ponyassert.h"
 
@@ -345,6 +346,19 @@ LLVMValueRef gen_assign_cast(compile_t* c, LLVMTypeRef l_type,
     return r_value;
 
   pony_assert(r_value != GEN_NOTNEEDED);
+
+  // Unfold type aliases so downstream dispatch sees concrete types.
+  if(ast_id(type) == TK_TYPEALIASREF)
+  {
+    ast_t* unfolded = typealias_unfold(type);
+
+    if(unfolded != NULL)
+    {
+      LLVMValueRef result = gen_assign_cast(c, l_type, r_value, unfolded);
+      ast_free_unattached(unfolded);
+      return result;
+    }
+  }
 
   LLVMTypeRef r_type = LLVMTypeOf(r_value);
 

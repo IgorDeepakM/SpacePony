@@ -1,5 +1,6 @@
 #include "genname.h"
 #include "../pkg/package.h"
+#include "../type/typealias.h"
 #include "../ast/stringtab.h"
 #include "../ast/lexer.h"
 #include "../../libponyrt/mem/pool.h"
@@ -80,12 +81,22 @@ static void type_append(printbuf_t* buf, ast_t* type, bool first, pass_opt_t* op
         errorframe_t errors = NULL;
         errorframe_t frame = NULL;
         ast_error_frame(&frame, type, "Unable to create type name because of compile time expresison failed "
-                                      "to reduce the expression to a single valid value type argument.");
+          "to reduce the expression to a single valid value type argument.");
         errorframe_append(&frame, &errors);
         errorframe_report(&frame, opt->check.errors);
         opt->check.evaluation_error = true;
       }
 
+      return;
+    }
+
+    case TK_TYPEALIASREF:
+    {
+      ast_t* unfolded = typealias_unfold(type);
+      pony_assert(unfolded != NULL);
+
+      type_append(buf, unfolded, first, opt);
+      ast_free_unattached(unfolded);
       return;
     }
 

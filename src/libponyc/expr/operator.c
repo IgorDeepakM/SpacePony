@@ -13,6 +13,7 @@
 #include "../type/alias.h"
 #include "../type/assemble.h"
 #include "../type/matchtype.h"
+#include "../type/typealias.h"
 #include "../type/safeto.h"
 #include "../type/subtype.h"
 #include "ponyassert.h"
@@ -95,6 +96,18 @@ static ast_t* find_infer_type(pass_opt_t* opt, ast_t* type, infer_path_t* path)
       }
 
       return i_type;
+    }
+
+    case TK_TYPEALIASREF:
+    {
+      // Don't free: find_infer_type may return a pointer into the unfolded
+      // tree (e.g., the TK_TUPLETYPE node itself or a child of it).
+      ast_t* unfolded = typealias_unfold(type);
+
+      if(unfolded == NULL)
+        return NULL;
+
+      return find_infer_type(opt, unfolded, path);
     }
 
     default:
@@ -425,10 +438,20 @@ void coerce_tuple_to_target(pass_opt_t* opt, ast_t* expr,
   if(expr_type == NULL || ast_id(expr_type) != TK_TUPLETYPE)
     return;
 
-  // Resolve arrow types.
+  // Resolve arrow types and type aliases.
   ast_t* target = target_type;
+  ast_t* target_unfolded = NULL;
+
   while(ast_id(target) == TK_ARROW)
     target = ast_childidx(target, 1);
+
+  if(ast_id(target) == TK_TYPEALIASREF)
+  {
+    target_unfolded = typealias_unfold(target);
+
+    if(target_unfolded != NULL)
+      target = target_unfolded;
+  }
 
   // Only act when the target is a union of tuples. When the target is a
   // plain tuple (e.g., destructuring assignment), there is no representation
@@ -448,25 +471,49 @@ void coerce_tuple_to_target(pass_opt_t* opt, ast_t* expr,
       member = ast_sibling(member);
     }
     if(variant == NULL)
+    {
+      if(target_unfolded != NULL) ast_free_unattached(target_unfolded);
       return;
+    }
     target = variant;
 
     if(ast_id(target) != TK_TUPLETYPE)
+    {
+      if(target_unfolded != NULL) ast_free_unattached(target_unfolded);
       return;
+    }
 
     if(ast_childcount(expr_type) != ast_childcount(target))
+    {
+      if(target_unfolded != NULL) ast_free_unattached(target_unfolded);
       return;
+    }
 
     // Check if any element has a structural type mismatch: the literal's
     // element type is a concrete type (e.g., a tuple) but the target
     // variant wants a union. Only widen in that case — capability and
     // ephemeral differences are handled correctly by codegen already.
+    // Type aliases wrapping unions must also be detected.
     bool needs_change = false;
     ast_t* tc = ast_child(expr_type);
     ast_t* vc = ast_child(target);
     while(tc != NULL && vc != NULL)
     {
-      if(ast_id(vc) == TK_UNIONTYPE && ast_id(tc) != TK_UNIONTYPE)
+      token_id vc_id = ast_id(vc);
+
+      // Check for TK_TYPEALIASREF wrapping a union.
+      if(vc_id == TK_TYPEALIASREF)
+      {
+        ast_t* vc_unfolded = typealias_unfold(vc);
+
+        if(vc_unfolded != NULL)
+        {
+          vc_id = ast_id(vc_unfolded);
+          ast_free_unattached(vc_unfolded);
+        }
+      }
+
+      if(vc_id == TK_UNIONTYPE && ast_id(tc) != TK_UNIONTYPE)
       {
         needs_change = true;
         break;
@@ -479,15 +526,35 @@ void coerce_tuple_to_target(pass_opt_t* opt, ast_t* expr,
     {
       // Build a new tuple type, using the target element type where the
       // literal has a concrete type but the target wants a union.
+      // Unfold alias elements so the widened type has concrete union types.
       ast_t* new_type = ast_from(expr, TK_TUPLETYPE);
       tc = ast_child(expr_type);
       vc = ast_child(target);
       while(tc != NULL && vc != NULL)
       {
-        if(ast_id(vc) == TK_UNIONTYPE && ast_id(tc) != TK_UNIONTYPE)
-          ast_append(new_type, ast_dup(vc));
+        token_id vc_id = ast_id(vc);
+        ast_t* vc_concrete = vc;
+        ast_t* vc_unfolded = NULL;
+
+        if(vc_id == TK_TYPEALIASREF)
+        {
+          vc_unfolded = typealias_unfold(vc);
+
+          if(vc_unfolded != NULL)
+          {
+            vc_id = ast_id(vc_unfolded);
+            vc_concrete = vc_unfolded;
+          }
+        }
+
+        if(vc_id == TK_UNIONTYPE && ast_id(tc) != TK_UNIONTYPE)
+          ast_append(new_type, ast_dup(vc_concrete));
         else
           ast_append(new_type, ast_dup(tc));
+
+        if(vc_unfolded != NULL)
+          ast_free_unattached(vc_unfolded);
+
         tc = ast_sibling(tc);
         vc = ast_sibling(vc);
       }
@@ -497,11 +564,15 @@ void coerce_tuple_to_target(pass_opt_t* opt, ast_t* expr,
   }
   else if(ast_id(target) != TK_TUPLETYPE)
   {
+    if(target_unfolded != NULL) ast_free_unattached(target_unfolded);
     return;
   }
 
   if(ast_childcount(expr_type) != ast_childcount(target))
+  {
+    if(target_unfolded != NULL) ast_free_unattached(target_unfolded);
     return;
+  }
 
   // Recursively coerce inner tuple elements for nested union cases.
   ast_t* child_expr = ast_child(expr);
@@ -524,6 +595,9 @@ void coerce_tuple_to_target(pass_opt_t* opt, ast_t* expr,
     ast_settype(seq, ast_type(ast_child(seq)));
     seq = ast_child(seq);
   }
+
+  if(target_unfolded != NULL)
+    ast_free_unattached(target_unfolded);
 }
 
 bool expr_assign(pass_opt_t* opt, ast_t** astp)
@@ -659,9 +733,21 @@ bool expr_assign(pass_opt_t* opt, ast_t** astp)
     }
   }
 
-  if((ast_id(left) == TK_TUPLE) && (ast_id(r_type) != TK_TUPLETYPE))
+  // Unfold type aliases to check the underlying type for tuple destructuring.
+  ast_t* check_r_type = r_type;
+  ast_t* r_type_unfolded = NULL;
+
+  if(ast_id(check_r_type) == TK_TYPEALIASREF)
   {
-    switch(ast_id(r_type))
+    r_type_unfolded = typealias_unfold(check_r_type);
+
+    if(r_type_unfolded != NULL)
+      check_r_type = r_type_unfolded;
+  }
+
+  if((ast_id(left) == TK_TUPLE) && (ast_id(check_r_type) != TK_TUPLETYPE))
+  {
+    switch(ast_id(check_r_type))
     {
       case TK_UNIONTYPE:
         ast_error(opt->check.errors, ast,
@@ -684,9 +770,15 @@ bool expr_assign(pass_opt_t* opt, ast_t** astp)
         break;
     }
 
+    if(r_type_unfolded != NULL)
+      ast_free_unattached(r_type_unfolded);
+
     ast_free_unattached(wl_type);
     return false;
   }
+
+  if(r_type_unfolded != NULL)
+    ast_free_unattached(r_type_unfolded);
 
   bool ok_mutable = safe_to_mutate(left);
   if(!ok_mutable)

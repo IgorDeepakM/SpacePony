@@ -568,8 +568,8 @@ RULE(param_ref,
 
 GROUP(type,
   type_infix, type_tuple, type_arrow, type_this, cap, nominal,
-  type_param_ref, dontcare_type, fun_type, error_type, infer_type, lambda_type,
-  barelambda_type, literal_type, opliteral_type, control_type, entity_type);
+  type_param_ref, type_alias_ref, dontcare_type, fun_type, error_type, infer_type,
+  lambda_type, barelambda_type, literal_type, opliteral_type, control_type, entity_type);
 
 RULE(type_infix, ONE_OR_MORE(type), TK_UNIONTYPE, TK_ISECTTYPE);
 
@@ -639,6 +639,14 @@ RULE(value_formal_param_ref,
   //OPTIONAL(cap, gencap, none)
   //OPTIONAL(aliased, ephemeral, none),
   TK_VALUEFORMALPARAMREF);
+
+RULE(type_alias_ref,
+  HAS_DATA  // Definition of referred type alias (TK_TYPE)
+  CHILD(id)
+  CHILD(type_args, none)
+  CHILD(cap, gencap, none)
+  CHILD(aliased, ephemeral, none),
+  TK_TYPEALIASREF);
 
 RULE(at, LEAF, TK_AT);
 RULE(bool_literal, HAS_TYPE(type), TK_TRUE, TK_FALSE);
