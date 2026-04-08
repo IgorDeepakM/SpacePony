@@ -648,8 +648,7 @@ bool expr_valueformalparamref(pass_opt_t* opt, ast_t** astp)
   // Everything we reference must be in scope.
   const char* name = ast_name(ast_child(ast));
 
-  sym_status_t status;
-  ast_t* def = ast_get(ast, name, &status);
+  ast_t* def = ast_get(ast, name, NULL);
 
   // Needed for recursive value types. ex class Foo[n: Foo[n]]
   if(ast_data(ast) == NULL)
@@ -1284,4 +1283,21 @@ bool expr_id(pass_opt_t* opt, ast_t* ast)
   }
 
   return true;
+}
+
+
+bool expr_typealiasref(pass_opt_t* opt, ast_t* ast)
+{
+  ast_t* def = (ast_t*)ast_data(ast);
+  pony_assert(def != NULL);
+
+  ast_t* typeparams = ast_childidx(def, 1);
+  ast_t* typeargs = ast_childidx(ast, 1);
+
+  if(!reify_defaults(typeparams, typeargs, true, opt))
+  {
+    return false;
+  }
+
+  return check_constraints(typeargs, typeparams, typeargs, true, opt);
 }

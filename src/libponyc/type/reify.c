@@ -15,37 +15,142 @@
 #include <string.h>
 
 
-static void reify_typeparamref(ast_t** astp, ast_t* typeparam, ast_t* typearg)
+static ast_t* find_typearg(pass_opt_t* opt, ast_t* ast, ast_t* typeparams, ast_t* typeargs,
+  ast_t** found_typeparam)
+{
+  ast_t* ref_def = NULL;
+  switch(ast_id(ast))
+  {
+    case TK_REFERENCE:
+      ref_def = ast_get(ast, ast_name(ast_child(ast)), NULL);
+      if(ref_def == NULL)
+        return NULL;
+
+      // Follow the ast_data chain to the root for TK_TYPEPARAM nodes,
+      // same as the TK_TYPEPARAMREF case below.
+      if(ast_id(ref_def) == TK_TYPEPARAM || ast_id(ref_def) == TK_VALUEFORMALPARAM)
+      {
+        while((ast_t*)ast_data(ref_def) != ref_def)
+          ref_def = (ast_t*)ast_data(ref_def);
+      }
+
+      break;
+
+    case TK_VALUEFORMALPARAMREF:
+    {
+      ref_def = (ast_t*)ast_data(ast);
+      if(ref_def == NULL)
+      {
+        ref_def = ast_get(ast, ast_name(ast_child(ast)), NULL);
+      }
+      
+      if(ref_def == NULL)
+      {
+        return NULL;
+      }
+
+      break;
+    }
+
+    case TK_TYPEPARAMREF:
+      ref_def = (ast_t*)ast_data(ast);
+      pony_assert(ref_def != NULL);
+      // Follow the ast_data chain to the root (self-referential node set
+      // during the scope pass). A single-level follow is insufficient when
+      // type parameters are copied multiple times, e.g. a lambda inside an
+      // object literal inside a generic method.
+      while((ast_t*)ast_data(ref_def) != ref_def)
+        ref_def = (ast_t*)ast_data(ref_def);
+      break;
+
+    default:
+      pony_assert(0);
+  }
+
+  // Iterate pairwise through the typeparams and typeargs,
+  // until we find the one corresponding to this ref
+  ast_t* typeparam = ast_child(typeparams);
+  ast_t* typearg = ast_child(typeargs);
+
+  while((typeparam != NULL) && (typearg != NULL))
+  {
+    if(ast_id(typeparam) == TK_TYPEPARAM)
+    {
+      ast_t* param_def = (ast_t*)ast_data(typeparam);
+      pony_assert(param_def != NULL);
+      while((ast_t*)ast_data(param_def) != param_def)
+        param_def = (ast_t*)ast_data(param_def);
+
+      if(ref_def == param_def)
+      {
+        if(found_typeparam != NULL)
+        {
+          *found_typeparam = param_def;
+        }
+        return typearg;
+      }
+
+      if(ast_id(ast) == TK_TYPEPARAMREF)
+      {
+        AST_GET_CHILDREN(param_def, param_name, param_constraint);
+        AST_GET_CHILDREN(ref_def, ref_name, ref_constraint);
+
+        if(ast_name(ref_name) == ast_name(param_name))
+        {
+          if((ast_id(param_constraint) == TK_TYPEPARAMREF) ||
+            is_subtype(ref_constraint, param_constraint, NULL, opt))
+          {
+            if(found_typeparam != NULL)
+            {
+              *found_typeparam = param_def;
+            }
+            return typearg;
+          }
+        }
+      }
+    }
+    else if(ast_id(typeparam) == TK_VALUEFORMALPARAM)
+    {
+      if(ref_def == typeparam)
+      {
+        if(found_typeparam != NULL)
+        {
+          *found_typeparam = typeparam;
+        }
+        return typearg;
+      }
+
+      if(ast_id(ast) == TK_VALUEFORMALPARAMREF)
+      {
+        AST_GET_CHILDREN(typeparam, param_name, param_constraint);
+        AST_GET_CHILDREN(ref_def, ref_name);
+
+        if(ast_name(ref_name) == ast_name(param_name))
+        {
+          if(found_typeparam != NULL)
+          {
+            *found_typeparam = typeparam;
+          }
+          return typearg;
+        }
+      }
+    }
+
+    // Not the type variable we are looking for, move on to next
+    typeparam = ast_sibling(typeparam);
+    typearg = ast_sibling(typearg);
+  }
+
+  return NULL;
+}
+
+static void reify_typeparamref(pass_opt_t* opt, ast_t** astp, ast_t* typeparams, ast_t* typeargs)
 {
   ast_t* ast = *astp;
   pony_assert(ast_id(ast) == TK_TYPEPARAMREF);
 
-  // Value type parameters cannot be checked against type parameters.
-  if(ast_id(typeparam) == TK_VALUEFORMALPARAM)
-  {
-    return;
-  }
-
-  pony_assert(ast_id(typeparam) == TK_TYPEPARAM);
-
-  ast_t* ref_def = (ast_t*)ast_data(ast);
-
-  // We can't compare ref_def and typeparam, as they could be a copy or
-  // an iftype shadowing. Follow the ast_data chain to the root
-  // (self-referential node set during the scope pass) for both sides.
-  // A single-level follow is insufficient when type parameters are copied
-  // multiple times, e.g. a lambda inside an object literal inside a generic
-  // method — collect_type_params creates copies of copies, producing a chain
-  // of length > 1.
-  pony_assert(ref_def != NULL);
-  while((ast_t*)ast_data(ref_def) != ref_def)
-    ref_def = (ast_t*)ast_data(ref_def);
-
-  pony_assert(typeparam != NULL);
-  while((ast_t*)ast_data(typeparam) != typeparam)
-    typeparam = (ast_t*)ast_data(typeparam);
-
-  if(ref_def != typeparam)
+  ast_t* typearg = find_typearg(opt, ast, typeparams, typeargs, NULL);
+  if (typearg == NULL)
     return;
 
   // Keep ephemerality.
@@ -92,19 +197,19 @@ static void reify_typeparamref(ast_t** astp, ast_t* typeparam, ast_t* typearg)
   }
 }
 
-static void reify_valueformalparamref(ast_t** astp, ast_t* typeparam, ast_t* typearg)
+static void reify_valueformalparamref(pass_opt_t* opt, ast_t** astp, ast_t* typeparams, ast_t* typeargs)
 {
   ast_t* ast = *astp;
   pony_assert(ast_id(ast) == TK_VALUEFORMALPARAMREF);
-  ast_t* ref_name = ast_child(ast);
-  ast_t* param_name = ast_child(typeparam);
 
-  if (strcmp(ast_name(ref_name), ast_name(param_name)))
+  ast_t* found_typeparam = NULL;
+  ast_t* typearg = find_typearg(opt, ast, typeparams, typeargs, &found_typeparam);
+  if(typearg == NULL)
     return;
 
   if(ast_id(typearg) == TK_VALUEFORMALARG)
   {
-    ast_t* type = ast_childidx(typeparam, 1);
+    ast_t* type = ast_childidx(found_typeparam, 1);
     ast_settype(typearg, type);
   }
   ast_replace(astp, typearg);
@@ -130,45 +235,25 @@ static void reify_arrow(ast_t** astp)
   ast_replace(astp, r_type);
 }
 
-static void reify_reference(ast_t** astp, ast_t* typeparam, ast_t* typearg)
+static void reify_reference(pass_opt_t* opt, ast_t** astp, ast_t* typeparams, ast_t* typeargs)
 {
   ast_t* ast = *astp;
   pony_assert(ast_id(ast) == TK_REFERENCE);
 
-  const char* name = ast_name(ast_child(ast));
-
-  sym_status_t status;
-  ast_t* ref_def = ast_get(ast, name, &status);
-
-  if(ref_def == NULL)
+  ast_t* found_typeparam = NULL;
+  ast_t* typearg = find_typearg(opt, ast, typeparams, typeargs, &found_typeparam);
+  if (typearg == NULL)
     return;
 
-  // Follow the ast_data chain to the root (self-referential node set during
-  // the scope pass) for both sides of the comparison, same as
-  // reify_typeparamref. A single-level follow is insufficient when type
-  // parameters are copied multiple times by collect_type_params for nested
-  // lambdas/object literals.
-  if(ast_id(ref_def) == TK_TYPEPARAM || ast_id(ref_def) == TK_VALUEFORMALPARAM)
+  if(ast_id(found_typeparam) == TK_VALUEFORMALPARAM)
   {
-    while((ast_t*)ast_data(ref_def) != ref_def)
-      ref_def = (ast_t*)ast_data(ref_def);
-  }
-
-  pony_assert(typeparam != NULL);
-
-  ast_t* param_def = typeparam;
-
-  while((ast_t*)ast_data(param_def) != param_def)
-    param_def = (ast_t*)ast_data(param_def);
-
-  if(ref_def != param_def)
-    return;
-
-  if(ast_id(ref_def) == TK_VALUEFORMALPARAM)
-  {
-    if (ast_id(typearg) == TK_VALUEFORMALARG)
+    if(ast_id(typearg) == TK_VALUEFORMALARG)
     {
-      ast_t* type = ast_childidx(typeparam, 1);
+      ast_t* type = ast_childidx(found_typeparam, 1);
+      if(ast_id(type) == TK_TYPEPARAMREF)
+      {
+        type = find_typearg(opt, type, typeparams, typeargs, &found_typeparam);
+      }
       ast_settype(typearg, type);
     }
     ast_replace(astp, typearg);
@@ -179,44 +264,6 @@ static void reify_reference(ast_t** astp, ast_t* typeparam, ast_t* typearg)
     ast_add(ast, ast_from(ast, TK_NONE));    // 1st child: package reference
     ast_append(ast, ast_from(ast, TK_NONE)); // 3rd child: type args
     ast_settype(ast, typearg);
-  }
-}
-
-static void reify_one(pass_opt_t* opt, ast_t** astp, ast_t* typeparam, ast_t* typearg)
-{
-  ast_t* ast = *astp;
-  ast_t* child = ast_child(ast);
-
-  while(child != NULL)
-  {
-    reify_one(opt, &child, typeparam, typearg);
-    child = ast_sibling(child);
-  }
-
-  ast_t* type = ast_type(ast);
-
-  if(type != NULL)
-    reify_one(opt, &type, typeparam, typearg);
-
-  switch(ast_id(ast))
-  {
-    case TK_TYPEPARAMREF:
-      reify_typeparamref(astp, typeparam, typearg);
-      break;
-
-    case TK_VALUEFORMALPARAMREF:
-      reify_valueformalparamref(astp, typeparam, typearg);
-      break;
-
-    case TK_ARROW:
-      reify_arrow(astp);
-      break;
-
-    case TK_REFERENCE:
-      reify_reference(astp, typeparam, typearg);
-      break;
-
-    default: {}
   }
 }
 
@@ -289,6 +336,44 @@ bool reify_defaults(ast_t* typeparams, ast_t* typeargs, bool errors,
   return true;
 }
 
+static void reify_ast(ast_t** astp, ast_t* typeparams, ast_t* typeargs, pass_opt_t* opt)
+{
+  ast_t* ast = *astp;
+  ast_t* child = ast_child(ast);
+
+  while(child != NULL)
+  {
+    reify_ast(&child, typeparams, typeargs, opt);
+    child = ast_sibling(child);
+  }
+
+  ast_t* type = ast_type(ast);
+
+  if(type != NULL)
+    reify_ast(&type, typeparams, typeargs, opt);
+
+  switch(ast_id(ast))
+  {
+    case TK_TYPEPARAMREF:
+      reify_typeparamref(opt, astp, typeparams, typeargs);
+      break;
+
+    case TK_VALUEFORMALPARAMREF:
+      reify_valueformalparamref(opt, astp, typeparams, typeargs);
+      break;
+
+    case TK_ARROW:
+      reify_arrow(astp);
+      break;
+
+    case TK_REFERENCE:
+      reify_reference(opt, astp, typeparams, typeargs);
+      break;
+
+    default: {}
+  }
+}
+
 ast_t* reify(ast_t* ast, ast_t* typeparams, ast_t* typeargs, pass_opt_t* opt,
   bool duplicate)
 {
@@ -296,11 +381,11 @@ ast_t* reify(ast_t* ast, ast_t* typeparams, ast_t* typeargs, pass_opt_t* opt,
   pony_assert(
     (ast_id(typeparams) == TK_TYPEPARAMS) ||
     (ast_id(typeparams) == TK_NONE)
-    );
+  );
   pony_assert(
     (ast_id(typeargs) == TK_TYPEARGS) ||
     (ast_id(typeargs) == TK_NONE)
-    );
+  );
 
   ast_t* r_ast;
   if(duplicate)
@@ -308,27 +393,7 @@ ast_t* reify(ast_t* ast, ast_t* typeparams, ast_t* typeargs, pass_opt_t* opt,
   else
     r_ast = ast;
 
-  // We may need to reify some constraints of the typeparameters when we need to
-  // ensure that a value argument satisfies the constraints of another type
-  // parameter.
-  typeparams = ast_dup(typeparams);
-
-  // Iterate pairwise through the typeparams and typeargs.
-  ast_t* typeparam = ast_child(typeparams);
-  ast_t* typearg = ast_child(typeargs);
-
-  while((typeparam != NULL) && (typearg != NULL))
-  {
-    reify_one(opt, &r_ast, typeparam, typearg);
-    // we reify the type parameter for values which depend on other supplied
-    // types
-    reify_one(opt, &typeparams, typeparam, typearg);
-    typeparam = ast_sibling(typeparam);
-    typearg = ast_sibling(typearg);
-  }
-
-  pony_assert(typeparam == NULL);
-  pony_assert(typearg == NULL);
+  reify_ast(&r_ast, typeparams, typeargs, opt);
   return r_ast;
 }
 

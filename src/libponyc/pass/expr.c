@@ -583,22 +583,7 @@ ast_result_t pass_expr(ast_t** astp, pass_opt_t* options)
     case TK_INTERFACE:  r = expr_provides(options, ast); break;
     case TK_NOMINAL:    r = expr_nominal(options, astp); break;
     case TK_TYPEALIASREF:
-    {
-      ast_t* def = (ast_t*)ast_data(ast);
-      pony_assert(def != NULL);
-
-      ast_t* typeparams = ast_childidx(def, 1);
-      ast_t* typeargs = ast_childidx(ast, 1);
-
-      if(!reify_defaults(typeparams, typeargs, true, options))
-      {
-        r = false;
-        break;
-      }
-
-      r = check_constraints(typeargs, typeparams, typeargs, true, options);
-      break;
-    }
+                        r = expr_typealiasref(options, ast); break;
     case TK_FVAR:
     case TK_FLET:
     case TK_EMBED:      r = expr_field(options, ast); break;

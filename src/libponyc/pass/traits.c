@@ -513,6 +513,7 @@ static ast_result_t rescope(ast_t** astp, pass_opt_t* options)
     }
 
     case TK_TYPEPARAMREF:
+    case TK_VALUEFORMALPARAMREF:
     {
       pony_assert(ast_child(ast) != NULL);
       ast_t* def = ast_get(ast, ast_name(ast_child(ast)), NULL);
