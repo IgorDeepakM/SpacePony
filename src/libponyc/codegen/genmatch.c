@@ -409,7 +409,7 @@ static bool dynamic_tuple_ptr(compile_t* c, LLVMValueRef ptr,
 static LLVMValueRef load_tuple_field_value(compile_t* c, LLVMValueRef ptr,
   LLVMValueRef desc, ast_t* pattern_type)
 {
-  reach_type_t* t = reach_type(c->reach, pattern_type);
+  reach_type_t* t = reach_type(c->reach, pattern_type, c->opt);
   LLVMTypeRef use_type = ((compile_type_t*)t->c_type)->use_type;
 
   if(LLVMGetTypeKind(use_type) != LLVMPointerTypeKind)
@@ -446,8 +446,8 @@ static LLVMValueRef load_tuple_field_value(compile_t* c, LLVMValueRef ptr,
   LLVMMoveBasicBlockAfter(merge_block, raw_from);
   LLVMPositionBuilderAtEnd(c->builder, merge_block);
   LLVMValueRef value = LLVMBuildPhi(c->builder, c->ptr, "");
-  LLVMValueRef values[2] = {object_value, boxed_value};
-  LLVMBasicBlockRef blocks[2] = {object_from, raw_from};
+  LLVMValueRef values[2] = { object_value, boxed_value };
+  LLVMBasicBlockRef blocks[2] = { object_from, raw_from };
   LLVMAddIncoming(value, values, blocks, 2);
   return value;
 }
@@ -500,17 +500,7 @@ static bool dynamic_capture_ptr(compile_t* c, LLVMValueRef ptr,
     return false;
   }
 
-<<<<<<< HEAD
-  // We now know that ptr points to something of type pattern_type, and that
-  // it isn't a boxed primitive or tuple, as that would go through the other
-  // path, ie dynamic_match_object(). We also know it isn't an unboxed tuple.
-  // We can load from ptr with a type based on the static type of the pattern.
-  reach_type_t* t = reach_type(c->reach, pattern_type, c->opt);
-  LLVMTypeRef use_type = ((compile_type_t*)t->c_type)->use_type;
-  LLVMValueRef value = LLVMBuildLoad2(c->builder, use_type, ptr, "");
-=======
   LLVMValueRef value = load_tuple_field_value(c, ptr, desc, pattern_type);
->>>>>>> 3940c5d4d (Fix segfault when matching tuple elements against unions or interfaces via Any (#5134))
 
   LLVMValueRef r = gen_assign_value(c, pattern, value, pattern_type);
 
