@@ -52,7 +52,7 @@ extern "C" bool is_pass_by_value_lowering_supported(pass_opt_t* opt)
 }
 
 
-static bool flatten_structure(StructType* structure, vector<Type*>& flattened, size_t max_elements)
+static bool flatten_structure(StructType* structure, vector<Type*>& flattened, size_t max_elements, bool do_not_expand_array = false)
 {
   size_t num_elements = (size_t)structure->getNumElements();
 
@@ -63,25 +63,39 @@ static bool flatten_structure(StructType* structure, vector<Type*>& flattened, s
     switch(curr_type->getTypeID())
     {
       case Type::TypeID::StructTyID:
-        return flatten_structure(dyn_cast<StructType>(curr_type), flattened, max_elements);
+        return flatten_structure(dyn_cast<StructType>(curr_type), flattened, max_elements, do_not_expand_array);
       case Type::TypeID::ArrayTyID:
       {
         ArrayType* array = dyn_cast<ArrayType>(curr_type);
         Type* element_type = array->getElementType();
         size_t num_elements = (size_t)array->getNumElements();
 
-        for(size_t i = 0; i < num_elements; i++)
+        if(do_not_expand_array)
         {
           if(flattened.size() < max_elements)
           {
-            flattened.push_back(element_type);
+            flattened.push_back(curr_type);
           }
           else
           {
             return false;
           }
         }
-        break;
+        else
+        {
+          for(size_t i = 0; i < num_elements; i++)
+          {
+            if(flattened.size() < max_elements)
+            {
+              flattened.push_back(element_type);
+            }
+            else
+            {
+              return false;
+            }
+          }
+          break;
+        }
       }
       default:
       {
@@ -400,17 +414,22 @@ static Type* lower_riscv64_param_value_from_structure_type(compile_t* c, Lowerin
 
   if(p_t->abi_size <= 16)
   {
-    unsigned int num_elem = s->getNumElements();
-
     bool contain_array = false;
-    for(unsigned int i = 0; i < num_elem; i++)
+
+    vector<Type*> flat;
+    if(flatten_structure(s, flat, 2, true))
     {
-      if(is_c_fixed_sized_array(pt->fields[i].ast))
+      for(Type* elem_type : flat)
       {
-        contain_array = true;
-        break;
+        if(elem_type->getTypeID() == Type::TypeID::ArrayTyID)
+        {
+          contain_array = true;
+          break;
+        }
       }
     }
+
+    unsigned int num_elem = s->getNumElements();
 
     if(num_elem <= 2 && !contain_array)
     {
