@@ -596,7 +596,6 @@ bool refer_reference(pass_opt_t* opt, ast_t** astp)
     case TK_VALUEFORMALPARAM:
     {
       ast_setid(ast, TK_VALUEFORMALPARAMREF);
-      ast_setdata(ast, def);
       return true;
     }
 
