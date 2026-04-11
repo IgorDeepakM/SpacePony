@@ -112,7 +112,10 @@ bool expr_if(pass_opt_t* opt, ast_t* ast)
   if(!ast_checkflag(right, AST_FLAG_JUMPS_AWAY))
   {
     if(is_typecheck_error(ast_type(right)))
+    {
+      ast_free_unattached(type);
       return false;
+    }
 
     type = control_type_add_branch(opt, type, right);
   }
@@ -154,7 +157,10 @@ bool expr_iftype(pass_opt_t* opt, ast_t* ast)
   if(!ast_checkflag(right, AST_FLAG_JUMPS_AWAY))
   {
     if(is_typecheck_error(ast_type(right)))
+    {
+      ast_free_unattached(type);
       return false;
+    }
 
     type = control_type_add_branch(opt, type, right);
   }
@@ -211,7 +217,10 @@ bool expr_while(pass_opt_t* opt, ast_t* ast)
   if(!ast_checkflag(else_clause, AST_FLAG_JUMPS_AWAY))
   {
     if(is_typecheck_error(ast_type(else_clause)))
+    {
+      ast_free_unattached(type);
       return false;
+    }
 
     ast_t* prev_type = type;
     type = control_type_add_branch(opt, type, else_clause);
@@ -260,7 +269,10 @@ bool expr_repeat(pass_opt_t* opt, ast_t* ast)
   if(!ast_checkflag(else_clause, AST_FLAG_JUMPS_AWAY))
   {
     if(is_typecheck_error(ast_type(else_clause)))
+    {
+      ast_free_unattached(type);
       return false;
+    }
 
     ast_t* prev_type = type;
     type = control_type_add_branch(opt, type, else_clause);
@@ -293,7 +305,10 @@ bool expr_try(pass_opt_t* opt, ast_t* ast)
   if(!ast_checkflag(else_clause, AST_FLAG_JUMPS_AWAY))
   {
     if(is_typecheck_error(ast_type(else_clause)))
+    {
+      ast_free_unattached(type);
       return false;
+    }
 
     type = control_type_add_branch(opt, type, else_clause);
   }
@@ -307,12 +322,16 @@ bool expr_try(pass_opt_t* opt, ast_t* ast)
   ast_t* then_type = ast_type(then_clause);
 
   if(is_typecheck_error(then_type))
+  {
+    ast_free_unattached(type);
     return false;
+  }
 
   if(is_type_literal(then_type))
   {
     ast_error(opt->check.errors, then_clause,
       "Cannot infer type of unused literal");
+    ast_free_unattached(type);
     return false;
   }
 
@@ -442,12 +461,16 @@ bool expr_disposing_block(pass_opt_t* opt, ast_t* ast)
   ast_t* dispose_type = ast_type(dispose_clause);
 
   if(is_typecheck_error(dispose_type))
+  {
+    ast_free_unattached(type);
     return false;
+  }
 
   if(is_type_literal(dispose_type))
   {
     ast_error(opt->check.errors, dispose_clause,
       "Cannot infer type of unused literal");
+    ast_free_unattached(type);
     return false;
   }
 
