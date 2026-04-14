@@ -60,7 +60,7 @@ RULE(provides, ONE_OR_MORE(type), TK_PROVIDES);
 
 RULE(members,
   ZERO_OR_MORE(field)
-  ZERO_OR_MORE(method, enum_block, entityif_set),
+  ZERO_OR_MORE(method, enum_block),
   TK_MEMBERS);
 
 RULE(align_as,
@@ -99,26 +99,6 @@ RULE(enum_block,
   CHILD(type)
   ONE_OR_MORE(enum_entry),
   TK_ENUM);
-
-RULE(entityif_seq,
-  ONE_OR_MORE(method, enum_block, entityif_set),
-  TK_MEMBERS);
-
-RULE(entityif_set,
-  IS_SCOPE
-  HAS_TYPE(type)
-  CHILD(entityif) // Condition/then body
-  CHILD(entityif_seq, entityif_set, none), // Else body
-  TK_ENTITYIF_SET);
-
-RULE(entityif,
-  IS_SCOPE
-  HAS_TYPE(type)
-  CHILD(type) // Subtype
-  CHILD(type) // Supertype
-  CHILD(entityif_seq) // Then body
-  CHILD(type_params, none),
-  TK_ENTITYIF);
 
 RULE(type_params, ONE_OR_MORE(type_param, value_formal_param), TK_TYPEPARAMS);
 

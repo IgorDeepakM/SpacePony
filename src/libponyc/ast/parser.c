@@ -38,7 +38,6 @@ DECL(caseparampattern);
 DECL(annotations);
 DECL(dot);
 DECL(call);
-DECL(entityif_set);
 
 /* Precedence
  *
@@ -1268,54 +1267,11 @@ DEF(enum_block);
   TERMINATE("enum block", TK_END);
   DONE();
 
-DEF(entityif_seq);
-  AST_NODE(TK_MEMBERS);
-  SEQ("entity declaration", method, enum_block, entityif_set);
-  DONE();
-
-DEF(entityif);
-  AST_NODE(TK_ENTITYIF);
-  SCOPE();
-  RULE("type", type);
-  SKIP(NULL, TK_SUBTYPE);
-  RULE("type", type);
-  SKIP(NULL, TK_THEN);
-  RULE("entityif seq", entityif_seq);
-  AST_NODE(TK_NONE);
-  DONE();
-
-DEF(entityif_elseclause);
-  PRINT_INLINE();
-  SKIP(NULL, TK_ELSE);
-  RULE("entityif seq", entityif_seq);
-  DONE();
-
-  // ELSEIF [annotations] iftype [elseiftype | (ELSE seq)]
-DEF(entityif_elseif);
-  AST_NODE(TK_ENTITYIF_SET);
-  SKIP(NULL, TK_ELSEIF);
-  ANNOTATE(annotations);
-  SCOPE();
-  RULE("entityif clause", entityif);
-  OPT RULE("entityif else clause", entityif_elseif, entityif_elseclause);
-  DONE();
-
-  // IFTYPE_SET [annotations] iftype [elseiftype | (ELSE seq)] END
-DEF(entityif_set);
-  PRINT_INLINE();
-  TOKEN(NULL, TK_ENTITYIF_SET);
-  SCOPE();
-  ANNOTATE(annotations);
-  RULE("entityif clause", entityif);
-  OPT RULE("entityif else clause", entityif_elseif, entityif_elseclause);
-  TERMINATE("entityif expression", TK_END);
-  DONE();
-
 // {field} {method}
 DEF(members);
   AST_NODE(TK_MEMBERS);
   SEQ("field", field);
-  SEQ("method", method, enum_block, entityif_set);
+  SEQ("method", method, enum_block);
   DONE();
 
 // (TYPE | INTERFACE | TRAIT | PRIMITIVE | STRUCT | CLASS | ACTOR) [annotations]

@@ -188,8 +188,6 @@ primitive TokenIds
     tk_ifdef
     tk_iftype
     tk_iftype_set
-    tk_entityif
-    tk_entityif_set
     tk_then
     tk_else
     tk_elseif
@@ -443,8 +441,6 @@ primitive TokenIds
     | TokenIds.tk_ifdef => "TK_IFDEF"
     | TokenIds.tk_iftype => "TK_IFTYPE"
     | TokenIds.tk_iftype_set => "TK_IFTYPE_SET"
-    | TokenIds.tk_entityif => "TK_ENTITYIF"
-    | TokenIds.tk_entityif_set => "TK_ENTITYIF_SET"
     | TokenIds.tk_then => "TK_THEN"
     | TokenIds.tk_else => "TK_ELSE"
     | TokenIds.tk_elseif => "TK_ELSEIF"

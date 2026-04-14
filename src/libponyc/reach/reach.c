@@ -27,7 +27,7 @@ static reach_method_t* add_rmethod(reach_t* r, reach_type_t* t,
 static reach_type_t* add_type(reach_t* r, ast_t* type, pass_opt_t* opt);
 
 static void reachable_method(reach_t* r, deferred_reification_t* reify,
-  ast_t* pos, ast_t* type, const char* name, ast_t* typeargs, pass_opt_t* opt);
+  ast_t* type, const char* name, ast_t* typeargs, pass_opt_t* opt);
 
 static void reachable_expr(reach_t* r, deferred_reification_t* reify,
   ast_t** astp, pass_opt_t* opt);
@@ -154,7 +154,6 @@ static reach_method_name_t* add_method_name(reach_type_t* t, const char* name,
   {
     n = POOL_ALLOC(reach_method_name_t);
     n->name = name;
-    n->disabled = false;
     reach_methods_init(&n->r_methods, 0);
     reach_mangled_init(&n->r_mangled, 0);
     reach_method_names_put(&t->methods, n);
@@ -695,7 +694,7 @@ static void add_special(reach_t* r, reach_type_t* t, ast_t* type,
       case TK_NEW:
       case TK_FUN:
       case TK_BE:
-        reachable_method(r, NULL, NULL, t->ast, special, NULL, opt);
+        reachable_method(r, NULL, t->ast, special, NULL, opt);
         break;
 
       default: {}
@@ -1008,108 +1007,6 @@ static reach_type_t* add_tuple(reach_t* r, ast_t* type, pass_opt_t* opt)
   return t;
 }
 
-static ast_t* reach_entityif(pass_opt_t* opt, ast_t* ast, reach_type_t* t,
-  ast_t* typeparams, ast_t* typeargs)
-{
-  AST_GET_CHILDREN(ast, left_control, right);
-  AST_GET_CHILDREN(left_control, sub, super, left);
-
-  ast_t* r_sub = reify(sub, typeparams, typeargs, opt, true);
-  ast_t* r_super = reify(super, typeparams, typeargs, opt, true);
-
-  bool is_sub = is_subtype_constraint(r_sub, r_super, NULL, opt);
-
-  ast_free_unattached(r_sub);
-  ast_free_unattached(r_super);
-
-  if(ast_id(right) == TK_ENTITYIF_SET)
-  {
-    right = reach_entityif(opt, right, t, typeparams, typeargs);
-  }
-
-  pony_assert(ast_id(right) == TK_MEMBERS || ast_id(right) == TK_NONE);
-
-  if(ast_id(right) == TK_MEMBERS)
-  {
-    ast_t* decl = ast_child(right);
-
-    while(decl != NULL)
-    {
-      switch(ast_id(decl))
-      {
-        case TK_NEW:
-        case TK_BE:
-        case TK_FUN:
-          if(is_sub)
-          {
-            // If subtype is true, this path is not taken and we need to disable the methods
-            reach_method_name_t* n = add_method_name(t, ast_name(ast_childidx(decl, 1)), false);
-            n->disabled = true;
-          }
-          break;
-
-        case TK_ENTITYIF_SET:
-          if(!is_sub)
-          {
-            // If subtype is false, this path is taken and we need also to check nested entityif
-            reach_entityif(opt, decl, t, typeparams, typeargs);
-          }
-          break;
-
-      default:
-        pony_assert(false);
-        break;
-      }
-
-      decl = ast_sibling(decl);
-    }
-  }
-
-  pony_assert(ast_id(left) == TK_MEMBERS);
-
-  ast_t* decl = ast_child(left);
-
-  while(decl != NULL)
-  {
-    switch(ast_id(decl))
-    {
-      case TK_NEW:
-      case TK_BE:
-      case TK_FUN:
-        if(!is_sub)
-        {
-          // If subtype is false, this path is not taken and we need to disable the methods
-          reach_method_name_t* n = add_method_name(t, ast_name(ast_childidx(decl, 1)), false);
-          n->disabled = true;
-        }
-        break;
-
-      case TK_ENTITYIF_SET:
-        // If subtype is true, this path is taken and we need also to check nested entityif
-        if(is_sub)
-        {
-          reach_entityif(opt, decl, t, typeparams, typeargs);
-        }
-        break;
-
-      default:
-        pony_assert(false);
-        break;
-    }
-
-    decl = ast_sibling(decl);
-  }
-
-  if(!is_sub)
-  {
-    return right;
-  }
-  else
-  {
-    return left;
-  }
-}
-
 static reach_type_t* add_nominal(reach_t* r, ast_t* type, pass_opt_t* opt)
 {
   reach_type_t* t = reach_type(r, type, opt);
@@ -1280,21 +1177,6 @@ static reach_type_t* add_nominal(reach_t* r, ast_t* type, pass_opt_t* opt)
 
   pony_assert(t->serialise_id != ((uint64_t)-1)); // -1 is for `Pointer`s
 
-  // Go through iftype expressions in the type and disable the ones that aren't
-  // enabled by the iftype expression.
-  ast_t* member = ast_child(ast_childidx(def, 4));
-
-  while(member != NULL)
-  {
-    if((ast_id(member) == TK_ENTITYIF_SET))
-    {
-      ast_t* typeparams = ast_childidx(def, 1);
-      reach_entityif(opt, member, t, typeparams, typeargs);
-    }
-
-    member = ast_sibling(member);
-  }
-
   if(ast_id(def) != TK_PRIMITIVE)
     return t;
 
@@ -1418,7 +1300,7 @@ static void reachable_pattern(reach_t* r, deferred_reification_t* reify,
       if(ast_id(type) != TK_DONTCARETYPE)
       {
         // type will be reified in reachable_method
-        reachable_method(r, reify, NULL, type, stringtab("eq"), NULL, opt);
+        reachable_method(r, reify, type, stringtab("eq"), NULL, opt);
         reachable_expr(r, reify, &ast, opt);
       }
       break;
@@ -1452,7 +1334,7 @@ static void reachable_fun(reach_t* r, deferred_reification_t* reify, ast_t* ast,
   const char* method_name = ast_name(method);
 
   // type will be reified in reachable_method
-  reachable_method(r, reify, ast, type, method_name, typeargs, opt);
+  reachable_method(r, reify, type, method_name, typeargs, opt);
 
   ast_free_unattached(typeargs);
 }
@@ -1595,7 +1477,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
 
         // type will be reified in reachable_method
         if(type != NULL)
-          reachable_method(r, reify, ast, type, stringtab("create"), NULL, opt);
+          reachable_method(r, reify, type, stringtab("create"), NULL, opt);
 
         break;
       }
@@ -1809,7 +1691,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
 }
 
 static void reachable_method(reach_t* r, deferred_reification_t* reify,
-  ast_t* pos, ast_t* type, const char* name, ast_t* typeargs, pass_opt_t* opt)
+  ast_t* type, const char* name, ast_t* typeargs, pass_opt_t* opt)
 {
   reach_type_t* t;
 
@@ -1823,18 +1705,6 @@ static void reachable_method(reach_t* r, deferred_reification_t* reify,
   }
 
   reach_method_name_t* n = add_method_name(t, name, false);
-  if(n->disabled)
-  {
-    // If the method is disabled and trying to use it, then it is an error
-    if(pos != NULL)
-    {
-      ast_error(opt->check.errors, pos, "Method %s in type %s_%s not found because it was removed "
-        "in an entityif expression", n->name, t->name, t->mangle);
-    }
-    opt->check.evaluation_error = true;
-    return;
-  }
-
   reach_method_t* m = add_rmethod(r, t, n, n->cap, typeargs, opt, false);
 
   if((n->id == TK_FUN) && ((n->cap == TK_BOX) || (n->cap == TK_TAG)))
@@ -1920,7 +1790,7 @@ void reach_free(reach_t* r)
 bool reach(reach_t* r, ast_t* type, const char* name, ast_t* typeargs,
   pass_opt_t* opt)
 {
-  reachable_method(r, NULL, NULL, type, name, typeargs, opt);
+  reachable_method(r, NULL, type, name, typeargs, opt);
   handle_method_stack(r, opt);
   return !opt->check.evaluation_error;
 }

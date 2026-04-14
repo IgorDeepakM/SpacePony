@@ -139,84 +139,12 @@ bool use_package(ast_t* ast, const char* path, ast_t* name,
   return true;
 }
 
-static bool scope_method(pass_opt_t* opt, ast_t* scope, ast_t* ast)
+static bool scope_method(pass_opt_t* opt, ast_t* ast)
 {
   ast_t* id = ast_childidx(ast, 1);
 
-  if(!set_scope(opt, scope, id, ast, false))
+  if(!set_scope(opt, ast_parent(ast), id, ast, false))
     return false;
-
-  return true;
-}
-
-static bool scope_entityif(pass_opt_t* opt, ast_t* scope, ast_t* ast)
-{
-  AST_GET_CHILDREN(ast, left_control, right);
-  AST_GET_CHILDREN(left_control, sub, super, left);
-
-  if(ast_id(right) == TK_ENTITYIF_SET)
-  {
-    if(!scope_entityif(opt, scope, right))
-    {
-      return false;
-    }
-  }
-  else if(ast_id(right) == TK_MEMBERS)
-  {
-    ast_t* decl = ast_child(right);
-
-    while(decl != NULL)
-    {
-      switch(ast_id(decl))
-      {
-        case TK_NEW:
-        case TK_BE:
-        case TK_FUN:
-          if(!scope_method(opt, scope, decl))
-            return false;
-          break;
-
-        case TK_ENTITYIF_SET:
-          if(!scope_entityif(opt, scope, decl))
-            return false;
-          break;
-
-        default:
-          pony_assert(false);
-          break;
-      }
-
-      decl = ast_sibling(decl);
-    }
-  }
-
-  pony_assert(ast_id(left) == TK_MEMBERS);
-
-  ast_t* decl = ast_child(left);
-
-  while(decl != NULL)
-  {
-    switch(ast_id(decl))
-    {
-      case TK_NEW:
-      case TK_BE:
-      case TK_FUN:
-        if(!scope_method(opt, scope, decl))
-          return false;
-        break;
-
-      case TK_ENTITYIF_SET:
-        if(!scope_entityif(opt, scope, decl))
-          return false;
-        break;
-
-      default:
-        pony_assert(false);
-        break;
-    }
-
-    decl = ast_sibling(decl);
-  }
 
   return true;
 }
@@ -246,12 +174,7 @@ static ast_result_t scope_entity(pass_opt_t* opt, ast_t* ast)
       case TK_NEW:
       case TK_BE:
       case TK_FUN:
-        if(!scope_method(opt, ast_parent(member), member))
-          return AST_ERROR;
-        break;
-
-      case TK_ENTITYIF_SET:
-        if(!scope_entityif(opt, ast_parent(member), member))
+        if(!scope_method(opt, member))
           return AST_ERROR;
         break;
 
@@ -330,7 +253,7 @@ static ast_t* make_iftype_typeparam(pass_opt_t* opt, ast_t* subtype,
 
 static ast_result_t scope_iftype(pass_opt_t* opt, ast_t* ast)
 {
-  pony_assert(ast_id(ast) == TK_IFTYPE || ast_id(ast) == TK_ENTITYIF);
+  pony_assert(ast_id(ast) == TK_IFTYPE);
 
   AST_GET_CHILDREN(ast, subtype, supertype, body, typeparam_store);
   // Prevent this from running again, if, for example, the iftype
@@ -504,7 +427,6 @@ ast_result_t pass_scope(ast_t** astp, pass_opt_t* options)
       break;
 
     case TK_IFTYPE:
-    case TK_ENTITYIF:
       return scope_iftype(options, ast);
 
     case TK_CALL:

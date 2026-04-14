@@ -89,10 +89,6 @@ bool has_member(ast_t* members, const char* name)
         id = ast_child(member);
         break;
 
-      case TK_ENTITYIF_SET:
-        id = NULL;
-        break;
-
       default:
         id = ast_childidx(member, 1);
         break;
