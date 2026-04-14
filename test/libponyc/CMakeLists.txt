@@ -16,7 +16,6 @@ add_executable(libponyc.tests
     codegen_optimisation.cc
     compiler_serialisation.cc
     dontcare.cc
-    entityif.cc
     ffi.cc
     finalisers.cc
     flatten.cc

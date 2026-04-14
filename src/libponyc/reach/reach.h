@@ -72,7 +72,6 @@ struct reach_method_name_t
   reach_methods_t r_methods;
   reach_mangled_t r_mangled;
   bool internal;
-  bool disabled;
 };
 
 struct reach_field_t

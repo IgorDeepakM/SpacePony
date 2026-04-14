@@ -22,7 +22,6 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
   * [Enums](#enums-sort-of)
   * [Property](#property)
   * [iftype on entity types](#iftype-on-entity-types)
-  * [entityif](#entityif)
   * [alignas](#alignas)
   * [Return value exceptions](#return-value-exceptions)
 * [Future directions](#future-directions)
@@ -71,7 +70,6 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
     * nhb
     * offsetof
     * sizeof
-    * entityif
 
   * In the class `Iter` in the package `itertools`, the method `enum` was renamed to `enumerate` because `enum` is a reserved keyword in SpacePony.
 
@@ -669,44 +667,6 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
       false
     end
   ```
-
-### entityif
-
-* A method definition inside an entity (class/struct/primitive/actor) can be conditionally selected based on an entityif expression. Currently `entityif` works exactly as `iftype`, the only difference is that entityif should be used inside entity definitions.
-
-  ```pony
-  primitive PFloat2[A]
-    entityif A <: F64 then
-      fun float_op(x: A): A =>
-        x.acos()
-    elseif A <: F32 then
-      fun float_op2(x: A): A =>
-        x.acos()
-    else
-      fun float_op3(x: A): A =>
-        1
-    end
-  ```
-
-* This can be useful when some methods aren't applicable for certain types.
-
-* Just like the regular iftype expression, it creates a new type shadowing the existing type of the subtype in the expression.
-
-  ```pony
-  primitive PFloat2[A]            // In the outer most scope of the primitive defintion, A is not known
-                                  // and can only be known if there is additional type parameter constraints
-    entityif A <: F64 then
-      fun float_op(x: A): A =>    // In this scope A has the type of F64 as a new type A is created shadowing
-                                  // A in the type parameters of the primitive
-        x.acos()
-    end
-  ```
-
-* Note that the methods must still have unique names inside the entityif expression as well. However, the goal is to support having the same name in the future.
-
-* This is similar to `if constexpr` in C++ and `static if` in D and the ultimate goal here is to have a similar compile time if statement. This is in particular difficult to achieve with the Pony compiler because how it works internally. Still the goal is to rewrite the compiler so that this is possible.
-
-* Why using a new keyword `entityif` and not reuse `if` or `iftype`? The problem is that if `if` or `iftype` would be used, the parser thinks that these keywords would belong to the method body of the previous method. This is a direct effect of that methods don't use an `end` after the definition closing the scope. If `end` would be used, then it would be possible to reuse `if` or `iftype`. However, this would greatly break compatibility with the old Pony compiler and also questionable aesthetics (like `fun v(): I32 => 3 end` instead of just `fun v(): I32 => 3`).
 
 
 ### alignas
