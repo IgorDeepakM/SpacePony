@@ -27,7 +27,7 @@ static reach_method_t* add_rmethod(reach_t* r, reach_type_t* t,
 static reach_type_t* add_type(reach_t* r, ast_t* type, pass_opt_t* opt);
 
 static void reachable_method(reach_t* r, deferred_reification_t* reify,
-  ast_t* pos, ast_t* type, const char* name, ast_t* typeargs, pass_opt_t* opt);
+  ast_t* type, const char* name, ast_t* typeargs, pass_opt_t* opt);
 
 static void reachable_expr(reach_t* r, deferred_reification_t* reify,
   ast_t** astp, pass_opt_t* opt);
@@ -694,7 +694,7 @@ static void add_special(reach_t* r, reach_type_t* t, ast_t* type,
       case TK_NEW:
       case TK_FUN:
       case TK_BE:
-        reachable_method(r, NULL, NULL, t->ast, special, NULL, opt);
+        reachable_method(r, NULL, t->ast, special, NULL, opt);
         break;
 
       default: {}
@@ -1300,7 +1300,7 @@ static void reachable_pattern(reach_t* r, deferred_reification_t* reify,
       if(ast_id(type) != TK_DONTCARETYPE)
       {
         // type will be reified in reachable_method
-        reachable_method(r, reify, NULL, type, stringtab("eq"), NULL, opt);
+        reachable_method(r, reify, type, stringtab("eq"), NULL, opt);
         reachable_expr(r, reify, &ast, opt);
       }
       break;
@@ -1334,7 +1334,7 @@ static void reachable_fun(reach_t* r, deferred_reification_t* reify, ast_t* ast,
   const char* method_name = ast_name(method);
 
   // type will be reified in reachable_method
-  reachable_method(r, reify, ast, type, method_name, typeargs, opt);
+  reachable_method(r, reify, type, method_name, typeargs, opt);
 
   ast_free_unattached(typeargs);
 }
@@ -1477,7 +1477,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
 
         // type will be reified in reachable_method
         if(type != NULL)
-          reachable_method(r, reify, ast, type, stringtab("create"), NULL, opt);
+          reachable_method(r, reify, type, stringtab("create"), NULL, opt);
 
         break;
       }
@@ -1691,7 +1691,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
 }
 
 static void reachable_method(reach_t* r, deferred_reification_t* reify,
-  ast_t* pos, ast_t* type, const char* name, ast_t* typeargs, pass_opt_t* opt)
+  ast_t* type, const char* name, ast_t* typeargs, pass_opt_t* opt)
 {
   reach_type_t* t;
 
@@ -1790,7 +1790,7 @@ void reach_free(reach_t* r)
 bool reach(reach_t* r, ast_t* type, const char* name, ast_t* typeargs,
   pass_opt_t* opt)
 {
-  reachable_method(r, NULL, NULL, type, name, typeargs, opt);
+  reachable_method(r, NULL, type, name, typeargs, opt);
   handle_method_stack(r, opt);
   return !opt->check.evaluation_error;
 }
