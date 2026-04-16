@@ -1130,11 +1130,6 @@ void gentrace_prototype(compile_t* c, reach_type_t* t)
     ast_t* typeargs = ast_childidx(t->ast, 2);
     need_trace = gentrace_needed(c, ast_child(typeargs), ast_child(typeargs));
   }
-  if(is_optional(t->ast))
-  {
-    ast_t* typeargs = ast_childidx(t->ast, 2);
-    need_trace = gentrace_needed(c, ast_child(typeargs), ast_child(typeargs));
-  }
   else
   {
     for(uint32_t i = 0; i < t->field_count; i++)

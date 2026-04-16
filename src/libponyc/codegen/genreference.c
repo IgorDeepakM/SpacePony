@@ -456,8 +456,7 @@ LLVMValueRef gen_sizeof(compile_t* c, ast_t* ast)
 
   size_t size_of_type = 0;
 
-  if(is_integer(r_type) || is_float(r_type) || is_pointer(r_type) || is_nullable_pointer(r_type) ||
-     is_optional(r_type))
+  if(is_integer(r_type) || is_float(r_type) || is_pointer(r_type) || is_nullable_pointer(r_type))
   {
     size_of_type = (size_t)LLVMABISizeOfType(c->target_data, c_t->mem_type);
   }

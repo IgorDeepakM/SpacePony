@@ -202,7 +202,6 @@ primitive TokenIds
     tk_where
     tk_try
     tk_try_no_check
-    tk_try_guard
     tk_with
     tk_error
     tk_compile_error
@@ -455,7 +454,6 @@ primitive TokenIds
     | TokenIds.tk_where => "TK_WHERE"
     | TokenIds.tk_try => "TK_TRY"
     | TokenIds.tk_try_no_check => "TK_TRY_NO_CHECK"
-    | TokenIds.tk_try_guard => "TK_TRY_GUARD"
     | TokenIds.tk_with => "TK_WITH"
     | TokenIds.tk_error => "TK_ERROR"
     | TokenIds.tk_compile_error => "TK_COMPILE_ERROR"

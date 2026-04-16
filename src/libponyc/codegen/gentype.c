@@ -161,27 +161,6 @@ static bool make_opaque_struct(compile_t* c, reach_type_t* t)
           c_t->mem_type = c->ptr;
           return true;
         }
-        else if(name == c->str_Optional)
-        {
-          ast_t* typeargs = ast_childidx(t->ast, 2);
-          AST_GET_CHILDREN(typeargs, elem_type);
-
-          compile_type_t* c_t = (compile_type_t*)t->c_type;
-
-          if(is_pointer_referenced_object(elem_type))
-          {
-            c_t->use_type = c->ptr;
-            c_t->mem_type = c->ptr;
-          }
-          else
-          {
-            c_t->structure = LLVMStructCreateNamed(c->context, t->name);
-            c_t->structure_ptr = c->ptr;
-            c_t->use_type = c_t->structure;
-            c_t->mem_type = c_t->structure;
-          }
-          return true;
-        }
         // CFixedSizedArray is just a structure which is handled below
       }
 
@@ -255,7 +234,7 @@ static void make_debug_prototype(compile_t* c, reach_type_t* t)
   c_t->di_type = LLVMDIBuilderCreateReplaceableStruct(c->di,
     t->name, c->di_unit, c_t->di_file, (unsigned)ast_line(t->ast));
 
-  if(t->underlying != TK_TUPLETYPE && !is_optional(t->ast))
+  if(t->underlying != TK_TUPLETYPE)
   {
     c_t->di_type_embed = c_t->di_type;
     uint64_t size_bytes = LLVMABISizeOfType(c->target_data, c_t->mem_type);
@@ -452,33 +431,6 @@ static bool make_c_fixed_sized_array_struct(compile_t* c, reach_type_t* t)
   return true;
 }
 
-static bool make_optional_struct(compile_t* c, reach_type_t* t)
-{
-  compile_type_t* c_t = (compile_type_t*)t->c_type;
-
-  ast_t* typeargs = ast_childidx(t->ast, 2);
-  AST_GET_CHILDREN(typeargs, elem_type);
-
-  reach_type_t* elem_reach_type = reach_type(c->reach, elem_type, c->opt);
-  compile_type_t* elem_reach_c_t = (compile_type_t*)elem_reach_type->c_type;
-
-  reach_type_t* bool_type = reach_type_name(c->reach, "Bool");
-  compile_type_t* bool_reach_c_t = (compile_type_t*)bool_type->c_type;
-
-  // If c_t->structure is not NULL, then we have an optional as a struct
-  if(c_t->structure != NULL)
-  {
-    LLVMTypeRef elements[2];
-    elements[0] = elem_reach_c_t->mem_type;
-    elements[1] = bool_reach_c_t->mem_type;
-    LLVMStructSetBody(c_t->structure, elements, 2, false);
-  }
-
-  t->struct_body_filled = true;
-
-  return true;
-}
-
 static bool make_struct(compile_t* c, reach_type_t* t)
 {
   compile_type_t* c_t = (compile_type_t*)t->c_type;
@@ -513,10 +465,6 @@ static bool make_struct(compile_t* c, reach_type_t* t)
       if(is_c_fixed_sized_array(t->ast))
       {
         return make_c_fixed_sized_array_struct(c, t);
-      }
-      else if(is_optional(t->ast))
-      {
-        return make_optional_struct(c, t);
       }
 
       // Pointer and NullablePointer will have no structure.
@@ -845,7 +793,7 @@ static void make_debug_fields(compile_t* c, reach_type_t* t)
   if(fields != NULL)
     ponyint_pool_free_size(fields_buf_size, fields);
 
-  if(t->underlying != TK_TUPLETYPE && !is_optional(t->ast))
+  if(t->underlying != TK_TUPLETYPE)
   {
     LLVMMetadataReplaceAllUsesWith(c_t->di_type_embed, di_type);
     c_t->di_type_embed = di_type;
@@ -915,8 +863,6 @@ static void make_intrinsic_methods(compile_t* c, reach_type_t* t)
       genprim_c_fixed_sized_array_methods(c, t);
     else if(name == c->str_Atomic)
       genprim_atomic_methods(c, t);
-    else if(name == c->str_Optional)
-      genprim_optional_methods(c, t);
   }
 }
 
@@ -949,11 +895,6 @@ static bool make_trace(compile_t* c, reach_type_t* t)
         if(name == c->str_CFixedSizedArray)
         {
           genprim_c_fixed_sized_array_trace(c, t);
-          return true;
-        }
-        else if(name == c->str_Optional)
-        {
-          genprim_optional_trace(c, t);
           return true;
         }
       }

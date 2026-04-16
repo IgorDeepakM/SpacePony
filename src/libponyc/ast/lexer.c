@@ -290,7 +290,6 @@ static const lextoken_t abstract[] =
   { "cases", TK_CASES },
   { "case", TK_CASE },
   { "try", TK_TRY_NO_CHECK },
-  { "tryguard", TK_TRY_GUARD },
 
   { "reference", TK_REFERENCE },
   { "packageref", TK_PACKAGEREF },

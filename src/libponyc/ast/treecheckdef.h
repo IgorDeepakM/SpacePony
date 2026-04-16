@@ -197,7 +197,7 @@ GROUP(expr,
   local, binop, isop, assignop, asop, tuple, consume, recover, xofoperator, prefix, dot,
   tilde, chain, qualify, call, ffi_call, match_capture, ffi_ref,
   if_expr, ifdef, iftypeset, whileloop, repeat, for_loop, with,
-  disposing_block, match, try_expr, try_guard, lambda, barelambda, array_literal,
+  disposing_block, match, try_expr, lambda, barelambda, array_literal,
   object_literal, int_literal, float_literal, string, bool_literal, id_with_question, id, rawseq,
   package_ref, location, this_ref, ref, fun_ref, type_ref, field_ref,
   tuple_elem_ref, local_ref, param_ref, value_formal_param_ref, comptime);
@@ -434,11 +434,6 @@ RULE(try_expr,
   CHILD(seq, none)  // Else body
   CHILD(seq, none), // Then body. LLVMValueRef for the indirectbr instruction.
   TK_TRY, TK_TRY_NO_CHECK);
-
-RULE(try_guard,
-  HAS_TYPE(type)
-  CHILD(seq, ffi_call),  // Try guard body
-  TK_TRY_GUARD);
 
 RULE(lambda,
   HAS_TYPE(type)
