@@ -1576,10 +1576,6 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
   pony_assert(t != NULL);
   ast_free_unattached(type);
 
-  compile_type_t* ret_c_t = (compile_type_t*)t->c_type;
-
-  LLVMTypeKind return_type_kind = LLVMGetTypeKind(ret_c_t->use_type);
-
   if (return_by_value)
   {
     if(ffi_decl->try_return_info.return_by_value &&

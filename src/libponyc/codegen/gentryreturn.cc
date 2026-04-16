@@ -7,8 +7,7 @@
 #include "../../libponyrt/mem/pool.h"
 #include "ponyassert.h"
 
-
-#include "llvm_config_begin.h"
+#include <cstring>
 
 
 extern "C" TryReturnInfo init_try_return_info()

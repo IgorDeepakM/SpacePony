@@ -6,14 +6,14 @@
 
 PONY_EXTERN_C_BEGIN
 
-enum TryReturnType
+typedef enum
 {
   TRYRETURNTYPE_NONE,
   TRYRETURNTYPE_BOOL,
   TRYRETURNTYPE_POINTER,
   TRYRETURNTYPE_STRUCT,
   TRYRETURNTYPE_OTHER
-};
+}TryReturnType;
 
 
 typedef struct
