@@ -134,9 +134,14 @@ class _TestDefinitions
       end
     end
 
+    var ret: (_TestDefinition | None) = None
     if has_pony_sources then
-      _TestDefinition(child, dir.path.path, expected_exit_code)
+      ret = _TestDefinition(child, dir.path.path, expected_exit_code)
     end
+
+    dir.dispose()
+
+    ret
 
   fun _get_expected_exit_code(fp: FilePath): I32 ? =>
     match OpenFile(fp)
