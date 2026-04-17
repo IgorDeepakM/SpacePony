@@ -11,10 +11,6 @@ void genprim_pointer_methods(compile_t* c, reach_type_t* t);
 
 void genprim_nullable_pointer_methods(compile_t* c, reach_type_t* t);
 
-void genprim_optional_methods(compile_t* c, reach_type_t* t);
-
-void genprim_optional_trace(compile_t* c, reach_type_t* t);
-
 void genprim_c_fixed_sized_array_methods(compile_t* c, reach_type_t* t);
 
 void genprim_c_fixed_sized_array_trace(compile_t* c, reach_type_t* t);

@@ -38,6 +38,7 @@ add_library(libponyc STATIC
     codegen/genreference.c
     codegen/genserialise.c
     codegen/gentrace.c
+    codegen/gentryreturn.cc
     codegen/gentype.c
     codegen/genvaluepass.cc
     codegen/geninlineasm.cc

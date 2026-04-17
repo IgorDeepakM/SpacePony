@@ -35,8 +35,6 @@ bool is_nullable_pointer(ast_t* type);
 
 bool is_c_fixed_sized_array(ast_t* type);
 
-bool is_optional(ast_t* type);
-
 bool is_none(ast_t* type);
 
 bool is_any(ast_t* type);

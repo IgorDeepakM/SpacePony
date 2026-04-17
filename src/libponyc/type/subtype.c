@@ -2265,11 +2265,6 @@ bool is_c_fixed_sized_array(ast_t* type)
   return is_literal(type, "CFixedSizedArray");
 }
 
-bool is_optional(ast_t* type)
-{
-  return is_literal(type, "Optional");
-}
-
 bool is_none(ast_t* type)
 {
   return is_literal(type, "None");
@@ -2948,7 +2943,7 @@ ast_t* remove_entity_types(ast_t* type)
 
 bool is_pointer_referenced_object(ast_t* type)
 {
-  if(is_machine_word(type) || is_optional(type))
+  if(is_machine_word(type))
   {
     return false;
   }
