@@ -59,7 +59,7 @@
 #endif
 
 static LLVMValueRef make_unbox_function(compile_t* c, reach_type_t* t,
-  reach_method_t* m)
+  reach_method_t* m, bool needs_error_wrap)
 {
   // Create a new unboxing function that forwards to the real function.
   compile_method_t* c_m = (compile_method_t*)m->c_method;
@@ -70,7 +70,17 @@ static LLVMValueRef make_unbox_function(compile_t* c, reach_type_t* t,
   size_t buf_size = (count + 1) * sizeof(LLVMTypeRef);
   LLVMTypeRef* params = (LLVMTypeRef*)ponyint_pool_alloc_size(buf_size);
   LLVMGetParamTypes(f_type, params);
-  LLVMTypeRef ret_type = LLVMGetReturnType(f_type);
+
+  LLVMTypeRef ret_type = NULL;
+  if(needs_error_wrap)
+  {
+    compile_type_t* wrapped_c_t = (compile_type_t * )c_m->try_return_info.t->c_type;
+    ret_type = wrapped_c_t->use_type;
+  }
+  else
+  {
+    ret_type = LLVMGetReturnType(f_type);
+  }
 
   const char* unbox_name = genname_unbox(m->full_name);
   compile_type_t* c_t = (compile_type_t*)t->c_type;
@@ -90,7 +100,7 @@ static LLVMValueRef make_unbox_function(compile_t* c, reach_type_t* t,
 
   LLVMTypeRef unbox_type = LLVMFunctionType(ret_type, params, count, false);
   LLVMValueRef unbox_fun = codegen_addfun(c, unbox_name, unbox_type, true);
-  codegen_startfun(c, unbox_fun, NULL, NULL, NULL, false);
+  codegen_startfun(c, unbox_fun, NULL, NULL, NULL, NULL, false);
 
   // Extract the primitive type from element 1 and call the real function.
   LLVMValueRef this_ptr = LLVMGetParam(unbox_fun, 0);
@@ -119,6 +129,12 @@ static LLVMValueRef make_unbox_function(compile_t* c, reach_type_t* t,
 
   LLVMValueRef result = codegen_call(c, LLVMGlobalGetValueType(c_m->func),
     c_m->func, args, count, m->cap != TK_AT);
+
+  if(needs_error_wrap)
+  {
+    result = wrap_try_return_success(c, &c_m->try_return_info, result, m->result);
+  }
+
   genfun_build_ret(c, result);
   codegen_finishfun(c);
 
@@ -126,6 +142,111 @@ static LLVMValueRef make_unbox_function(compile_t* c, reach_type_t* t,
   ponyint_pool_free_size(buf_size, args);
   return unbox_fun;
 }
+
+static bool method_needs_error_wrap(reach_type_t* t, reach_method_t* m)
+{
+  // Check if a non-partial method needs an error-wrapping vtable entry.
+  // This happens when the method is dispatched through a trait/interface/union
+  // where the same method IS partial. The vtable entry must match the dispatch
+  // type's return type ({T, i1} instead of T).
+
+  if(ast_id(ast_childidx(m->fun->ast, 5)) == TK_QUESTION)
+  {
+    return false;
+  }
+
+  size_t i = HASHMAP_BEGIN;
+  reach_type_t* st;
+
+  while((st = reach_type_cache_next(&t->subtypes, &i)) != NULL)
+  {
+    // Only check dispatch types. Skip concrete types that appear in subtypes
+    // due to the bidirectional relationship in the reach module.
+    switch(st->underlying)
+    {
+      case TK_UNIONTYPE:
+      case TK_ISECTTYPE:
+      case TK_INTERFACE:
+      case TK_TRAIT:
+        break;
+
+      default:
+        continue;
+    }
+
+    // Look for any method on this dispatch type with the same vtable index
+    // that is partial.
+    size_t j = HASHMAP_BEGIN;
+    reach_method_name_t* mn;
+
+    while((mn = reach_method_names_next(&st->methods, &j)) != NULL)
+    {
+      size_t k = HASHMAP_BEGIN;
+      reach_method_t* sm;
+
+      while((sm = reach_mangled_next(&mn->r_mangled, &k)) != NULL)
+      {
+        if((sm->vtable_index == m->vtable_index) && (sm->fun != NULL))
+        {
+          ast_t* err = ast_childidx(sm->fun->ast, 5);
+
+          if((err != NULL) && (ast_id(err) == TK_QUESTION))
+            return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+static LLVMValueRef make_error_wrap_function(compile_t* c,
+  reach_method_t* m)
+{
+  // Create a wrapper function that calls the non-partial concrete method and
+  // wraps its return value with an error flag (always false = no error).
+  // This is used for vtable entries where the dispatch type expects a partial
+  // return type but the concrete method is not partial.
+  compile_method_t* c_m = (compile_method_t*)m->c_method;
+  LLVMTypeRef f_type = LLVMGlobalGetValueType(c_m->func);
+  int count = LLVMCountParamTypes(f_type);
+
+  size_t buf_size = count * sizeof(LLVMTypeRef);
+  LLVMTypeRef* params = (LLVMTypeRef*)ponyint_pool_alloc_size(buf_size);
+  LLVMGetParamTypes(f_type, params);
+
+  TryReturnInfo tr_info = init_try_return_info();
+
+  compile_type_t* ret_c_t = (compile_type_t*)m->result->c_type;
+  LLVMTypeRef wrapped_ret =
+    generate_try_return_type(c, &tr_info, m->result, ret_c_t->use_type, false, false);
+
+  const char* wrap_name = genname_error_wrap(m->full_name);
+  LLVMTypeRef wrap_type = LLVMFunctionType(wrapped_ret, params, count, false);
+  LLVMValueRef wrap_fun = codegen_addfun(c, wrap_name, wrap_type, true);
+  codegen_startfun(c, wrap_fun, NULL, NULL, NULL, NULL, false);
+
+  // Forward all parameters to the real function.
+  size_t args_size = count * sizeof(LLVMValueRef);
+  LLVMValueRef* args = (LLVMValueRef*)ponyint_pool_alloc_size(args_size);
+
+  for(int i = 0; i < count; i++)
+    args[i] = LLVMGetParam(wrap_fun, i);
+
+  LLVMValueRef result = codegen_call(c, f_type, c_m->func, args, count,
+    m->cap != TK_AT);
+
+  result = wrap_try_return_success(c, &tr_info, result, m->result);
+  genfun_build_ret(c, result);
+
+  codegen_finishfun(c);
+
+  delete_try_return_info(&tr_info);
+  ponyint_pool_free_size(buf_size, params);
+  ponyint_pool_free_size(args_size, args);
+  return wrap_fun;
+}
+
 
 static LLVMValueRef make_desc_ptr(compile_t* c, LLVMValueRef func)
 {
@@ -353,8 +474,12 @@ static LLVMValueRef make_vtable(compile_t* c, reach_type_t* t)
       pony_assert(vtable[index] == NULL);
       compile_method_t* c_m = (compile_method_t*)m->c_method;
 
+      bool needs_wrap = !m->internal && method_needs_error_wrap(t, m);
+
       if((c_t->primitive != NULL) && !m->internal)
-        vtable[index] = make_unbox_function(c, t, m);
+        vtable[index] = make_unbox_function(c, t, m, needs_wrap);
+      else if(needs_wrap)
+        vtable[index] = make_error_wrap_function(c, m);
       else
         vtable[index] = make_desc_ptr(c, c_m->func);
     }
@@ -547,7 +672,7 @@ void gendesc_table_lookup(compile_t* c)
 
   LLVMValueRef desc_lkp_fn = codegen_addfun(c, "__DescOffsetLookupFn",
     c->descriptor_offset_lookup_type, false);
-  codegen_startfun(c, desc_lkp_fn, NULL, NULL, NULL, false);
+  codegen_startfun(c, desc_lkp_fn, NULL, NULL, NULL, NULL, false);
   LLVMSetFunctionCallConv(desc_lkp_fn, LLVMCCallConv);
   LLVMSetLinkage(desc_lkp_fn, LLVMExternalLinkage);
 

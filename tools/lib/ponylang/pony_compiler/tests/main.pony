@@ -389,7 +389,7 @@ class \nodoc\ _CompileErrorTest is UnitTest
   let expected_errors: Array[_ExpectedCompileErrors] = [
     _ExpectedCompileErrors("compile_errors_01", [("main.pony", Position.create(5, 25), "can't find definition of 'Badger'")])
     _ExpectedCompileErrors("compile_errors_02", [
-      ("main.pony", Position.create(5, 17), "this parameter must be sendable (iso, val or tag)")
+      ("main.pony", Position.create(5, 17), "this parameter must be sendable (iso, val, tag or nhb)")
     ])
     _ExpectedCompileErrors("compile_errors_03", [
       ("main.pony", Position.create(3, 9), "can't find declaration of 'frobnicate'")

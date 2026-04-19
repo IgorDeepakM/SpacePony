@@ -2,8 +2,8 @@
 #include "gentype.h"
 #include "genvaluepass.h"
 #include "gencall.h"
+#include "genexpr.h"
 #include "../type/subtype.h"
-#include "../reach/reach.h"
 #include "../../libponyrt/mem/pool.h"
 #include "ponyassert.h"
 
@@ -15,9 +15,26 @@ extern "C" TryReturnInfo init_try_return_info()
   TryReturnInfo ret;
   ret.t = NULL;
   ret.return_type = TRYRETURNTYPE_NONE;
+  ret.c_ffi = false;
   ret.return_by_value = false;
   ret.return_value_lowered = false;
   return ret;
+}
+
+
+extern "C" void delete_try_return_info(TryReturnInfo* try_return_info)
+{
+  if(try_return_info->t != NULL)
+  {
+    if(try_return_info->t->c_type != NULL)
+    {
+      POOL_FREE(compile_type_t, try_return_info->t->c_type);
+      try_return_info->t->c_type = NULL;
+    }
+
+    POOL_FREE(reach_type_t, try_return_info->t);
+    try_return_info->t = NULL;
+  }
 }
 
 
@@ -37,6 +54,7 @@ extern "C" LLVMTypeRef generate_try_return_type(compile_t* c, TryReturnInfo* try
   fake_reach_type->c_type = (compile_opaque_t*)fake_c_t;
 
   try_return_info->t = fake_reach_type;
+  try_return_info->c_ffi = c_ffi;
 
   if(is_none(type->ast))
   {
@@ -81,10 +99,13 @@ extern "C" LLVMTypeRef generate_try_return_type(compile_t* c, TryReturnInfo* try
       try_return_info->return_type = TRYRETURNTYPE_OTHER;
     }
 
-    try_return_info->return_by_value = true;
+    if(c_ffi)
+    {
+      try_return_info->return_by_value = true;
+    }
     
     reach_type_t* bool_reach_type = reach_type_name(c->reach, "Bool");
-    LLVMTypeRef bool_type = ((compile_type_t*)bool_reach_type->c_type)->use_type;
+    LLVMTypeRef bool_type = ((compile_type_t*)bool_reach_type->c_type)->mem_type;
 
     LLVMTypeRef elements[2];
     elements[0] = ret_type;
@@ -103,6 +124,11 @@ extern "C" LLVMTypeRef generate_try_return_type(compile_t* c, TryReturnInfo* try
         fake_c_t->use_type = lower_return_value_from_structure_type(c, fake_reach_type);
         try_return_info->return_value_lowered = true;
       }
+    }
+    else
+    {
+      fake_c_t->use_type = fake_c_t->structure;
+      fake_c_t->mem_type = fake_c_t->structure;
     }
   }
 
@@ -126,8 +152,10 @@ extern "C" LLVMValueRef unwrap_try_return_value(compile_t* c, TryReturnInfo* try
   switch(try_return_info->return_type)
   {
     case TRYRETURNTYPE_BOOL:
+    {
       bool_expr = LLVMBuildNot(c->builder, value, "");
       break;
+    }
 
     case TRYRETURNTYPE_POINTER:
       bool_expr = LLVMBuildIsNull(c->builder, value, "");
@@ -138,21 +166,36 @@ extern "C" LLVMValueRef unwrap_try_return_value(compile_t* c, TryReturnInfo* try
     {
       compile_type_t* wrapper_c_t = (compile_type_t*)try_return_info->t->c_type;
 
-      if(!try_return_info->return_value_lowered)
+      if(try_return_info->c_ffi)
       {
-        tuple = load_lowered_return_value_from_ptr(c, wrapper_ptr, wrapper_c_t->structure,
-          try_return_info->t);
-        bool_expr = LLVMBuildExtractValue(c->builder, tuple, 1, "");
-        bool_expr = LLVMBuildNot(c->builder, bool_expr, "");
+        if(!try_return_info->return_value_lowered)
+        {
+          tuple = load_lowered_return_value_from_ptr(c, wrapper_ptr, wrapper_c_t->structure,
+            try_return_info->t);
+          bool_expr = LLVMBuildExtractValue(c->builder, tuple, 1, "");
+        }
+        else
+        {
+          LLVMValueRef tmp_alloc = LLVMBuildAlloca(c->builder, wrapper_c_t->structure, "");
+          copy_lowered_return_value_to_ptr(c, tmp_alloc, value, try_return_info->t);
+          tuple = LLVMBuildLoad2(c->builder, wrapper_c_t->structure, tmp_alloc, "");
+          bool_expr = LLVMBuildExtractValue(c->builder, tuple, 1, "");
+        }
       }
       else
       {
-        LLVMValueRef tmp_alloc = LLVMBuildAlloca(c->builder, wrapper_c_t->structure, "");
-        copy_lowered_return_value_to_ptr(c, tmp_alloc, value, try_return_info->t);
-        tuple = LLVMBuildLoad2(c->builder, wrapper_c_t->structure, tmp_alloc, "");
-        bool_expr = LLVMBuildExtractValue(c->builder, tuple, 1, "");
-        bool_expr = LLVMBuildNot(c->builder, bool_expr, "");
+        bool_expr = LLVMBuildExtractValue(c->builder, value, 1, "");
       }
+
+      reach_type_t* bool_reach_type = reach_type_name(c->reach, "Bool");
+      compile_type_t* bool_c_t = (compile_type_t*)bool_reach_type->c_type;
+
+      if(LLVMGetIntTypeWidth(bool_c_t->use_type) < LLVMGetIntTypeWidth(bool_c_t->mem_type))
+      {
+        bool_expr = LLVMBuildTrunc(c->builder, bool_expr, bool_c_t->use_type, "");
+      }
+
+      bool_expr = LLVMBuildNot(c->builder, bool_expr, "");
 
       break;
     }
@@ -172,11 +215,14 @@ extern "C" LLVMValueRef unwrap_try_return_value(compile_t* c, TryReturnInfo* try
 
   LLVMPositionBuilderAtEnd(c->builder, continue_block);
 
-
-  LLVMValueRef result = GEN_NOTNEEDED;
+  LLVMValueRef result = NULL;
 
   switch(try_return_info->return_type)
   {
+    case TRYRETURNTYPE_BOOL:
+      result = c->none_instance;
+      break;
+
     case TRYRETURNTYPE_POINTER:
       result = value;
       break;
@@ -184,7 +230,18 @@ extern "C" LLVMValueRef unwrap_try_return_value(compile_t* c, TryReturnInfo* try
     case TRYRETURNTYPE_STRUCT:
     case TRYRETURNTYPE_OTHER:
     {
-      result = LLVMBuildExtractValue(c->builder, tuple, 0, "");
+      if(try_return_info->c_ffi)
+      {
+        result = LLVMBuildExtractValue(c->builder, tuple, 0, "");
+      }
+      else
+      {
+        result = LLVMBuildExtractValue(c->builder, value, 0, "");
+      }
+
+      compile_type_t* ret_c_t = (compile_type_t*)return_reach_type->c_type;
+      result = gen_assign_cast(c, ret_c_t->use_type, result, return_reach_type->ast);
+
       break;
     }
 
@@ -193,4 +250,98 @@ extern "C" LLVMValueRef unwrap_try_return_value(compile_t* c, TryReturnInfo* try
   }
 
   return result;
+}
+
+
+extern "C" LLVMValueRef wrap_try_return_success(compile_t* c, TryReturnInfo* try_return_info,
+  LLVMValueRef value, reach_type_t* return_reach_type)
+{
+  LLVMValueRef ret = NULL;
+  LLVMValueRef tuple = NULL;
+
+  switch(try_return_info->return_type)
+  {
+    case TRYRETURNTYPE_BOOL:
+    {
+      reach_type_t* bool_reach_type = reach_type_name(c->reach, "Bool");
+      compile_type_t* bool_c_t = (compile_type_t*)bool_reach_type->c_type;
+
+      ret = LLVMConstInt(bool_c_t->use_type, 1, false);
+      break;
+    }
+
+    case TRYRETURNTYPE_POINTER:
+    {
+      ret = value;
+      break;
+    }
+
+    case TRYRETURNTYPE_STRUCT:
+    case TRYRETURNTYPE_OTHER:
+    {
+      compile_type_t* wrapper_c_t = (compile_type_t*)try_return_info->t->c_type;
+      compile_type_t* ret_c_t = (compile_type_t*)return_reach_type->c_type;
+
+      reach_type_t* bool_type = reach_type_name(c->reach, "Bool");
+      compile_type_t* bool_c_t = (compile_type_t*)bool_type->c_type;
+
+      LLVMValueRef tuple = LLVMGetUndef(wrapper_c_t->structure);
+      tuple = LLVMBuildInsertValue(c->builder, tuple,
+        gen_assign_cast(c, ret_c_t->mem_type, value, return_reach_type->ast), 0, "");
+      ret = LLVMBuildInsertValue(c->builder, tuple, LLVMConstInt(bool_c_t->mem_type, 1, false), 1, "");
+      break;
+    }
+
+    default:
+      pony_assert(false);
+      break;
+  }
+
+  return ret;
+}
+
+extern "C" LLVMValueRef wrap_try_return_error(compile_t* c, TryReturnInfo* try_return_info,
+  reach_type_t* return_reach_type)
+{
+  LLVMValueRef ret = NULL;
+  LLVMValueRef tuple = NULL;
+
+  switch(try_return_info->return_type)
+  {
+    case TRYRETURNTYPE_BOOL:
+    {
+      reach_type_t* bool_reach_type = reach_type_name(c->reach, "Bool");
+      compile_type_t* bool_c_t = (compile_type_t*)bool_reach_type->c_type;
+
+      ret = LLVMConstInt(bool_c_t->use_type, 0, false);
+      break;
+    }
+
+    case TRYRETURNTYPE_POINTER:
+    {
+      ret = LLVMConstNull(c->ptr);
+      break;
+    }
+
+    case TRYRETURNTYPE_STRUCT:
+    case TRYRETURNTYPE_OTHER:
+    {
+      compile_type_t* wrapper_c_t = (compile_type_t*)try_return_info->t->c_type;
+      compile_type_t* ret_c_t = (compile_type_t*)return_reach_type->c_type;
+
+      reach_type_t* bool_type = reach_type_name(c->reach, "Bool");
+      compile_type_t* bool_c_t = (compile_type_t*)bool_type->c_type;
+
+      LLVMValueRef tuple = LLVMGetUndef(wrapper_c_t->structure);
+      tuple = LLVMBuildInsertValue(c->builder, tuple, LLVMConstNull(ret_c_t->use_type), 0, "");
+      ret = LLVMBuildInsertValue(c->builder, tuple, LLVMConstInt(bool_c_t->mem_type, 0, false), 1, "");
+      break;
+    }
+
+    default:
+      pony_assert(false);
+      break;
+  }
+
+  return ret;
 }

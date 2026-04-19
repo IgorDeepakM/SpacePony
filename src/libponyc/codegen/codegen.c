@@ -1020,11 +1020,12 @@ LLVMValueRef codegen_addfun(compile_t* c, const char* name, LLVMTypeRef type,
 }
 
 void codegen_startfun(compile_t* c, LLVMValueRef fun, LLVMMetadataRef file,
-  LLVMMetadataRef scope, deferred_reification_t* reify, bool bare)
+  LLVMMetadataRef scope, deferred_reification_t* reify, reach_method_t* m, bool bare)
 {
   compile_frame_t* frame = push_frame(c);
 
   frame->fun = fun;
+  frame->m = m;
   frame->is_function = true;
   frame->reify = reify;
   frame->bare_function = bare;
@@ -1050,6 +1051,7 @@ void codegen_pushscope(compile_t* c, ast_t* ast)
   compile_frame_t* frame = push_frame(c);
 
   frame->fun = frame->prev->fun;
+  frame->m = frame->prev->m;
   frame->reify = frame->prev->reify;
   frame->bare_function = frame->prev->bare_function;
   frame->break_target = frame->prev->break_target;
@@ -1156,6 +1158,7 @@ void codegen_pushloop(compile_t* c, LLVMBasicBlockRef continue_target,
   compile_frame_t* frame = push_frame(c);
 
   frame->fun = frame->prev->fun;
+  frame->m = frame->prev->m;
   frame->reify = frame->prev->reify;
   frame->bare_function = frame->prev->bare_function;
   frame->break_target = break_target;
@@ -1176,6 +1179,7 @@ void codegen_pushtry(compile_t* c, LLVMBasicBlockRef invoke_target)
   compile_frame_t* frame = push_frame(c);
 
   frame->fun = frame->prev->fun;
+  frame->m = frame->prev->m;
   frame->reify = frame->prev->reify;
   frame->bare_function = frame->prev->bare_function;
   frame->break_target = frame->prev->break_target;
