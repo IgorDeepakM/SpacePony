@@ -464,7 +464,7 @@ switch ($Command.ToLower())
         }
 
         # pony-compiler-tests
-        if ($TestsToRun -match 'pony-compiler-tests')
+        if ($SelectedTestsToRun -match 'pony-compiler-tests')
         {
             $numTestSuitesRun += 1;
             Write-Output "$outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\pony_compiler\ -b pony-compiler-tests -o $outDir $srcDir\tools\lib\ponylang\pony_compiler\tests"
