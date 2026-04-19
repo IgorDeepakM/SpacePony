@@ -78,6 +78,7 @@ DECLARE_HASHMAP(ffi_decls, ffi_decls_t, ffi_decl_t);
 typedef struct compile_frame_t
 {
   LLVMValueRef fun;
+  reach_method_t* m;
   LLVMValueRef ctx;
 
   LLVMBasicBlockRef break_target;
@@ -251,7 +252,7 @@ LLVMValueRef codegen_addfun(compile_t* c, const char* name, LLVMTypeRef type,
   bool pony_abi);
 
 void codegen_startfun(compile_t* c, LLVMValueRef fun, LLVMMetadataRef file,
-  LLVMMetadataRef scope, deferred_reification_t* reify, bool bare);
+  LLVMMetadataRef scope, deferred_reification_t* reify, reach_method_t* m, bool bare);
 
 void codegen_finishfun(compile_t* c);
 

@@ -4,6 +4,7 @@
 #include <platform.h>
 #include "codegen.h"
 #include "gentype.h"
+#include "gentryreturn.h"
 
 PONY_EXTERN_C_BEGIN
 
@@ -17,6 +18,8 @@ typedef struct compile_method_t
   LLVMValueRef func_handler;
   LLVMMetadataRef di_method;
   LLVMMetadataRef di_file;
+  TryReturnInfo try_return_info;
+  bool return_value_lowered;
 } compile_method_t;
 
 void genfun_param_attrs(compile_t* c, reach_type_t* t, reach_method_t* m,

@@ -37,7 +37,7 @@
 
     [Parameter(HelpMessage="CITests to run")]
     [string]
-    $CiTestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release,pony-lsp-tests,pony-lint-tests,pony-doc-tests' # ,grammar' do not run grammar for now as there is work on th
+    $CiTestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release,pony-compiler-tests,pony-lsp-tests,pony-lint-tests,pony-doc-tests' # ,grammar' do not run grammar for now as there is work on th
 )
 
 # Function to extract process exit code from LLDB output
@@ -498,7 +498,7 @@ switch ($Command.ToLower())
         {
             $numTestSuitesRun += 1;
             Write-Output "$outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\pony_compiler\ -b pony-lsp-tests -o $outDir $srcDir\tools"
-            & $outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\peg --path $srcDir\tools\lib\ponylang\pony_compiler\ -b pony-lsp-tests -o $outDir $srcDir\tools
+            & $outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\pony_compiler\ -b pony-lsp-tests -o $outDir $srcDir\tools
             if ($LastExitCode -eq 0)
             {
                 try

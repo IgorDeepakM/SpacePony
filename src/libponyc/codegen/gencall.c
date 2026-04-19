@@ -96,17 +96,7 @@ static bool ffi_decl_cmp(ffi_decl_t* a, ffi_decl_t* b)
 
 static void ffi_decl_free(ffi_decl_t* d)
 {
-  if(d->try_return_info.t != NULL)
-  {
-    if(d->try_return_info.t->c_type != NULL)
-    {
-      POOL_FREE(compile_type_t, d->try_return_info.t->c_type);
-      d->try_return_info.t->c_type = NULL;
-    }
-
-    POOL_FREE(reach_type_t, d->try_return_info.t);
-    d->try_return_info.t = NULL;
-  }
+  delete_try_return_info(&d->try_return_info);
 
   if(d->params != NULL)
   {
@@ -856,20 +846,36 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
   token_id cap = cap_dispatch(type);
   reach_method_t* m = reach_method(t, cap, method_name, typeargs, c->opt);
 
+  if(strstr(m->full_name, "NullablePointer") != NULL)
+  {
+    int i = 0;
+  }
+
   ast_free_unattached(type);
   ast_free_unattached(typeargs);
 
   // Generate the arguments.
   size_t count = m->param_count + 1;
-  bool return_value_lowering = false;
-  if(m->return_by_value)
+  bool return_value_lowered = false;
+  bool return_by_value = false;
+  compile_method_t* c_m = (compile_method_t*)m->c_method;
+
+  if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
   {
-    return_value_lowering = is_return_value_lowering_needed(c, m->result);
-    if(!return_value_lowering)
-    {
-      count++;
-    }
+    return_by_value = c_m->try_return_info.return_by_value;
+    return_value_lowered = c_m->try_return_info.return_value_lowered;
   }
+  else if(m->return_by_value)
+  {
+    return_by_value = m->return_by_value;
+    return_value_lowered = is_return_value_lowering_needed(c, m->result);
+  }
+
+  if(return_by_value && !return_value_lowered)
+  {
+    count++;
+  }
+
   size_t buf_size = count * sizeof(LLVMValueRef);
 
   LLVMValueRef* args = (LLVMValueRef*)ponyint_pool_alloc_size(buf_size);
@@ -877,14 +883,30 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
   int i = 1;
 
   LLVMValueRef assign_side = NULL;
+  LLVMValueRef partial_wrapper = NULL;
+
+  if(c_m->try_return_info.return_by_value && !c_m->try_return_info.return_value_lowered)
+  {
+    compile_type_t* wrapper_c_t = (compile_type_t*)c_m->try_return_info.t->c_type;
+    partial_wrapper = LLVMBuildAlloca(c->builder, wrapper_c_t->structure, "");
+  }
+
   if(m->return_by_value)
   {
     assign_side = gen_alloc_return_value(c, m->result, ast);
-    if(!return_value_lowering)
+  }
+
+  if(return_by_value && !return_value_lowered)
+  {
+    if(partial_wrapper != NULL)
+    {
+      args[i] = partial_wrapper;
+    }
+    else
     {
       args[i] = assign_side;
-      i++;
     }
+    i++;
   }
 
   while(arg != NULL)
@@ -995,7 +1017,7 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
     // semantics as assignment.
     arg = ast_child(positional);
     i = 1;
-    if (m->return_by_value && !return_value_lowering)
+    if (return_by_value && !return_value_lowered)
     {
       i++;
     }
@@ -1042,7 +1064,7 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
         r = codegen_call(c, func_type, func, args + arg_offset, i, !bare);
 
       size_t llvm_argument_shift = 1;
-      if(m->return_by_value && !return_value_lowering)
+      if(return_by_value && !return_value_lowered)
       {
         llvm_argument_shift++;
       }
@@ -1075,12 +1097,17 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
 
   // Bare methods with None return type return void, special case a None return
   // value.
-  if(bare && is_none(m->result->ast))
+  if(bare && is_none(m->result->ast) && c_m->try_return_info.return_type == TRYRETURNTYPE_NONE)
     r = c->none_instance;
+
+  if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
+  {
+    r = unwrap_try_return_value(c, &c_m->try_return_info, r, partial_wrapper, m->result);
+  }
 
   if(m->return_by_value)
   {
-    if(return_value_lowering)
+    if(c_m->return_value_lowered)
     {
       copy_lowered_return_value_to_ptr(c, assign_side, r, m->result);
     }
@@ -1222,7 +1249,7 @@ static LLVMTypeRef ffi_return_type(compile_t* c, ffi_decl_t* ffi_decl, reach_typ
       partial_r_type = c_t->use_type;
     }
 
-    return generate_try_return_type(c, &ffi_decl->try_return_info, t, partial_r_type, !intrinsic,
+    return generate_try_return_type(c, &ffi_decl->try_return_info, t, partial_r_type, true,
       ffi_decl->return_by_value);
   }
   else if(r_type != NULL)
@@ -1741,7 +1768,8 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
     result = unwrap_try_return_value(c, &ffi_decl->try_return_info, result, partial_wrapper,
       t);
 
-    isvoid = result == GEN_NOTNEEDED;
+    // If the unwrap result is a none instance, then there is no value aka C void function
+    isvoid = result == c->none_instance;
   }
 
   if(ffi_decl != NULL && ffi_decl->return_by_value)

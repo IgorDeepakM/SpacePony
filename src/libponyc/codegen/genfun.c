@@ -6,6 +6,7 @@
 #include "genexpr.h"
 #include "genreference.h"
 #include "genvaluepass.h"
+#include "gentryreturn.h"
 #include "../pass/names.h"
 #include "../type/assemble.h"
 #include "../type/subtype.h"
@@ -19,6 +20,8 @@
 
 static void compile_method_free(void* p)
 {
+  compile_method_t* c_m = (compile_method_t*)p;
+  delete_try_return_info(&c_m->try_return_info);
   POOL_FREE(compile_method_t, p);
 }
 
@@ -108,13 +111,29 @@ static void make_signature(compile_t* c, reach_type_t* t,
 
   bool bare_function = m->cap == TK_AT;
 
-  bool return_value_lowering = false;
-  if(m->return_by_value)
+  bool return_value_lowered = false;
+  bool return_by_value = false;
+
+  compile_method_t* c_m = (compile_method_t*)m->c_method;
+
+  LLVMTypeRef partial_ret_type = NULL;
+  if(ast_id(ast_childidx(m->fun->ast, 5)) == TK_QUESTION)
   {
-    return_value_lowering = is_return_value_lowering_needed(c, m->result);
+    compile_type_t* res_c_t = (compile_type_t*)m->result->c_type;
+    partial_ret_type = generate_try_return_type(c, &c_m->try_return_info, m->result,
+      res_c_t->use_type, bare_function, m->return_by_value);
+
+    return_by_value = c_m->try_return_info.return_by_value;
+    return_value_lowered = c_m->try_return_info.return_value_lowered;
+  }
+  else if(m->return_by_value)
+  {
+    return_by_value = m->return_by_value;
+    return_value_lowered = is_return_value_lowering_needed(c, m->result);
+    c_m->return_value_lowered = return_value_lowered;
   }
 
-  if(!bare_function || (m->return_by_value && !return_value_lowering))
+  if(!bare_function || (return_by_value && !return_value_lowered))
   {
     count++;
     offset++;
@@ -137,19 +156,27 @@ static void make_signature(compile_t* c, reach_type_t* t,
 
   bool bare_void = false;
   compile_type_t* c_t = (compile_type_t*)t->c_type;
-  compile_method_t* c_m = (compile_method_t*)m->c_method;
   LLVMTypeRef return_type = NULL;
 
   if(bare_function)
   {
     bare_void = is_none(m->result->ast);
-    if(m->return_by_value)
+
+    if(return_by_value)
     {
-      if(!return_value_lowering)
+      if(!return_value_lowered)
       {
         // First argument when return by value is a pointer where the
         // value should be stored.
-        tparams[0] = ((compile_type_t*)m->result->c_type)->use_type;
+        if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
+        {
+          compile_type_t* partial_ret_c_t = (compile_type_t*)c_m->try_return_info.t->c_type;
+          tparams[0] = partial_ret_c_t->use_type;
+        }
+        else
+        {
+          tparams[0] = ((compile_type_t*)m->result->c_type)->use_type;
+        }
       }
     }
   } else {
@@ -171,9 +198,14 @@ static void make_signature(compile_t* c, reach_type_t* t,
       mparams[i + offset + 2] = p_c_t->mem_type;
   }
 
-  if(m->return_by_value)
+
+  if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
   {
-    if(return_value_lowering)
+    return_type = partial_ret_type;
+  }
+  else if(m->return_by_value)
+  {
+    if(c_m->return_value_lowered)
     {
       return_type = lower_return_value_from_structure_type(c, m->result);
     }
@@ -411,7 +443,7 @@ static void add_dispatch_case(compile_t* c, reach_type_t* t,
 {
   // Add a case to the dispatch function to handle this message.
   compile_type_t* c_t = (compile_type_t*)t->c_type;
-  codegen_startfun(c, c_t->dispatch_fn, NULL, NULL, NULL, false);
+  codegen_startfun(c, c_t->dispatch_fn, NULL, NULL, NULL, NULL, false);
   LLVMBasicBlockRef block = codegen_block(c, "handler");
   LLVMValueRef id = LLVMConstInt(c->i32, index, false);
   LLVMAddCase(c_t->dispatch_switch, id, block);
@@ -542,7 +574,7 @@ static bool genfun_fun(compile_t* c, reach_type_t* t, reach_method_t* m)
   AST_GET_CHILDREN(m->fun->ast, cap, id, typeparams, params, result, can_error,
     body);
 
-  codegen_startfun(c, c_m->func, c_m->di_file, c_m->di_method, m->fun,
+  codegen_startfun(c, c_m->func, c_m->di_file, c_m->di_method, m->fun, m,
     ast_id(cap) == TK_AT);
   name_params(c, t, m, c_m->func);
 
@@ -556,18 +588,26 @@ static bool genfun_fun(compile_t* c, reach_type_t* t, reach_method_t* m)
   if(value == NULL)
     return false;
 
+  bool return_value_lowered = false;
+  bool return_by_value = false;
+
+  if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
+  {
+    return_by_value = c_m->try_return_info.return_by_value;
+    return_value_lowered = c_m->try_return_info.return_value_lowered;
+  }
+  else if(m->return_by_value)
+  {
+    return_by_value = m->return_by_value;
+    return_value_lowered = is_return_value_lowering_needed(c, m->result);
+  }
+
   if(value != GEN_NOVALUE)
   {
     ast_t* r_result = deferred_reify(m->fun, result, c->opt);
 
-    bool return_value_lowered = false;
-    if(m->return_by_value)
-    {
-      return_value_lowered = is_return_value_lowering_needed(c, m->result);
-    }
-
     if(finaliser || ((ast_id(cap) == TK_AT) && is_none(r_result)) ||
-       (m->return_by_value && !return_value_lowered))
+       (return_by_value && !return_value_lowered))
     {
       if(m->return_by_value)
       {
@@ -587,16 +627,23 @@ static bool genfun_fun(compile_t* c, reach_type_t* t, reach_method_t* m)
       LLVMTypeRef r_type = LLVMGetReturnType(f_type);
 
       LLVMValueRef ret = NULL;
-      if(m->return_by_value && return_value_lowered)
+
+      if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
+      {
+        ret = wrap_try_return_success(c, &c_m->try_return_info, value, m->result);
+      }
+      else if(return_by_value && return_value_lowered)
       {
         ret = load_lowered_return_value_from_ptr(c, value, r_type, m->result);
       }
       else
       {
-        ast_t* body_type = deferred_reify(m->fun, ast_type(body), c->opt);
-        ret = gen_assign_cast(c, r_type, value, body_type);
-        ast_free_unattached(body_type);
+        ret = value;
       }
+
+      ast_t* body_type = deferred_reify(m->fun, ast_type(body), c->opt);
+      ret = gen_assign_cast(c, r_type, ret, body_type);
+      ast_free_unattached(body_type);
 
       ast_free_unattached(r_result);
 
@@ -627,7 +674,7 @@ static bool genfun_be(compile_t* c, reach_type_t* t, reach_method_t* m)
     body);
 
   // Generate the handler.
-  codegen_startfun(c, c_m->func_handler, c_m->di_file, c_m->di_method, m->fun,
+  codegen_startfun(c, c_m->func_handler, c_m->di_file, c_m->di_method, m->fun, m,
     false);
   name_params(c, t, m, c_m->func_handler);
 
@@ -643,7 +690,7 @@ static bool genfun_be(compile_t* c, reach_type_t* t, reach_method_t* m)
   codegen_finishfun(c);
 
   // Generate the sender.
-  codegen_startfun(c, c_m->func, NULL, NULL, m->fun, false);
+  codegen_startfun(c, c_m->func, NULL, NULL, m->fun, m, false);
   size_t buf_size = (m->param_count + 1) * sizeof(LLVMValueRef);
   LLVMValueRef* param_vals = (LLVMValueRef*)ponyint_pool_alloc_size(buf_size);
   LLVMGetParams(c_m->func, param_vals);
@@ -678,7 +725,7 @@ static bool genfun_new(compile_t* c, reach_type_t* t, reach_method_t* m)
   AST_GET_CHILDREN(m->fun->ast, cap, id, typeparams, params, result, can_error,
     body);
 
-  codegen_startfun(c, c_m->func, c_m->di_file, c_m->di_method, m->fun, false);
+  codegen_startfun(c, c_m->func, c_m->di_file, c_m->di_method, m->fun, m, false);
   name_params(c, t, m, c_m->func);
 
   LLVMValueRef value = gen_expr(c, body);
@@ -686,13 +733,18 @@ static bool genfun_new(compile_t* c, reach_type_t* t, reach_method_t* m)
   if(value == NULL)
     return false;
 
+  if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
+  {
+    value = wrap_try_return_success(c, &c_m->try_return_info, value, m->result);
+  }
+
   // Return 'this'.
   if(c_t->primitive == NULL)
     value = LLVMGetParam(c_m->func, 0);
 
   codegen_scope_lifetime_end(c);
   codegen_debugloc(c, ast_childlast(body));
-  if(t->underlying == TK_CLASS)
+  if(t->underlying == TK_CLASS && c_m->try_return_info.return_type == TRYRETURNTYPE_NONE)
     genfun_build_ret_void(c);
   else
     genfun_build_ret(c, value);
@@ -713,7 +765,7 @@ static bool genfun_newbe(compile_t* c, reach_type_t* t, reach_method_t* m)
     body);
 
   // Generate the handler.
-  codegen_startfun(c, c_m->func_handler, c_m->di_file, c_m->di_method, m->fun,
+  codegen_startfun(c, c_m->func_handler, c_m->di_file, c_m->di_method, m->fun, m,
     false);
   name_params(c, t, m, c_m->func_handler);
 
@@ -722,12 +774,17 @@ static bool genfun_newbe(compile_t* c, reach_type_t* t, reach_method_t* m)
   if(value == NULL)
     return false;
 
+  if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
+  {
+    value = wrap_try_return_success(c, &c_m->try_return_info, value, m->result);
+  }
+
   codegen_scope_lifetime_end(c);
   genfun_build_ret_void(c);
   codegen_finishfun(c);
 
   // Generate the sender.
-  codegen_startfun(c, c_m->func, NULL, NULL, m->fun, false);
+  codegen_startfun(c, c_m->func, NULL, NULL, m->fun, m, false);
   size_t buf_size = (m->param_count + 1) * sizeof(LLVMValueRef);
   LLVMValueRef* param_vals = (LLVMValueRef*)ponyint_pool_alloc_size(buf_size);
   LLVMGetParams(c_m->func, param_vals);
@@ -786,7 +843,7 @@ static bool genfun_implicit_final(compile_t* c, reach_type_t* t,
 {
   compile_method_t* c_m = (compile_method_t*)m->c_method;
 
-  codegen_startfun(c, c_m->func, NULL, NULL, NULL, false);
+  codegen_startfun(c, c_m->func, NULL, NULL, NULL, m, false);
   call_embed_finalisers(c, t, NULL, gen_this(c, NULL));
   genfun_build_ret_void(c);
   codegen_finishfun(c);
@@ -831,7 +888,7 @@ static bool genfun_allocator(compile_t* c, reach_type_t* t)
       LLVMAddAttributeAtIndex(fun, LLVMAttributeReturnIndex, deref_attr);
     }
   }
-  codegen_startfun(c, fun, NULL, NULL, NULL, false);
+  codegen_startfun(c, fun, NULL, NULL, NULL, NULL, false);
 
   LLVMValueRef result;
 
@@ -870,7 +927,7 @@ static bool genfun_forward(compile_t* c, reach_type_t* t,
   pony_assert(m2 != m);
   compile_method_t* c_m2 = (compile_method_t*)m2->c_method;
 
-  codegen_startfun(c, c_m->func, c_m->di_file, c_m->di_method, m->fun,
+  codegen_startfun(c, c_m->func, c_m->di_file, c_m->di_method, m->fun, m,
     m->cap == TK_AT);
 
   int count = LLVMCountParams(c_m->func);
@@ -891,8 +948,20 @@ static bool genfun_forward(compile_t* c, reach_type_t* t,
   LLVMValueRef ret = codegen_call(c, LLVMGlobalGetValueType(c_m2->func),
     c_m2->func, args, count, m->cap != TK_AT);
   codegen_debugloc(c, NULL);
+
+  if(c_m2->try_return_info.return_type != TRYRETURNTYPE_NONE)
+  {
+    ret = unwrap_try_return_value(c, &c_m2->try_return_info, ret, NULL, m2->result);
+  }
+
   ret = gen_assign_cast(c, ((compile_type_t*)m->result->c_type)->use_type, ret,
     m2->result->ast_cap);
+
+  if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
+  {
+    ret = wrap_try_return_success(c, &c_m->try_return_info, ret, m->result);
+  }
+
   genfun_build_ret(c, ret);
   codegen_finishfun(c);
   ponyint_pool_free_size(buf_size, args);
@@ -1101,6 +1170,7 @@ void genfun_allocate_compile_methods(compile_t* c, reach_type_t* t)
       compile_method_t* c_m = POOL_ALLOC(compile_method_t);
       memset(c_m, 0, sizeof(compile_method_t));
       c_m->free_fn = compile_method_free;
+      c_m->try_return_info = init_try_return_info();
       m->c_method = (compile_opaque_t*)c_m;
     }
   }
@@ -1257,7 +1327,7 @@ void genfun_primitive_calls(compile_t* c)
     const char* fn_name = genname_program_fn(c->filename, "primitives_init");
     c->primitives_init = LLVMAddFunction(c->module, fn_name, fn_type);
 
-    codegen_startfun(c, c->primitives_init, NULL, NULL, NULL, false);
+    codegen_startfun(c, c->primitives_init, NULL, NULL, NULL, NULL, false);
     primitive_call(c, c->str__init);
     genfun_build_ret_void(c);
     codegen_finishfun(c);
@@ -1270,7 +1340,7 @@ void genfun_primitive_calls(compile_t* c)
     const char* fn_name = genname_program_fn(c->filename, "primitives_final");
     c->primitives_final = LLVMAddFunction(c->module, fn_name, fn_type);
 
-    codegen_startfun(c, c->primitives_final, NULL, NULL, NULL, false);
+    codegen_startfun(c, c->primitives_final, NULL, NULL, NULL, NULL, false);
     primitive_call(c, c->str__final);
     genfun_build_ret_void(c);
     codegen_finishfun(c);

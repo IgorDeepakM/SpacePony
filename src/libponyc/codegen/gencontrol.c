@@ -613,11 +613,30 @@ LLVMValueRef gen_return(compile_t* c, ast_t* ast)
 
   codegen_debugloc(c, ast);
 
-  if(LLVMGetTypeKind(r_type) != LLVMVoidTypeKind)
+  bool partial_ret = false;
+  compile_method_t* c_m = NULL;
+  if(c->frame->m != NULL)
   {
+    c_m = (compile_method_t*)c->frame->m->c_method;
+    partial_ret = c_m->try_return_info.return_type != TRYRETURNTYPE_NONE;
+  }
+
+  if(LLVMGetTypeKind(r_type) || partial_ret)
+  {
+    if(partial_ret)
+    {
+      compile_type_t* ret_c_t = (compile_type_t*)c->frame->m->result->c_type;
+      r_type = ret_c_t->use_type;
+    }
     ast_t* type = deferred_reify(c->frame->reify, ast_type(expr), c->opt);
     LLVMValueRef ret = gen_assign_cast(c, r_type, value, type);
     ast_free_unattached(type);
+
+    if(partial_ret)
+    {
+      ret = wrap_try_return_success(c, &c_m->try_return_info, ret, c->frame->m->result);
+    }
+
     codegen_scope_lifetime_end(c);
     genfun_build_ret(c, ret);
   } else {

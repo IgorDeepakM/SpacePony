@@ -794,7 +794,7 @@ void gen_is_tuple_fun(compile_t* c, reach_type_t* t, pass_opt_t* opt)
   c_m->func_type = LLVMFunctionType(c->i1, params, 3, false);
   c_m->func = codegen_addfun(c, m->full_name, c_m->func_type, true);
 
-  codegen_startfun(c, c_m->func, NULL, NULL, NULL, false);
+  codegen_startfun(c, c_m->func, NULL, NULL, NULL, m, false);
   LLVMValueRef l_value = LLVMGetParam(codegen_fun(c), 0);
   LLVMValueRef r_value = LLVMGetParam(codegen_fun(c), 1);
   LLVMValueRef r_desc = LLVMGetParam(codegen_fun(c), 2);
