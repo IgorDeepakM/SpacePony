@@ -846,11 +846,6 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
   token_id cap = cap_dispatch(type);
   reach_method_t* m = reach_method(t, cap, method_name, typeargs, c->opt);
 
-  if(strstr(m->full_name, "NullablePointer") != NULL)
-  {
-    int i = 0;
-  }
-
   ast_free_unattached(type);
   ast_free_unattached(typeargs);
 

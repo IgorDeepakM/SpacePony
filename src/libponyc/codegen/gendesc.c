@@ -149,7 +149,6 @@ static bool method_needs_error_wrap(reach_type_t* t, reach_method_t* m)
   // This happens when the method is dispatched through a trait/interface/union
   // where the same method IS partial. The vtable entry must match the dispatch
   // type's return type ({T, i1} instead of T).
-  compile_method_t* c_m = (compile_method_t*)m->c_method;
 
   if(ast_id(ast_childidx(m->fun->ast, 5)) == TK_QUESTION)
   {
@@ -211,7 +210,6 @@ static LLVMValueRef make_error_wrap_function(compile_t* c,
   compile_method_t* c_m = (compile_method_t*)m->c_method;
   LLVMTypeRef f_type = LLVMGlobalGetValueType(c_m->func);
   int count = LLVMCountParamTypes(f_type);
-  LLVMTypeRef ret_type = LLVMGetReturnType(f_type);
 
   size_t buf_size = count * sizeof(LLVMTypeRef);
   LLVMTypeRef* params = (LLVMTypeRef*)ponyint_pool_alloc_size(buf_size);
