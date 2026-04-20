@@ -341,6 +341,16 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 * Note pass by value in lambdas is currently essentially a double copy (only inside SpacePony). First the argument is copied to the stack and then it is copied to a heap allocated structure. Why? Because there is no escape analysis and the passed aggregate can be sent or stored somewhere and because of that it cannot be on the stack. There is room for future optimizations regarding this, similar to how Pony can allocate on stack rather than heap.
 
+* It is also possible to return C structs to SpacePony tuples. No \byval\ annotation is needed in this case since tuples are values types by default. In C the struct should be returned by value.
+
+  ```pony
+  use @FFI_Func[(I64, Bool)]()
+
+  ...
+ 
+  (let s, let b) = FFI_Func()
+  ```
+
 * Currently not supported is the C `const` qualifier. This might affect lowering for some targets and therefore it must taken into account in the future. To map the `const` qualifier in SpacePony, one possibility to have `let` be const in the C FFI. However, this doesn't cover everything as `embed` also might be const. Adding an annotation `\cconst\` to the type can cover this.
 
 ### Inline assembler support
@@ -714,80 +724,59 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 ### Return value exceptions
 
-* SpacePony supports partial FFI functions. Previously this was implemented by throwing an exception (by calling _Unwind_RaiseException using libunwind or similar function for the platform in question). SpacePony has transitioned from using unwind exception to using return values for FFI functions. This is similar to how for example Swift works, by using return values under the hood but they look like traditional exceptions for the programmer. In order to implement partial FFI funtions, the return value needs to be taken into consideration.
+* Unwind exceptions are completely removed in SpacePony and the implementation of partial methods is done by augmenting the return type and returning a value. This is similar to how for example Swift works, by using return values under the hood but they look like traditional exceptions for the programmer.
 
-* When a partial FFI function returns nothing (void), the function should signal success/error by using a bool.
+* Since partial functions is now just an augment for the return value, there is no longer any point in supporting partial FFI function calls or bare lambdas because you can just use the return type directly in order to determine if the operation failed or succeeded, just like you would in C. In order to make it easier, SpacePony supports returning tuples by value.
+
+* Below is an example how the code inside the standard library of SpacePony was adapted to just using return values.
 
   ```pony
-  use @FFI_Func[None]()?
+  use @pony_os_recvfrom[USize](event: AsioEventID, buffer: Pointer[U8] tag,
+    size: USize, from: NetAddress tag) ?
 
   ...
 
-  try
-    @FFI_Func()?
-    env.out.print("success")
-  else
-    env.out.print("error")
-  end
+  fun ref _start_next_read() =>
+    """
+    Start our next receive.
+    This is used only with IOCP on Windows.
+    """
+    ifdef windows then
+      try
+        @pony_os_recvfrom(_event, _read_buf.cpointer(),
+          _read_buf.space(), _read_from) ?
+      else
+        _readable = false
+        _close()
+      end
+    end
   ```
 
-  ```c
-  bool FFI_Func()
-  {
-    return true; // return true for success
-    ...
-    return false; // return false for error
-  }
-  ```
-
-* When a partial FFI function returns a struct or anything else represented by a pointer, the function should signal success/error by returning a valid pointer or NULL.
+* Was changed to
 
   ```pony
-  use @FFI_Func[S]()?
-  
-  struct S
-    ...
-
-  var s: S = S
-  try
-    s = @FFI_Func()?
-    env.out.print("success")
-  else
-    env.out.print("error")
-  end
-  ```
-
-  ```c
-  typedef struct
-  {
-     ...
-  }S;
-
-  S* FFI_Func()
-  {
-    S s* = ...
-    return s; // return valid pointer for success
-    ...
-    return NULL; // return NULL for error
-  }
-  ```
-
-* When a partial FFI function returns anything other than a pointer, the function should signal success/error by returning a struct by value with the return type T and a bool like the example below. The value of T when error is disregarded and can be
-set to anything but typically 0.
-
-  ```pony
-  use @FFI_Func[USize]()?
-
+  use @pony_os_recvfrom[(USize, Bool)](event: AsioEventID, buffer: Pointer[U8] tag,
+   size: USize, from: NetAddress tag)
+ 
   ...
+ 
+  fun ref _start_next_read() =>
+   """
+   Start our next receive.
+   This is used only with IOCP on Windows.
+   """
+   ifdef windows then
+     (_, let success) = @pony_os_recvfrom(_event, _read_buf.cpointer(),
+       _read_buf.space(), _read_from)
+ 
+     if not success then
+       _readable = false
+       _close()
+     end
+   end
+   ```
 
-  var v: USize = 0
-  try
-    v = @FFI_Func()?
-    env.out.print("success")
-  else
-    env.out.print("error")
-  end
-  ```
+* The C function just return a struct by value
 
   ```c
   typedef struct
@@ -796,7 +785,7 @@ set to anything but typically 0.
     bool success;
   }ReturnStruct;
 
-  ReturnStruct FFI_Func()
+  ReturnStruct pony_os_recvfrom( ... )
   {
     size_t v = ...
     ReturnStruct rs = { v, true };  // return { value, true } for success
@@ -805,9 +794,8 @@ set to anything but typically 0.
     ReturnStruct rs = { 0, false };  // return { 0, false } for error
     return rs;
   }
-  ```
 
-* Return value exception will also be implemented for functions inside pony, totally eleminating unwind exceptions. This will happen under the hood and doesn't require any attention of the programmer.
+* This also means that catching exceptions from C++ is no longer supported in SpacePony
 
 
 ## Future directions
