@@ -140,10 +140,6 @@ static bool declared_ffi(pass_opt_t* opt, ast_t* call, ast_t* decl)
   ast_t* call_ret_type = ast_child(call_ret_typeargs);
   ast_t* decl_ret_type = ast_child(decl_ret_typeargs);
 
-  const char* f_name = ast_name(decl_name) + 1;
-  bool intrinsic = !strncmp(f_name, "llvm.", 5) ||
-    !strncmp(f_name, "internal.", 9);
-
   if((ast_id(decl_ret_type) == TK_TUPLETYPE) &&
      ast_has_annotation(decl_ret_type, PONY_BYVAL_ANNOTATION))
   {

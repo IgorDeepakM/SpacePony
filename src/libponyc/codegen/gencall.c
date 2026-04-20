@@ -1527,7 +1527,6 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
   bool return_by_value = false;
   bool return_value_lowered = false;
   LLVMValueRef assign_side = NULL;
-  LLVMValueRef partial_wrapper = NULL;
   ffi_decl_t* ffi_decl = NULL;
 
   ast_t* decl = (ast_t*)ast_data(ast);
