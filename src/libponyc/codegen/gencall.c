@@ -1065,27 +1065,19 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
 
   if(return_by_value)
   {
-    if(m->result->underlying != TK_TUPLETYPE)
+    if(return_value_lowered)
     {
-      if(return_value_lowered)
-      {
-        copy_lowered_return_value_to_ptr(c, assign_side, r, m->result);
-      }
-      r = assign_side;
+      copy_lowered_return_value_to_ptr(c, assign_side, r, m->result);
+    }
+
+    if(m->result->underlying == TK_TUPLETYPE)
+    {
+      compile_type_t* r_c_t = (compile_type_t*)m->result->c_type;
+      r = LLVMBuildLoad2(c->builder, r_c_t->use_type, assign_side, "");
     }
     else
     {
-      compile_type_t* r_c_t = (compile_type_t*)m->result->c_type;
-
-      if(!return_value_lowered)
-      {
-        r = load_lowered_return_value_from_ptr(c, assign_side, r_c_t->use_type, t);
-      }
-      else
-      {
-        copy_lowered_return_value_to_ptr(c, assign_side, r, t);
-        r = LLVMBuildLoad2(c->builder, r_c_t->use_type, assign_side, "");
-      }
+      r = assign_side;
     }
   }
   else
@@ -1695,25 +1687,18 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
 
   if(ffi_decl != NULL && return_by_value)
   {
-    if(t->underlying != TK_TUPLETYPE)
+    if(return_value_lowered)
     {
-      if(return_value_lowered)
-      {
-        copy_lowered_return_value_to_ptr(c, assign_side, result, t);
-      }
-      result = assign_side;
+      copy_lowered_return_value_to_ptr(c, assign_side, result, t);
+    }
+
+    if(t->underlying == TK_TUPLETYPE)
+    {
+      result = LLVMBuildLoad2(c->builder, c_t->use_type, assign_side, "");
     }
     else
     {
-      if(!return_value_lowered)
-      {
-        result = load_lowered_return_value_from_ptr(c, assign_side, c_t->use_type, t);
-      }
-      else
-      {
-        copy_lowered_return_value_to_ptr(c, assign_side, result, t);
-        result = LLVMBuildLoad2(c->builder, c_t->use_type, assign_side, "");
-      }
+      result = assign_side;
     }
   }
   else if(isnone && isvoid)

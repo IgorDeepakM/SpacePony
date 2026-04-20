@@ -639,7 +639,7 @@ extern "C" LLVMTypeRef lower_param(compile_t* c, LoweringObject* lowering_object
       }
       else if(abi_size <= 8)
       {
-        ret = get_type_from_size(c, next_power_of_2(p_t->abi_size));
+        ret = get_type_from_size(c, next_power_of_2(abi_size));
       }
       else if(abi_size <= 16)
       {
@@ -808,8 +808,8 @@ extern "C" LLVMValueRef load_lowered_param_value_from_ptr(compile_t* c, LLVMValu
       {
         // Aarch doesn't use byval and because of that you need to manually
         // create a copy of the structure on the stack and copy it.
-        AllocaInst* caller_copy = builder->CreateAlloca(unwrap(p_c_t->structure), nullptr, "");
-        ConstantInt* cpy_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), p_c_t->abi_size);
+        AllocaInst* caller_copy = builder->CreateAlloca(s, nullptr, "");
+        ConstantInt* cpy_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), abi_size);
         gencall_memcpy(c, wrap(caller_copy), ptr, wrap(cpy_size));
         ret = caller_copy;
       }
@@ -827,7 +827,7 @@ extern "C" LLVMValueRef load_lowered_param_value_from_ptr(compile_t* c, LLVMValu
   {
     if(target_is_lp64(triple))
     {
-      if(p_c_t->abi_size <= 16)
+      if(abi_size <= 16)
       {
         ret = copy_from_ptr_to_value_zero_extend(c, unwrap(ptr), unwrap(param_type), real_type);
       }
@@ -915,7 +915,7 @@ extern "C" void copy_lowered_param_value_to_ptr(compile_t* c, LLVMValueRef dest_
 
       bool is_hfa = get_hfa_from_structure_aarch64(s, hfa_type, num_elem);
 
-      if(p_c_t->abi_size > 16 && !is_hfa)
+      if(abi_size > 16 && !is_hfa)
       {
         ConstantInt* l_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), abi_size);
         gencall_memcpy(c, dest_ptr, param_value, wrap(l_size));
