@@ -84,7 +84,7 @@ typedef struct compile_frame_t
   LLVMBasicBlockRef break_target;
   LLVMBasicBlockRef break_novalue_target;
   LLVMBasicBlockRef continue_target;
-  LLVMBasicBlockRef invoke_target;
+  LLVMBasicBlockRef try_else_target;
 
   compile_locals_t locals;
   LLVMMetadataRef di_file;
@@ -223,8 +223,6 @@ typedef struct compile_t
   LLVMTypeRef final_fn;
   LLVMTypeRef custom_serialise_space_fn;
   LLVMTypeRef custom_deserialise_fn;
-
-  LLVMValueRef personality;
 
   compile_frame_t* frame;
 } compile_t;

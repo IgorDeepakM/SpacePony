@@ -3,6 +3,7 @@
 #include "genvaluepass.h"
 #include "gencall.h"
 #include "genexpr.h"
+#include "genfun.h"
 #include "../type/subtype.h"
 #include "../../libponyrt/mem/pool.h"
 #include "ponyassert.h"
@@ -211,7 +212,22 @@ extern "C" LLVMValueRef unwrap_try_return_value(compile_t* c, TryReturnInfo* try
 
   LLVMPositionBuilderAtEnd(c->builder, error_block);
 
-  gencall_error(c);
+  if(c->frame->try_else_target != NULL)
+  {
+    // Inside a try block: branch to the error handler.
+    LLVMBuildBr(c->builder, c->frame->try_else_target);
+  }
+  else
+  {
+    reach_method_t* r_m = c->frame->m;
+    compile_method_t* c_m = (compile_method_t*)r_m->c_method;
+
+    pony_assert(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE);
+
+    LLVMValueRef error_ret = wrap_try_return_error(c, &c_m->try_return_info, r_m->result);
+    genfun_build_ret(c, error_ret);
+  }
+
 
   LLVMPositionBuilderAtEnd(c->builder, continue_block);
 
@@ -333,7 +349,7 @@ extern "C" LLVMValueRef wrap_try_return_error(compile_t* c, TryReturnInfo* try_r
       compile_type_t* bool_c_t = (compile_type_t*)bool_type->c_type;
 
       LLVMValueRef tuple = LLVMGetUndef(wrapper_c_t->structure);
-      tuple = LLVMBuildInsertValue(c->builder, tuple, LLVMConstNull(ret_c_t->use_type), 0, "");
+      tuple = LLVMBuildInsertValue(c->builder, tuple, LLVMConstNull(ret_c_t->mem_type), 0, "");
       ret = LLVMBuildInsertValue(c->builder, tuple, LLVMConstInt(bool_c_t->mem_type, 0, false), 1, "");
       break;
     }

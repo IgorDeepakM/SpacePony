@@ -6,6 +6,7 @@
 #include "genopt.h"
 #include "genserialise.h"
 #include "gentrace.h"
+#include "gentryreturn.h"
 #include "../pkg/package.h"
 #include "../pkg/platformfuns.h"
 #include "../pkg/program.h"
@@ -443,22 +444,15 @@ static void pointer_to_reftype(compile_t* c, void* data, token_id cap)
   compile_type_t* t_elem = ((compile_type_t**)data)[1];
 
   FIND_METHOD("to_reftype", cap, c->opt);
+
+  // We need to generate the TryReturnInfo here as it doesn't go through any
+  // make_signature
+  generate_try_return_type(c, &c_m->try_return_info, t, t_elem->use_type, false, false);
+
   start_function(c, t, m, t_elem->use_type, &c_t->use_type, 1);
 
   LLVMValueRef result = LLVMGetParam(c_m->func, 0);
-  LLVMValueRef test = LLVMBuildIsNull(c->builder, result, "");
-
-  LLVMBasicBlockRef is_false = codegen_block(c, "");
-  LLVMBasicBlockRef is_true = codegen_block(c, "");
-  LLVMBuildCondBr(c->builder, test, is_true, is_false);
-
-  LLVMPositionBuilderAtEnd(c->builder, is_false);
   genfun_build_ret(c, result);
-
-  LLVMPositionBuilderAtEnd(c->builder, is_true);
-  gencall_error(c);
-  // For future error
-  //genfun_build_ret(c, LLVMConstNull(t_elem->use_type));
 
   codegen_finishfun(c);
 }
@@ -589,22 +583,15 @@ static void nullable_pointer_apply(compile_t* c, void* data, token_id cap)
   compile_type_t* t_elem = ((compile_type_t**)data)[1];
 
   FIND_METHOD("apply", cap, c->opt);
+
+  // We need to generate the TryReturnInfo here as it doesn't go through any
+  // make_signature
+  generate_try_return_type(c, &c_m->try_return_info, t, t_elem->use_type, false, false);
+
   start_function(c, t, m, t_elem->use_type, &c_t->use_type, 1);
 
   LLVMValueRef result = LLVMGetParam(c_m->func, 0);
-  LLVMValueRef test = LLVMBuildIsNull(c->builder, result, "");
-
-  LLVMBasicBlockRef is_false = codegen_block(c, "");
-  LLVMBasicBlockRef is_true = codegen_block(c, "");
-  LLVMBuildCondBr(c->builder, test, is_true, is_false);
-
-  LLVMPositionBuilderAtEnd(c->builder, is_false);
   genfun_build_ret(c, result);
-
-  LLVMPositionBuilderAtEnd(c->builder, is_true);
-  gencall_error(c);
-  // For future error
-  //genfun_build_ret(c, LLVMConstNull(t_elem->use_type));
 
   codegen_finishfun(c);
 }
