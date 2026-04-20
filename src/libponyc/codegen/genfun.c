@@ -7,6 +7,7 @@
 #include "genreference.h"
 #include "genvaluepass.h"
 #include "gentryreturn.h"
+#include "genbox.h"
 #include "../pass/names.h"
 #include "../type/assemble.h"
 #include "../type/subtype.h"
@@ -83,7 +84,9 @@ static void name_params(compile_t* c, reach_type_t* t, reach_method_t* m,
     offset = 1;
   }
 
-  if(m->return_by_value && !is_return_value_lowering_needed(c, m->result))
+  compile_method_t* c_m = (compile_method_t*)m->c_method;
+
+  if(m->return_by_value && !c_m->return_value_lowered)
   {
     offset++;
   }
@@ -173,7 +176,14 @@ static void make_signature(compile_t* c, reach_type_t* t,
         }
         else
         {
-          tparams[0] = ((compile_type_t*)m->result->c_type)->use_type;
+          if(m->result->underlying != TK_TUPLETYPE)
+          {
+            tparams[0] = ((compile_type_t*)m->result->c_type)->use_type;
+          }
+          else
+          {
+            tparams[0] = ((compile_type_t*)m->result->c_type)->structure_ptr;
+          }
         }
       }
     }
@@ -586,14 +596,8 @@ static bool genfun_fun(compile_t* c, reach_type_t* t, reach_method_t* m)
   if(value == NULL)
     return false;
 
-  bool return_value_lowered = false;
-  bool return_by_value = false;
-
-  if(m->return_by_value)
-  {
-    return_by_value = m->return_by_value;
-    return_value_lowered = is_return_value_lowering_needed(c, m->result);
-  }
+  bool return_by_value = m->return_by_value;
+  bool return_value_lowered = c_m->return_value_lowered;
 
   if(value != GEN_NOVALUE)
   {
@@ -605,9 +609,17 @@ static bool genfun_fun(compile_t* c, reach_type_t* t, reach_method_t* m)
       if(m->return_by_value)
       {
         LLVMValueRef value_ret_ptr = LLVMGetParam(c_m->func, 0);
-        size_t abi_size = ((compile_type_t*)m->result->c_type)->abi_size;
-        LLVMValueRef cpy_size = LLVMConstInt(c->intptr, abi_size, false);
-        gencall_memcpy(c, value_ret_ptr, value, cpy_size);
+
+        if(m->result->underlying != TK_TUPLETYPE)
+        {
+          size_t abi_size = ((compile_type_t*)m->result->c_type)->abi_size;
+          LLVMValueRef cpy_size = LLVMConstInt(c->intptr, abi_size, false);
+          gencall_memcpy(c, value_ret_ptr, value, cpy_size);
+        }
+        else
+        {
+          LLVMBuildStore(c->builder, value, value_ret_ptr);
+        }
       }
 
       ast_free_unattached(r_result);
@@ -621,24 +633,40 @@ static bool genfun_fun(compile_t* c, reach_type_t* t, reach_method_t* m)
 
       LLVMValueRef ret = NULL;
 
+      bool assign_cast = true;
+
       if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
       {
         ret = wrap_try_return_success(c, &c_m->try_return_info, value, m->result);
       }
       else if(return_by_value && return_value_lowered)
       {
-        ret = load_lowered_return_value_from_ptr(c, value, r_type, m->result);
+        assign_cast = false;
+
+        if(m->result->underlying != TK_TUPLETYPE)
+        {
+          ret = load_lowered_return_value_from_ptr(c, value, r_type, m->result);
+        }
+        else
+        {
+          LLVMValueRef tmp_buf = LLVMBuildAlloca(c->builder, r_type, "");
+          LLVMBuildStore(c->builder, value, tmp_buf);
+          ret = load_lowered_return_value_from_ptr(c, tmp_buf, r_type, m->result);
+        }
       }
       else
       {
         ret = value;
       }
 
-      ast_t* body_type = deferred_reify(m->fun, ast_type(body), c->opt);
-      ret = gen_assign_cast(c, r_type, ret, body_type);
-      ast_free_unattached(body_type);
+      if(assign_cast)
+      {
+        ast_t* body_type = deferred_reify(m->fun, ast_type(body), c->opt);
+        ret = gen_assign_cast(c, r_type, ret, body_type);
+        ast_free_unattached(body_type);
 
-      ast_free_unattached(r_result);
+        ast_free_unattached(r_result);
+      }
 
       if(ret == NULL)
         return false;
@@ -1087,7 +1115,8 @@ void genfun_param_attrs(compile_t* c, reach_type_t* t, reach_method_t* m,
   if(m->return_by_value)
   {
     apply_function_value_return_attribute(c, m->result, fun);
-    if(!is_return_value_lowering_needed(c, m->result))
+    compile_method_t* c_m = (compile_method_t*)m->c_method;
+    if(!c_m->return_value_lowered)
     {
       offset++;
       param = LLVMGetNextParam(param);

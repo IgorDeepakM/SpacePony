@@ -851,7 +851,7 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
 
   if(return_by_value)
   {
-    if(t->underlying == TK_TUPLETYPE)
+    if(m->result->underlying == TK_TUPLETYPE)
     {
       compile_type_t* r_c_t = (compile_type_t*)m->result->c_type;
       assign_side = LLVMBuildAlloca(c->builder, r_c_t->use_type, "");
@@ -1065,7 +1065,7 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
 
   if(return_by_value)
   {
-    if(t->underlying != TK_TUPLETYPE)
+    if(m->result->underlying != TK_TUPLETYPE)
     {
       if(return_value_lowered)
       {
