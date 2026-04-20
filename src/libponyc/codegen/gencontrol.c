@@ -704,19 +704,6 @@ LLVMValueRef gen_try(compile_t* c, ast_t* ast)
   LLVMMoveBasicBlockAfter(else_block, LLVMGetInsertBlock(c->builder));
   LLVMPositionBuilderAtEnd(c->builder, else_block);
 
-  // The landing pad is marked as a cleanup, since exceptions are typeless and
-  // valueless. The first landing pad is always the destination.
-  LLVMTypeRef lp_elements[2];
-  lp_elements[0] = c->ptr;
-  lp_elements[1] = c->i32;
-  LLVMTypeRef lp_type = LLVMStructTypeInContext(c->context, lp_elements, 2,
-    false);
-
-  LLVMValueRef landing = LLVMBuildLandingPad(c->builder, lp_type,
-    c->personality, 1, "");
-
-  LLVMAddClause(landing, LLVMConstNull(c->ptr));
-
   LLVMValueRef else_value = gen_expr(c, else_clause);
 
   if(else_value != GEN_NOVALUE)
@@ -816,23 +803,9 @@ LLVMValueRef gen_disposing_block_can_error(compile_t* c, ast_t* ast)
   // Pop the try before generating the else block.
   codegen_poptry(c);
 
-  // we need to create an else that rethrows the error
-  // Else block.
+  // try else block
   LLVMMoveBasicBlockAfter(else_block, LLVMGetInsertBlock(c->builder));
   LLVMPositionBuilderAtEnd(c->builder, else_block);
-
-  // The landing pad is marked as a cleanup, since exceptions are typeless and
-  // valueless. The first landing pad is always the destination.
-  LLVMTypeRef lp_elements[2];
-  lp_elements[0] = c->ptr;
-  lp_elements[1] = c->i32;
-  LLVMTypeRef lp_type = LLVMStructTypeInContext(c->context, lp_elements, 2,
-    false);
-
-  LLVMValueRef landing = LLVMBuildLandingPad(c->builder, lp_type,
-    c->personality, 1, "");
-
-  LLVMAddClause(landing, LLVMConstNull(c->ptr));
 
   gen_expr(c, dispose_clause);
   gen_error(c, ast_parent(ast));
@@ -961,7 +934,23 @@ LLVMValueRef gen_error(compile_t* c, ast_t* ast)
 
   codegen_scope_lifetime_end(c);
   codegen_debugloc(c, ast);
-  gencall_error(c);
+
+  if(c->frame->try_else_target != NULL)
+  {
+    // Inside a try block: branch to the error handler.
+    LLVMBuildBr(c->builder, c->frame->try_else_target);
+  }
+  else
+  {
+    reach_method_t* r_m = c->frame->m;
+    compile_method_t* c_m = (compile_method_t*)r_m->c_method;
+
+    pony_assert(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE);
+
+    LLVMValueRef ret = wrap_try_return_error(c, &c_m->try_return_info, r_m->result);
+    genfun_build_ret(c, ret);
+  }
+
   codegen_debugloc(c, NULL);
 
   return GEN_NOVALUE;

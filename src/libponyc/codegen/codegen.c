@@ -613,10 +613,6 @@ static void init_runtime(compile_t* c)
 
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, noreturn_attr);
 
-  // i32 ponyint_personality_v0(...)
-  type = LLVMFunctionType(c->i32, NULL, 0, true);
-  c->personality = LLVMAddFunction(c->module, "ponyint_personality_v0", type);
-
   // i32 memcmp(i8*, i8*, intptr)
   params[0] = c->ptr;
   params[1] = c->ptr;
@@ -1057,7 +1053,7 @@ void codegen_pushscope(compile_t* c, ast_t* ast)
   frame->break_target = frame->prev->break_target;
   frame->break_novalue_target = frame->prev->break_novalue_target;
   frame->continue_target = frame->prev->continue_target;
-  frame->invoke_target = frame->prev->invoke_target;
+  frame->try_else_target = frame->prev->try_else_target;
   frame->di_file = frame->prev->di_file;
 
   if(frame->prev->di_scope != NULL)
@@ -1164,7 +1160,7 @@ void codegen_pushloop(compile_t* c, LLVMBasicBlockRef continue_target,
   frame->break_target = break_target;
   frame->break_novalue_target = break_novalue_target;
   frame->continue_target = continue_target;
-  frame->invoke_target = frame->prev->invoke_target;
+  frame->try_else_target = frame->prev->try_else_target;
   frame->di_file = frame->prev->di_file;
   frame->di_scope = frame->prev->di_scope;
 }
@@ -1174,7 +1170,7 @@ void codegen_poploop(compile_t* c)
   pop_frame(c);
 }
 
-void codegen_pushtry(compile_t* c, LLVMBasicBlockRef invoke_target)
+void codegen_pushtry(compile_t* c, LLVMBasicBlockRef try_else_target)
 {
   compile_frame_t* frame = push_frame(c);
 
@@ -1185,7 +1181,7 @@ void codegen_pushtry(compile_t* c, LLVMBasicBlockRef invoke_target)
   frame->break_target = frame->prev->break_target;
   frame->break_novalue_target = frame->prev->break_novalue_target;
   frame->continue_target = frame->prev->continue_target;
-  frame->invoke_target = invoke_target;
+  frame->try_else_target = try_else_target;
   frame->di_file = frame->prev->di_file;
   frame->di_scope = frame->prev->di_scope;
 }

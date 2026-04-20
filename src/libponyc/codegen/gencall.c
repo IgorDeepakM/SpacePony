@@ -109,28 +109,6 @@ static void ffi_decl_free(ffi_decl_t* d)
 DEFINE_HASHMAP(ffi_decls, ffi_decls_t, ffi_decl_t, ffi_decl_hash, ffi_decl_cmp,
   ffi_decl_free);
 
-static LLVMValueRef invoke_fun(compile_t* c, LLVMTypeRef fun_type,
-  LLVMValueRef fun, LLVMValueRef* args, int count, const char* ret, bool setcc)
-{
-  if(fun == NULL)
-    return NULL;
-
-  LLVMBasicBlockRef this_block = LLVMGetInsertBlock(c->builder);
-  LLVMBasicBlockRef then_block = LLVMInsertBasicBlockInContext(c->context,
-    this_block, "invoke");
-  LLVMMoveBasicBlockAfter(then_block, this_block);
-  LLVMBasicBlockRef else_block = c->frame->invoke_target;
-
-  LLVMValueRef invoke = LLVMBuildInvoke2(c->builder, fun_type, fun, args, count,
-    then_block, else_block, ret);
-
-  if(setcc)
-    LLVMSetInstructionCallConv(invoke, c->callconv);
-
-  LLVMPositionBuilderAtEnd(c->builder, then_block);
-  return invoke;
-}
-
 static bool special_case_operator(compile_t* c, ast_t* ast,
   LLVMValueRef *value, bool short_circuit, bool native128)
 {
@@ -1053,10 +1031,7 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
       // instead of a call.
       codegen_debugloc(c, ast);
 
-      if(ast_canerror(ast) && (c->frame->invoke_target != NULL))
-        r = invoke_fun(c, func_type, func, args + arg_offset, i, "", !bare);
-      else
-        r = codegen_call(c, func_type, func, args + arg_offset, i, !bare);
+      r = codegen_call(c, func_type, func, args + arg_offset, i, !bare);
 
       size_t llvm_argument_shift = 1;
       if(return_by_value && !return_value_lowered)
@@ -1093,7 +1068,9 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
   // Bare methods with None return type return void, special case a None return
   // value.
   if(bare && is_none(m->result->ast) && c_m->try_return_info.return_type == TRYRETURNTYPE_NONE)
+  {
     r = c->none_instance;
+  }
 
   if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
   {
@@ -1894,20 +1871,6 @@ LLVMValueRef gencall_pony_alloc(compile_t* c, size_t rq_size)
   args[1] = LLVMConstInt(c->intptr, rq_size, false);
 
   return gencall_runtime(c, "pony_alloc", args, 2, "");
-}
-
-
-void gencall_error(compile_t* c)
-{
-  LLVMValueRef func = LLVMGetNamedFunction(c->module, "pony_error");
-  LLVMTypeRef func_type = LLVMGlobalGetValueType(func);
-
-  if(c->frame->invoke_target != NULL)
-    invoke_fun(c, func_type, func, NULL, 0, "", false);
-  else
-    LLVMBuildCall2(c->builder, func_type, func, NULL, 0, "");
-
-  LLVMBuildUnreachable(c->builder);
 }
 
 void gencall_memcpy(compile_t* c, LLVMValueRef dst, LLVMValueRef src,

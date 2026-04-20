@@ -942,7 +942,6 @@ static bool link_exe_lld_elf(compile_t* c, ast_t* program,
     args.push_back("--exclude-libs");
     args.push_back("libgnustl_shared.so");
     args.push_back("--exclude-libs");
-    args.push_back("libunwind.a");
   }
 
   // GCC runtime and libc linkage.
@@ -1596,7 +1595,7 @@ static bool link_exe(compile_t* c, ast_t* program,
 #endif
 
   const char* arm_linker_args = target_is_arm(c->opt->triple)
-    ? " -Wl,--exclude-libs,libgcc.a -Wl,--exclude-libs,libgcc_real.a -Wl,--exclude-libs,libgnustl_shared.so -Wl,--exclude-libs,libunwind.a"
+    ? " -Wl,--exclude-libs,libgcc.a -Wl,--exclude-libs,libgcc_real.a -Wl,--exclude-libs,libgnustl_shared.so"
     : "";
 
   size_t ld_len = 512 + strlen(file_exe) + strlen(file_o) + strlen(lib_args)
