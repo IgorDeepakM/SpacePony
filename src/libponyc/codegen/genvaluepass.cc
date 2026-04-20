@@ -52,6 +52,44 @@ extern "C" bool is_pass_by_value_lowering_supported(pass_opt_t* opt)
 }
 
 
+static size_t get_abi_size(compile_t* c, reach_type_t* t)
+{
+  size_t ret = 0;
+
+  compile_type_t* c_t = (compile_type_t*)t->c_type;
+
+  if(t->underlying == TK_TUPLETYPE)
+  {
+    ret = LLVMABISizeOfType(c->target_data, c_t->use_type);
+  }
+  else
+  {
+    ret = c_t->abi_size;
+  }
+
+  return ret;
+}
+
+
+static StructType* get_structure_type(compile_t* c, reach_type_t* t)
+{
+  StructType* ret = 0;
+
+  compile_type_t* c_t = (compile_type_t*)t->c_type;
+
+  if(t->underlying == TK_TUPLETYPE)
+  {
+    ret = dyn_cast<StructType>(unwrap(c_t->use_type));
+  }
+  else
+  {
+    ret = dyn_cast<StructType>(unwrap(c_t->structure));
+  }
+
+  return ret;
+}
+
+
 static bool flatten_structure(StructType* structure, vector<Type*>& flattened, size_t max_elements, bool do_not_expand_array = false)
 {
   size_t num_elements = (size_t)structure->getNumElements();
@@ -162,10 +200,12 @@ static bool get_hfa_from_structure_aarch64(StructType* structure, Type*& type_re
   return true;
 }
 
-static bool is_param_value_lowering_needed(compile_t* c, compile_type_t* p_t)
+static bool is_param_value_lowering_needed(compile_t* c, reach_type_t* t)
 {
   bool ret = false;
   char* triple = c->opt->triple;
+
+  size_t abi_size = get_abi_size(c, t);
 
   if(target_is_x86(triple))
   {
@@ -173,7 +213,7 @@ static bool is_param_value_lowering_needed(compile_t* c, compile_type_t* p_t)
     {
       if(target_is_llp64(triple))
       {
-        if(p_t->abi_size <= 8 && is_power_of_2(p_t->abi_size))
+        if(abi_size <= 8 && is_power_of_2(abi_size))
         {
           ret = true;
         }
@@ -184,7 +224,7 @@ static bool is_param_value_lowering_needed(compile_t* c, compile_type_t* p_t)
     {
       if(target_is_lp64(triple))
       {
-        if(p_t->abi_size <= 16)
+        if(abi_size <= 16)
         {
           ret = true;
         }
@@ -195,7 +235,7 @@ static bool is_param_value_lowering_needed(compile_t* c, compile_type_t* p_t)
   {
     if(target_is_ilp32(triple))
     {
-      if(p_t->abi_size <= 64)
+      if(abi_size <= 64)
       {
         ret = true;
       }
@@ -224,6 +264,7 @@ extern "C" bool is_return_value_lowering_needed(compile_t* c, reach_type_t* pt)
   char* triple = c->opt->triple;
 
   compile_type_t* p_t = (compile_type_t*)pt->c_type;
+  size_t abi_size = get_abi_size(c, pt);
 
   if(target_is_x86(triple))
   {
@@ -231,14 +272,14 @@ extern "C" bool is_return_value_lowering_needed(compile_t* c, reach_type_t* pt)
     {
       if(target_is_llp64(triple))
       {
-        if(p_t->abi_size <= 8 && is_power_of_2(p_t->abi_size))
+        if(abi_size <= 8 && is_power_of_2(abi_size))
         {
           ret = true;
         }
       }
       else if(target_is_ilp32(triple))
       {
-        if(p_t->abi_size <= 4)
+        if(abi_size <= 4)
         {
           ret = true;
         }
@@ -248,7 +289,7 @@ extern "C" bool is_return_value_lowering_needed(compile_t* c, reach_type_t* pt)
     {
       if(target_is_lp64(triple))
       {
-        if(p_t->abi_size <= 16)
+        if(abi_size <= 16)
         {
           ret = true;
         }
@@ -259,7 +300,7 @@ extern "C" bool is_return_value_lowering_needed(compile_t* c, reach_type_t* pt)
   {
     if(target_is_ilp32(triple))
     {
-      if(p_t->abi_size <= 4)
+      if(abi_size <= 4)
       {
         ret = true;
       }
@@ -269,11 +310,12 @@ extern "C" bool is_return_value_lowering_needed(compile_t* c, reach_type_t* pt)
       Type* hfa_type = nullptr;
       size_t num_elem = 0;
 
-      if(get_hfa_from_structure_aarch64(unwrap<StructType>(p_t->structure), hfa_type, num_elem))
+      StructType* structure = get_structure_type(c, pt);
+      if(get_hfa_from_structure_aarch64(structure, hfa_type, num_elem))
       {
         ret = true;
       }
-      else if(p_t->abi_size <= 16)
+      else if(abi_size <= 16)
       {
         ret = true;
       }
@@ -283,7 +325,7 @@ extern "C" bool is_return_value_lowering_needed(compile_t* c, reach_type_t* pt)
   {
     if(target_is_lp64(triple))
     {
-      if(p_t->abi_size <= 16)
+      if(abi_size <= 16)
       {
         ret = true;
       }
@@ -410,9 +452,10 @@ static Type* lower_riscv64_param_value_from_structure_type(compile_t* c, Lowerin
 
   compile_type_t* p_t = (compile_type_t*)pt->c_type;
 
-  StructType* s = unwrap<StructType>(p_t->structure);
+  StructType* s = get_structure_type(c, pt);
+  size_t abi_size = get_abi_size(c, pt);
 
-  if(p_t->abi_size <= 16)
+  if(abi_size <= 16)
   {
     bool contain_array = false;
 
@@ -467,14 +510,14 @@ static Type* lower_riscv64_param_value_from_structure_type(compile_t* c, Lowerin
            (contain_float + lowering_object.riscv.num_fp_regs_in_use <= 8))
         {
           lowering_object.riscv.num_fp_regs_in_use += contain_float;
-          ret = unwrap(p_t->structure);
+          ret = s;
         }
       }
     }
 
     if(ret == nullptr)
     {
-      if(p_t->abi_size <= 8)
+      if(abi_size <= 8)
       {
         ret = unwrap(c->i64);
       }
@@ -536,11 +579,14 @@ extern "C" LLVMTypeRef lower_param(compile_t* c, LoweringObject* lowering_object
   auto target_data = unwrap(c->target_data);
 
   // If no lowering is needed then just return with the same pointer to structure type
-  if(!pass_by_value || !is_param_value_lowering_needed(c, p_t))
+  if(!pass_by_value || !is_param_value_lowering_needed(c, pt))
   {
     count_registers(c, *lowering_object, unwrap(p_t->use_type));
     return p_t->use_type;
   }
+
+  StructType* s = get_structure_type(c, pt);
+  size_t abi_size = get_abi_size(c, pt);
 
   if(target_is_x86(triple))
   {
@@ -548,7 +594,7 @@ extern "C" LLVMTypeRef lower_param(compile_t* c, LoweringObject* lowering_object
     {
       if(target_is_llp64(triple))
       {
-        ret = get_type_from_size(c, p_t->abi_size);
+        ret = get_type_from_size(c, abi_size);
       }
     }
     else if(target_is_linux(triple))
@@ -558,8 +604,7 @@ extern "C" LLVMTypeRef lower_param(compile_t* c, LoweringObject* lowering_object
         size_t ptr_size = (size_t)target_data->getTypeAllocSize(unwrap(c->intptr));
 
         vector<Type*> lowered;
-        lower_structure_x86_64_systemv(c, dyn_cast<StructType>(unwrap(p_t->structure)),
-          ptr_size, lowered);
+        lower_structure_x86_64_systemv(c, s, ptr_size, lowered);
         ret = generate_flattened_type(c, lowered);
       }
     }
@@ -568,13 +613,13 @@ extern "C" LLVMTypeRef lower_param(compile_t* c, LoweringObject* lowering_object
   {
     if(target_is_ilp32(triple))
     {
-      size_t align = (size_t)target_data->getABITypeAlign(unwrap(p_t->structure)).value();
+      size_t align = (size_t)target_data->getABITypeAlign(s).value();
 
       if(align < 4)
       {
         align = 4;
       }
-      size_t type_size = p_t->abi_size;
+      size_t type_size = abi_size;
       size_t array_size = type_size / align;
       if((type_size % align) != 0)
       {
@@ -588,15 +633,15 @@ extern "C" LLVMTypeRef lower_param(compile_t* c, LoweringObject* lowering_object
       Type* hfa_type = nullptr;
       size_t num_elem = 0;
 
-      if(get_hfa_from_structure_aarch64(unwrap<StructType>(p_t->structure), hfa_type, num_elem))
+      if(get_hfa_from_structure_aarch64(s, hfa_type, num_elem))
       {
         ret = ArrayType::get(hfa_type, num_elem);
       }
-      else if(p_t->abi_size <= 8)
+      else if(abi_size <= 8)
       {
         ret = get_type_from_size(c, next_power_of_2(p_t->abi_size));
       }
-      else if(p_t->abi_size <= 16)
+      else if(abi_size <= 16)
       {
         ret = ArrayType::get(unwrap(c->i64), 2);
       }
@@ -626,13 +671,16 @@ extern "C" LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reac
 
   compile_type_t* p_t = (compile_type_t*)pt->c_type;
 
+  StructType* s = get_structure_type(c, pt);
+  size_t abi_size = get_abi_size(c, pt);
+
   if(target_is_x86(triple))
   {
     if(target_is_windows(triple))
     {
       if(target_is_llp64(triple) || target_is_ilp32(triple))
       {
-        ret = get_type_from_size(c, p_t->abi_size);
+        ret = get_type_from_size(c, abi_size);
       }
     }
     else if(target_is_linux(triple))
@@ -642,8 +690,7 @@ extern "C" LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reac
         size_t ptr_size = (size_t)target_data->getTypeAllocSize(unwrap(c->intptr));
 
         vector<Type*> lowered;
-        lower_structure_x86_64_systemv(c, dyn_cast<StructType>(unwrap(p_t->structure)),
-          ptr_size, lowered);
+        lower_structure_x86_64_systemv(c, s, ptr_size, lowered);
         ret = generate_flattened_type(c, lowered);
       }
     }
@@ -652,22 +699,22 @@ extern "C" LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reac
   {
     if(target_is_ilp32(triple))
     {
-      ret = get_type_from_size(c, next_power_of_2(p_t->abi_size));
+      ret = get_type_from_size(c, next_power_of_2(abi_size));
     }
     else if(target_is_lp64(triple))
     {
       Type* hfa_type = nullptr;
       size_t num_elem = 0;
 
-      if(get_hfa_from_structure_aarch64(unwrap<StructType>(p_t->structure), hfa_type, num_elem))
+      if(get_hfa_from_structure_aarch64(s, hfa_type, num_elem))
       {
-        ret = unwrap(p_t->structure);
+        ret = s;
       }
-      else if(p_t->abi_size <= 8)
+      else if(abi_size <= 8)
       {
-        ret = get_type_from_size(c, next_power_of_2(p_t->abi_size));
+        ret = get_type_from_size(c, next_power_of_2(abi_size));
       }
-      else if(p_t->abi_size <= 16)
+      else if(abi_size <= 16)
       {
         ret = ArrayType::get(unwrap(c->i64), 2);
       }
@@ -690,21 +737,25 @@ extern "C" LLVMTypeRef lower_return_value_from_structure_type(compile_t* c, reac
 }
 
 static Value* copy_from_ptr_to_value_zero_extend(compile_t* c, Value* ptr,
-  Type* param_type, compile_type_t* p_c_t)
+  Type* param_type, reach_type_t* pt)
 {
   Value* ret = nullptr;
 
   auto builder = unwrap(c->builder);
   auto target_data = unwrap(c->target_data);
 
-  if(p_c_t->abi_size == (size_t)target_data->getTypeAllocSize(param_type))
+  size_t abi_size = get_abi_size(c, pt);
+
+  if(abi_size == (size_t)target_data->getTypeAllocSize(param_type))
   {
     ret = builder->CreateLoad(param_type, ptr, "");
   }
   else
   {
+    size_t abi_size = get_abi_size(c, pt);
+
     AllocaInst* tmp_array = builder->CreateAlloca(param_type, nullptr, "");
-    ConstantInt* cpy_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), p_c_t->abi_size);
+    ConstantInt* cpy_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), abi_size);
     ConstantInt* zero = ConstantInt::get(unwrap<IntegerType>(c->i8), 0);
     builder->CreateMemSet(tmp_array, zero, cpy_size, tmp_array->getAlign());
     gencall_memcpy(c, wrap(tmp_array), wrap(ptr), wrap(cpy_size));
@@ -725,10 +776,13 @@ extern "C" LLVMValueRef load_lowered_param_value_from_ptr(compile_t* c, LLVMValu
   compile_type_t* p_c_t = (compile_type_t*)real_type->c_type;
 
   // If no lowering is needed then just return the pointer and byval will be used
-  if(!is_param_value_lowering_needed(c, p_c_t))
+  if(!is_param_value_lowering_needed(c, real_type))
   {
     return ptr;
   }
+
+  StructType* s = get_structure_type(c, real_type);
+  size_t abi_size = get_abi_size(c, real_type);
 
   if(target_is_x86(triple) && target_is_windows(triple) &&
      (target_is_llp64(triple) || target_is_ilp32(triple)))
@@ -739,17 +793,16 @@ extern "C" LLVMValueRef load_lowered_param_value_from_ptr(compile_t* c, LLVMValu
   }
   else if(target_is_x86(triple) && target_is_linux(triple) && target_is_lp64(triple))
   {
-    ret = copy_from_ptr_to_value_zero_extend(c, unwrap(ptr), unwrap(param_type), p_c_t);
+    ret = copy_from_ptr_to_value_zero_extend(c, unwrap(ptr), unwrap(param_type), real_type);
   }
   else if(target_is_arm(triple))
   {
-    if(target_is_lp64(triple) && p_c_t->abi_size > 16)
+    if(target_is_lp64(triple) && abi_size > 16)
     {
       Type* hfa_type = nullptr;
       size_t num_elem = 0;
 
-      bool is_hfa = get_hfa_from_structure_aarch64(unwrap<StructType>(p_c_t->structure),
-        hfa_type, num_elem);
+      bool is_hfa = get_hfa_from_structure_aarch64(s, hfa_type, num_elem);
 
       if(!is_hfa)
       {
@@ -762,12 +815,12 @@ extern "C" LLVMValueRef load_lowered_param_value_from_ptr(compile_t* c, LLVMValu
       }
       else
       {
-        ret = copy_from_ptr_to_value_zero_extend(c, unwrap(ptr), unwrap(param_type), p_c_t);
+        ret = copy_from_ptr_to_value_zero_extend(c, unwrap(ptr), unwrap(param_type), real_type);
       }
     }
     else
     {
-      ret = copy_from_ptr_to_value_zero_extend(c, unwrap(ptr), unwrap(param_type), p_c_t);
+      ret = copy_from_ptr_to_value_zero_extend(c, unwrap(ptr), unwrap(param_type), real_type);
     }
   }
   else if(target_is_riscv(triple))
@@ -776,12 +829,12 @@ extern "C" LLVMValueRef load_lowered_param_value_from_ptr(compile_t* c, LLVMValu
     {
       if(p_c_t->abi_size <= 16)
       {
-        ret = copy_from_ptr_to_value_zero_extend(c, unwrap(ptr), unwrap(param_type), p_c_t);
+        ret = copy_from_ptr_to_value_zero_extend(c, unwrap(ptr), unwrap(param_type), real_type);
       }
       else
       {
-        AllocaInst* caller_copy = builder->CreateAlloca(unwrap(p_c_t->structure), nullptr, "");
-        ConstantInt* cpy_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), p_c_t->abi_size);
+        AllocaInst* caller_copy = builder->CreateAlloca(s, nullptr, "");
+        ConstantInt* cpy_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), abi_size);
         gencall_memcpy(c, wrap(caller_copy), ptr, wrap(cpy_size));
         ret = caller_copy;
       }
@@ -804,8 +857,6 @@ extern "C" LLVMValueRef load_lowered_return_value_from_ptr(compile_t* c, LLVMVal
 
   auto builder = unwrap(c->builder);
 
-  compile_type_t* p_c_t = (compile_type_t*)real_type->c_type;
-
   if(target_is_x86(triple) && target_is_windows(triple) &&
      (target_is_llp64(triple) || target_is_ilp32(triple)))
   {
@@ -817,7 +868,7 @@ extern "C" LLVMValueRef load_lowered_return_value_from_ptr(compile_t* c, LLVMVal
           (target_is_x86(triple) && target_is_linux(triple) && target_is_lp64(triple)) ||
           (target_is_riscv(triple) && target_is_lp64(triple)))
   {
-    ret = copy_from_ptr_to_value_zero_extend(c, unwrap(ptr), unwrap(return_type), p_c_t);
+    ret = copy_from_ptr_to_value_zero_extend(c, unwrap(ptr), unwrap(return_type), real_type);
   }
   else
   {
@@ -837,13 +888,17 @@ extern "C" void copy_lowered_param_value_to_ptr(compile_t* c, LLVMValueRef dest_
   auto builder = unwrap(c->builder);
   auto target_data = unwrap(c->target_data);
 
+  size_t abi_size = get_abi_size(c, real_target_type);
+
   // If no lowering is needed then just copy from the pointer provided
-  if(!is_param_value_lowering_needed(c, p_c_t))
+  if(!is_param_value_lowering_needed(c, real_target_type))
   {
-    ConstantInt* l_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), p_c_t->abi_size);
+    ConstantInt* l_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), abi_size);
     gencall_memcpy(c, dest_ptr, param_value, wrap(l_size));
     return;
   }
+
+  StructType* s = get_structure_type(c, real_target_type);
 
   if(target_is_x86(triple) && target_is_windows(triple) &&
      (target_is_llp64(triple) || target_is_ilp32(triple)))
@@ -858,12 +913,11 @@ extern "C" void copy_lowered_param_value_to_ptr(compile_t* c, LLVMValueRef dest_
       Type* hfa_type = nullptr;
       size_t num_elem = 0;
 
-      bool is_hfa = get_hfa_from_structure_aarch64(unwrap<StructType>(p_c_t->structure),
-        hfa_type, num_elem);
+      bool is_hfa = get_hfa_from_structure_aarch64(s, hfa_type, num_elem);
 
       if(p_c_t->abi_size > 16 && !is_hfa)
       {
-        ConstantInt* l_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), p_c_t->abi_size);
+        ConstantInt* l_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), abi_size);
         gencall_memcpy(c, dest_ptr, param_value, wrap(l_size));
         return;
       }
@@ -871,7 +925,7 @@ extern "C" void copy_lowered_param_value_to_ptr(compile_t* c, LLVMValueRef dest_
 
     Type* param_type = unwrap(param_value)->getType();
 
-    if(p_c_t->abi_size == (size_t)target_data->getTypeAllocSize(param_type))
+    if(abi_size == (size_t)target_data->getTypeAllocSize(param_type))
     {
       builder->CreateStore(unwrap(param_value), unwrap(dest_ptr));
     }
@@ -879,19 +933,19 @@ extern "C" void copy_lowered_param_value_to_ptr(compile_t* c, LLVMValueRef dest_
     {
       AllocaInst* tmp_array = builder->CreateAlloca(param_type, nullptr, "");
       builder->CreateStore(unwrap(param_value), tmp_array);
-      ConstantInt* cpy_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), p_c_t->abi_size);
+      ConstantInt* cpy_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), abi_size);
       gencall_memcpy(c, dest_ptr, wrap(tmp_array), wrap(cpy_size));
     }
   }
   else if(target_is_riscv(triple) && target_is_lp64(triple))
   {
-    if(p_c_t->abi_size <= 16)
+    if(abi_size <= 16)
     {
       builder->CreateStore(unwrap(param_value), unwrap(dest_ptr));
     }
     else
     {
-      ConstantInt* cpy_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), p_c_t->abi_size);
+      ConstantInt* cpy_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), abi_size);
       gencall_memcpy(c, dest_ptr, param_value, wrap(cpy_size));
     }
   }
@@ -921,7 +975,9 @@ extern "C" void copy_lowered_return_value_to_ptr(compile_t* c, LLVMValueRef dest
           (target_is_riscv(triple) && target_is_lp64(triple)))
   {
     Type* return_type = unwrap(return_value)->getType();
-    if(p_c_t->abi_size == (size_t)target_data->getTypeAllocSize(return_type))
+    size_t abi_size = get_abi_size(c, real_target_type);
+
+    if(abi_size == (size_t)target_data->getTypeAllocSize(return_type))
     {
       builder->CreateStore(unwrap(return_value), unwrap(dest_ptr));
     }
@@ -929,7 +985,7 @@ extern "C" void copy_lowered_return_value_to_ptr(compile_t* c, LLVMValueRef dest
     {
       AllocaInst* tmp_array = builder->CreateAlloca(return_type, nullptr, "");
       builder->CreateStore(unwrap(return_value), tmp_array);
-      ConstantInt* cpy_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), p_c_t->abi_size);
+      ConstantInt* cpy_size = ConstantInt::get(unwrap<IntegerType>(c->intptr), abi_size);
       gencall_memcpy(c, dest_ptr, wrap(tmp_array), wrap(cpy_size));
     }
   }
@@ -950,12 +1006,11 @@ extern "C" void apply_function_value_param_attribute(compile_t* c, reach_type_t*
     return;
   }
 
-  compile_type_t* p_c_t = (compile_type_t*)pt->c_type;
-
-  if(!is_param_value_lowering_needed(c, p_c_t))
+  if(!is_param_value_lowering_needed(c, pt))
   {
+    StructType* s = get_structure_type(c, pt);
     Attribute::AttrKind kind = Attribute::getAttrKindFromName("byval");
-    Attribute byvalue_attr = Attribute::get(*unwrap(c->context), kind, unwrap(p_c_t->structure));
+    Attribute byvalue_attr = Attribute::get(*unwrap(c->context), kind, s);
     // index 0 = return type, 1 ... paramters
     unwrap<Function>(func)->addAttributeAtIndex(param_nr, byvalue_attr);
   }
@@ -972,12 +1027,11 @@ extern "C" void apply_call_site_value_param_attribute(compile_t* c, reach_type_t
     return;
   }
 
-  compile_type_t* p_c_t = (compile_type_t*)pt->c_type;
-
-  if(!is_param_value_lowering_needed(c, p_c_t))
+  if(!is_param_value_lowering_needed(c, pt))
   {
+    StructType* s = get_structure_type(c, pt);
     Attribute::AttrKind kind = Attribute::getAttrKindFromName("byval");
-    Attribute byvalue_attr = Attribute::get(*unwrap(c->context), kind, unwrap(p_c_t->structure));
+    Attribute byvalue_attr = Attribute::get(*unwrap(c->context), kind, s);
     // index 0 = return type, 1 ... paramters
     unwrap<CallBase>(func)->addAttributeAtIndex(param_nr, byvalue_attr);
   }

@@ -447,7 +447,7 @@ static void pointer_to_reftype(compile_t* c, void* data, token_id cap)
 
   // We need to generate the TryReturnInfo here as it doesn't go through any
   // make_signature
-  generate_try_return_type(c, &c_m->try_return_info, t, t_elem->use_type, false, false);
+  generate_try_return_type(c, &c_m->try_return_info, t, t_elem->use_type);
 
   start_function(c, t, m, t_elem->use_type, &c_t->use_type, 1);
 
@@ -586,7 +586,7 @@ static void nullable_pointer_apply(compile_t* c, void* data, token_id cap)
 
   // We need to generate the TryReturnInfo here as it doesn't go through any
   // make_signature
-  generate_try_return_type(c, &c_m->try_return_info, t, t_elem->use_type, false, false);
+  generate_try_return_type(c, &c_m->try_return_info, t, t_elem->use_type);
 
   start_function(c, t, m, t_elem->use_type, &c_t->use_type, 1);
 
