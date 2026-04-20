@@ -219,7 +219,7 @@ static LLVMValueRef make_error_wrap_function(compile_t* c,
 
   compile_type_t* ret_c_t = (compile_type_t*)m->result->c_type;
   LLVMTypeRef wrapped_ret =
-    generate_try_return_type(c, &tr_info, m->result, ret_c_t->use_type, false, false);
+    generate_try_return_type(c, &tr_info, m->result, ret_c_t->use_type);
 
   const char* wrap_name = genname_error_wrap(m->full_name);
   LLVMTypeRef wrap_type = LLVMFunctionType(wrapped_ret, params, count, false);

@@ -632,13 +632,20 @@ static ast_result_t syntax_ffi(pass_opt_t* opt, ast_t* ast,
     }
   }
 
-  AST_GET_CHILDREN(ast, id, typeargs, ffi_args, ffi_named_args);
+  AST_GET_CHILDREN(ast, id, typeargs, ffi_args, ffi_named_args, question);
   // We don't check FFI names are legal, if the lexer allows it so do we
   if((ast_child(typeargs) == NULL && is_declaration) ||
     ast_childidx(typeargs, 1) != NULL)
   {
     ast_error(opt->check.errors, typeargs,
       "FFI functions must specify a single return type");
+    r = AST_ERROR;
+  }
+
+  if(ast_id(question) == TK_QUESTION)
+  {
+    ast_error(opt->check.errors, typeargs,
+      "partial FFI functions are not supported");
     r = AST_ERROR;
   }
 
@@ -1171,6 +1178,12 @@ static ast_result_t syntax_barelambdatype(pass_opt_t* opt, ast_t* ast)
     return AST_ERROR;
   }
 
+  if(ast_id(partial) == TK_QUESTION)
+  {
+    ast_error(opt->check.errors, fun_cap, "a bare lambda cannot be a partial");
+    return AST_ERROR;
+  }
+
   bool pass_by_value_supported = is_pass_by_value_lowering_supported(opt);
 
   if(ast_has_annotation(return_type, PONY_BYVAL_ANNOTATION))
@@ -1326,6 +1339,12 @@ static ast_result_t syntax_lambda(pass_opt_t* opt, ast_t* ast)
 
   if(is_bare_lambda)
   {
+    if(ast_id(raises) == TK_QUESTION)
+    {
+      ast_error(opt->check.errors, raises, "a bare lambda cannot be a partial");
+      return AST_ERROR;
+    }
+
     if(ast_id(receiver_cap) != TK_NONE)
     {
       ast_error(opt->check.errors, receiver_cap, "a bare lambda cannot specify "
@@ -1837,12 +1856,6 @@ ast_result_t pass_syntax(ast_t** astp, pass_opt_t* options)
     case TK_CAP_ANY:    r = syntax_cap_set(options, ast); break;
 
     case TK_ANNOTATION: r = syntax_annotation(options, ast); break;
-
-    case TK_CONSTANT:
-      ast_error(options->check.errors, ast,
-        "Compile time expressions not yet supported");
-      r = AST_ERROR;
-      break;
 
     case TK_AS:         r = syntax_as(options, ast); break;
 

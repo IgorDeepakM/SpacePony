@@ -6,10 +6,10 @@ use @pony_os_listen_udp4[AsioEventID](owner: AsioEventNotify,
   host: Pointer[U8] tag, service: Pointer[U8] tag)
 use @pony_os_listen_udp6[AsioEventID](owner: AsioEventNotify,
   host: Pointer[U8] tag, service: Pointer[U8] tag)
-use @pony_os_sendto[USize](fd: U32, buffer: Pointer[U8] tag,
-  size: USize, to: NetAddress tag) ?
-use @pony_os_recvfrom[USize](event: AsioEventID, buffer: Pointer[U8] tag,
-  size: USize, from: NetAddress tag) ?
+use @pony_os_sendto[(USize, Bool)](fd: U32, buffer: Pointer[U8] tag,
+  size: USize, to: NetAddress tag)
+use @pony_os_recvfrom[(USize, Bool)](event: AsioEventID, buffer: Pointer[U8] tag,
+  size: USize, from: NetAddress tag)
 use @pony_os_multicast_join[None](fd: U32, group: Pointer[U8] tag,
   to: Pointer[U8] tag)
 use @pony_os_multicast_leave[None](fd: U32, group: Pointer[U8] tag,
@@ -307,9 +307,13 @@ actor UDPSocket is AsioEventNotify
           let size = _packet_size
           let data = _read_buf = recover Array[U8] .> undefined(size) end
           let from = recover NetAddress end
-          let len =
+          (let len, let success) =
             @pony_os_recvfrom(_event, data.cpointer(), data.space(),
-              from) ?
+              from)
+
+          if not success then
+            error
+          end
 
           if len == 0 then
             _readable = false
@@ -364,10 +368,10 @@ actor UDPSocket is AsioEventNotify
     This is used only with IOCP on Windows.
     """
     ifdef windows then
-      try
-        @pony_os_recvfrom(_event, _read_buf.cpointer(),
-          _read_buf.space(), _read_from) ?
-      else
+      (_, let success) = @pony_os_recvfrom(_event, _read_buf.cpointer(),
+        _read_buf.space(), _read_from)
+
+      if not success then
         _readable = false
         _close()
       end
@@ -379,7 +383,10 @@ actor UDPSocket is AsioEventNotify
     """
     if not _closed then
       try
-        @pony_os_sendto(_fd, data.cpointer(), data.size(), to) ?
+        (_, let success) = @pony_os_sendto(_fd, data.cpointer(), data.size(), to)
+        if not success then
+          error
+        end
       else
         _close()
       end

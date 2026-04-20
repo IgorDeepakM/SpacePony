@@ -467,12 +467,6 @@ static reach_method_t* add_rmethod(reach_t* r, reach_type_t* t,
     deferred_reification_t* fun = lookup(NULL, NULL, r_ast, n->name);
     pony_assert(fun != NULL);
 
-    if(cap == TK_AT &&
-       ast_has_annotation(ast_childidx(fun->ast, 4), PONY_BYVAL_ANNOTATION))
-    {
-      m->return_by_value = true;
-    }
-
     // The typeargs and thistype are in the scope of r_ast but we're going to
     // free it. Change the scope to a durable AST.
     if(fun->type_typeargs != NULL)
@@ -491,6 +485,13 @@ static reach_method_t* add_rmethod(reach_t* r, reach_type_t* t,
 
     m->fun = fun;
     set_method_types(r, m, opt);
+
+    if(cap == TK_AT &&
+      (ast_has_annotation(ast_childidx(fun->ast, 4), PONY_BYVAL_ANNOTATION) ||
+       m->result->underlying == TK_TUPLETYPE))
+    {
+      m->return_by_value = true;
+    }
   }
 
   m->mangled_name = make_mangled_name(m);

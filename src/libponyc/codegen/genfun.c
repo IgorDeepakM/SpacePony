@@ -121,12 +121,10 @@ static void make_signature(compile_t* c, reach_type_t* t,
   {
     compile_type_t* res_c_t = (compile_type_t*)m->result->c_type;
     partial_ret_type = generate_try_return_type(c, &c_m->try_return_info, m->result,
-      res_c_t->use_type, bare_function, m->return_by_value);
-
-    return_by_value = c_m->try_return_info.return_by_value;
-    return_value_lowered = c_m->try_return_info.return_value_lowered;
+      res_c_t->use_type);
   }
-  else if(m->return_by_value)
+
+  if(m->return_by_value)
   {
     return_by_value = m->return_by_value;
     return_value_lowered = is_return_value_lowering_needed(c, m->result);
@@ -591,12 +589,7 @@ static bool genfun_fun(compile_t* c, reach_type_t* t, reach_method_t* m)
   bool return_value_lowered = false;
   bool return_by_value = false;
 
-  if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
-  {
-    return_by_value = c_m->try_return_info.return_by_value;
-    return_value_lowered = c_m->try_return_info.return_value_lowered;
-  }
-  else if(m->return_by_value)
+  if(m->return_by_value)
   {
     return_by_value = m->return_by_value;
     return_value_lowered = is_return_value_lowering_needed(c, m->result);
@@ -951,7 +944,7 @@ static bool genfun_forward(compile_t* c, reach_type_t* t,
 
   if(c_m2->try_return_info.return_type != TRYRETURNTYPE_NONE)
   {
-    ret = unwrap_try_return_value(c, &c_m2->try_return_info, ret, NULL, m2->result);
+    ret = unwrap_try_return_value(c, &c_m2->try_return_info, ret, m2->result);
   }
 
   ret = gen_assign_cast(c, ((compile_type_t*)m->result->c_type)->use_type, ret,

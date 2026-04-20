@@ -801,18 +801,6 @@ TEST_F(BadPonyTest, FFIDeclaredTupleArgument)
   TEST_ERRORS_1(src, "cannot pass tuples as FFI arguments");
 }
 
-TEST_F(BadPonyTest, FFIDeclaredTupleReturn)
-{
-  const char* src =
-    "use @foo[(U8, U8)]()\n"
-
-    "actor Main\n"
-    "  new create(env: Env) =>\n"
-    "    @foo()";
-
-  TEST_ERRORS_1(src, "an FFI function cannot return a tuple");
-}
-
 TEST_F(BadPonyTest, FFICallInDefaultInterfaceFun)
 {
   const char* src =
@@ -881,16 +869,53 @@ TEST_F(BadPonyTest, FFICallInDefaultTraitBe)
     "Can't call an FFI function in a default method or behavior");
 }
 
-TEST_F(BadPonyTest, FFIDeclaredTupleReturnAtCallSite)
+TEST_F(BadPonyTest, FFIFunctionPartialNotSupported)
+{
+  const char* src =
+    "use @foo[None]()?\n";
+
+  TEST_ERRORS_1(src, "partial FFI functions are not supported");
+}
+
+TEST_F(BadPonyTest, FFIFunctionPartialNotSupportedCallSite)
+{
+  const char* src =
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    @foo() ?";
+
+  TEST_ERRORS_1(src, "partial FFI functions are not supported");
+}
+
+TEST_F(BadPonyTest, FFIFunctionNoTupleAtCallSite)
 {
   const char* src =
     "use @foo[None]()\n"
-
     "actor Main\n"
     "  new create(env: Env) =>\n"
-    "    @foo[(U8, U8)]()";
+    "    @foo[(I8, I8)]()";
 
-  TEST_ERRORS_1(src, "an FFI function cannot return a tuple");
+  TEST_ERRORS_1(src, "Tuple return types are not allowed at call site, "
+    "only when declaring FFI functions");
+}
+
+TEST_F(BadPonyTest, BareLambdaCannotBeAPartial)
+{
+  const char* src =
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    let l = @{()? => None}";
+
+  TEST_ERRORS_1(src, "a bare lambda cannot be a partial");
+}
+
+TEST_F(BadPonyTest, BareLambdaTypeCannotBeAPartial)
+{
+  const char* src =
+    "class C\n"
+    "  var l: @{()?}";
+
+  TEST_ERRORS_1(src, "a bare lambda cannot be a partial");
 }
 
 TEST_F(BadPonyTest, MatchExhaustiveLastCaseUnionSubset)

@@ -5,6 +5,7 @@
 #include "../pass/expr.h"
 #include "../type/alias.h"
 #include "ponyassert.h"
+#include "pony_defines.h"
 #include <string.h>
 
 bool void_star_param(ast_t* param_type, ast_t* arg_type)
@@ -33,59 +34,11 @@ bool void_star_param(ast_t* param_type, ast_t* arg_type)
   return false;
 }
 
-static bool check_partial_ffi_call(pass_opt_t* opt, ast_t* ast, ast_t* decl)
-{
-  pony_assert(ast_id(ast) == TK_FFICALL);
-  AST_GET_CHILDREN(ast, call_name, call_ret_typeargs, args, named_args, call_error);
-
-  if(decl == NULL) {
-    if(ast_id(call_error) == TK_QUESTION)
-      ast_seterror(ast);
-  }
-  else {
-    pony_assert(ast_id(decl) == TK_FFIDECL);
-    AST_GET_CHILDREN(decl, decl_name, decl_ret_typeargs, params, named_params,
-      decl_error);
-
-    // Verify that the call partiality matches that of the declaration.
-    if(ast_id(decl_error) == TK_QUESTION)
-    {
-      ast_seterror(ast);
-
-      if(ast_id(call_error) != TK_QUESTION) {
-        ast_error(opt->check.errors, call_error,
-          "call is not partial but the declaration is - " \
-          "a question mark is required after this call");
-        ast_error_continue(opt->check.errors, decl_error,
-          "declaration is here");
-        return false;
-      }
-    }
-    else {
-      if(ast_id(call_error) == TK_QUESTION) {
-        ast_error(opt->check.errors, call_error,
-          "call is partial but the declaration is not - " \
-          "this question mark should be removed");
-        ast_error_continue(opt->check.errors, decl_error,
-          "declaration is here");
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
 static bool declared_ffi(pass_opt_t* opt, ast_t* call, ast_t* decl)
 {
   pony_assert(call != NULL);
   pony_assert(decl != NULL);
   pony_assert(ast_id(decl) == TK_FFIDECL);
-
-  if(!check_partial_ffi_call(opt, call, decl))
-  {
-    return false;
-  }
 
   AST_GET_CHILDREN(call, call_name, call_ret_typeargs, args, named_args, call_error);
   AST_GET_CHILDREN(decl, decl_name, decl_ret_typeargs, params, named_params,
@@ -187,23 +140,18 @@ static bool declared_ffi(pass_opt_t* opt, ast_t* call, ast_t* decl)
   ast_t* call_ret_type = ast_child(call_ret_typeargs);
   ast_t* decl_ret_type = ast_child(decl_ret_typeargs);
 
-  const char* f_name = ast_name(decl_name) + 1;
-  bool intrinsic = !strncmp(f_name, "llvm.", 5) ||
-    !strncmp(f_name, "internal.", 9);
-
-  if(!intrinsic && (ast_id(decl_ret_type) == TK_TUPLETYPE))
+  if((ast_id(decl_ret_type) == TK_TUPLETYPE) &&
+     ast_has_annotation(decl_ret_type, PONY_BYVAL_ANNOTATION))
   {
-    ast_error(opt->check.errors, decl_ret_type, "an FFI function cannot return "
-      "a tuple");
+    ast_error(opt->check.errors, decl_ret_type, "returning a tuple is always done by value, therefore"
+      " a " PONY_BYVAL_ANNOTATION " is not needed");
     return false;
   }
 
-  // The return type at the call site might be different from declaration
-  if(!intrinsic &&
-    (call_ret_type != NULL) && (ast_id(call_ret_type) == TK_TUPLETYPE))
+  if((call_ret_type != NULL) && (ast_id(call_ret_type) == TK_TUPLETYPE))
   {
-    ast_error(opt->check.errors, call_ret_type, "an FFI function cannot return "
-      "a tuple");
+    ast_error(opt->check.errors, call_ret_type, "Tuple return types are not allowed at call site, "
+      "only when declaring FFI functions");
     return false;
   }
 

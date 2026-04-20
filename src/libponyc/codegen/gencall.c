@@ -78,7 +78,6 @@ struct ffi_decl_t
   size_t num_params;
   ffi_param_t* params;
   reach_type_t* ret_reach_type;
-  TryReturnInfo try_return_info;
   bool return_by_value;
   bool return_value_lowered;
   bool is_partial;
@@ -96,8 +95,6 @@ static bool ffi_decl_cmp(ffi_decl_t* a, ffi_decl_t* b)
 
 static void ffi_decl_free(ffi_decl_t* d)
 {
-  delete_try_return_info(&d->try_return_info);
-
   if(d->params != NULL)
   {
     ponyint_pool_free_size(d->num_params * sizeof(ffi_param_t),
@@ -833,12 +830,7 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
   bool return_by_value = false;
   compile_method_t* c_m = (compile_method_t*)m->c_method;
 
-  if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
-  {
-    return_by_value = c_m->try_return_info.return_by_value;
-    return_value_lowered = c_m->try_return_info.return_value_lowered;
-  }
-  else if(m->return_by_value)
+  if(m->return_by_value)
   {
     return_by_value = m->return_by_value;
     return_value_lowered = is_return_value_lowering_needed(c, m->result);
@@ -856,29 +848,23 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
   int i = 1;
 
   LLVMValueRef assign_side = NULL;
-  LLVMValueRef partial_wrapper = NULL;
 
-  if(c_m->try_return_info.return_by_value && !c_m->try_return_info.return_value_lowered)
+  if(return_by_value)
   {
-    compile_type_t* wrapper_c_t = (compile_type_t*)c_m->try_return_info.t->c_type;
-    partial_wrapper = LLVMBuildAlloca(c->builder, wrapper_c_t->structure, "");
-  }
-
-  if(m->return_by_value)
-  {
-    assign_side = gen_alloc_return_value(c, m->result, ast);
+    if(t->underlying == TK_TUPLETYPE)
+    {
+      compile_type_t* r_c_t = (compile_type_t*)m->result->c_type;
+      assign_side = LLVMBuildAlloca(c->builder, r_c_t->use_type, "");
+    }
+    else
+    {
+      assign_side = gen_alloc_return_value(c, m->result, ast);
+    }
   }
 
   if(return_by_value && !return_value_lowered)
   {
-    if(partial_wrapper != NULL)
-    {
-      args[i] = partial_wrapper;
-    }
-    else
-    {
-      args[i] = assign_side;
-    }
+    args[i] = assign_side;
     i++;
   }
 
@@ -1074,16 +1060,33 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
 
   if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
   {
-    r = unwrap_try_return_value(c, &c_m->try_return_info, r, partial_wrapper, m->result);
+    r = unwrap_try_return_value(c, &c_m->try_return_info, r, m->result);
   }
 
-  if(m->return_by_value)
+  if(return_by_value)
   {
-    if(c_m->return_value_lowered)
+    if(t->underlying != TK_TUPLETYPE)
     {
-      copy_lowered_return_value_to_ptr(c, assign_side, r, m->result);
+      if(return_value_lowered)
+      {
+        copy_lowered_return_value_to_ptr(c, assign_side, r, m->result);
+      }
+      r = assign_side;
     }
-    r = assign_side;
+    else
+    {
+      compile_type_t* r_c_t = (compile_type_t*)m->result->c_type;
+
+      if(!return_value_lowered)
+      {
+        r = load_lowered_return_value_from_ptr(c, assign_side, r_c_t->use_type, t);
+      }
+      else
+      {
+        copy_lowered_return_value_to_ptr(c, assign_side, r, t);
+        r = LLVMBuildLoad2(c->builder, r_c_t->use_type, assign_side, "");
+      }
+    }
   }
   else
   {
@@ -1186,49 +1189,41 @@ static LLVMTypeRef ffi_return_type(compile_t* c, ffi_decl_t* ffi_decl, reach_typ
 
   if(t->underlying == TK_TUPLETYPE)
   {
-    (void)intrinsic;
-    pony_assert(intrinsic);
-
-    // Can't use the named type. Build an unnamed type with the same elements.
-    unsigned int count = LLVMCountStructElementTypes(c_t->use_type);
-    size_t buf_size = count * sizeof(LLVMTypeRef);
-    LLVMTypeRef* e_types = (LLVMTypeRef*)ponyint_pool_alloc_size(buf_size);
-    LLVMGetStructElementTypes(c_t->use_type, e_types);
-
-    ast_t* child = ast_child(t->ast);
-    size_t i = 0;
-
-    while(child != NULL)
+    if(intrinsic)
     {
-      // A Bool in an intrinsic tuple return type is an i1.
-      if(is_bool(child))
-        e_types[i] = c->i1;
+      // Can't use the named type. Build an unnamed type with the same elements.
+      unsigned int count = LLVMCountStructElementTypes(c_t->use_type);
+      size_t buf_size = count * sizeof(LLVMTypeRef);
+      LLVMTypeRef* e_types = (LLVMTypeRef*)ponyint_pool_alloc_size(buf_size);
+      LLVMGetStructElementTypes(c_t->use_type, e_types);
 
-      child = ast_sibling(child);
-      i++;
+      ast_t* child = ast_child(t->ast);
+      size_t i = 0;
+
+      while(child != NULL)
+      {
+        // A Bool in an intrinsic tuple return type is an i1.
+        if(is_bool(child))
+          e_types[i] = c->i1;
+
+        child = ast_sibling(child);
+        i++;
+      }
+
+      r_type = LLVMStructTypeInContext(c->context, e_types, count,
+        false);
+      ponyint_pool_free_size(buf_size, e_types);
+
+      return r_type;
     }
-
-    r_type = LLVMStructTypeInContext(c->context, e_types, count,
-      false);
-    ponyint_pool_free_size(buf_size, e_types);
-  }
-
-  if(ffi_decl->is_partial)
-  {
-    LLVMTypeRef partial_r_type = r_type;
-    if(partial_r_type == NULL)
+    else
     {
-      partial_r_type = c_t->use_type;
+      // Tuples are always return by value
+      ffi_decl->return_by_value = true;
     }
+  }
 
-    return generate_try_return_type(c, &ffi_decl->try_return_info, t, partial_r_type, true,
-      ffi_decl->return_by_value);
-  }
-  else if(r_type != NULL)
-  {
-    return r_type;
-  }
-  else if(ffi_decl->return_by_value)
+  if(ffi_decl->return_by_value)
   {
     ffi_decl->return_value_lowered = is_return_value_lowering_needed(c, t);
     if(ffi_decl->return_value_lowered)
@@ -1278,9 +1273,8 @@ static void declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* f_name,
 
   LLVMTypeRef r_type = ffi_return_type(c, ffi_decl, reified_ret, intrinsic);
 
-  bool return_by_value = ffi_decl->return_by_value || ffi_decl->try_return_info.return_by_value;
-  bool return_value_lowered = ffi_decl->return_value_lowered ||
-    ffi_decl->try_return_info.return_value_lowered;
+  bool return_by_value = ffi_decl->return_by_value;
+  bool return_value_lowered = ffi_decl->return_value_lowered;
 
   if(return_by_value && !return_value_lowered)
   {
@@ -1310,17 +1304,8 @@ static void declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* f_name,
 
     if(return_by_value && !return_value_lowered)
     {
-      if(ffi_decl->try_return_info.return_type != TRYRETURNTYPE_NONE)
-      {
-        ffi_decl->params[param_count].reach_type = ffi_decl->try_return_info.t;
-        compile_type_t* ret_c_t = (compile_type_t*)ffi_decl->try_return_info.t->c_type;
-        f_params[param_count] = ret_c_t->structure_ptr;
-      }
-      else
-      {
-        ffi_decl->params[param_count].reach_type = reified_ret;
-        f_params[param_count] = ret_c_t->structure_ptr;
-      }
+      ffi_decl->params[param_count].reach_type = reified_ret;
+      f_params[param_count] = ret_c_t->structure_ptr;
       param_count++;
     }
 
@@ -1359,7 +1344,7 @@ static void declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* f_name,
   if(orig_param_count != 0)
   {
     size_t param_start = 0;
-    if(ffi_decl->return_by_value && !ffi_decl->return_value_lowered)
+    if(return_by_value && !return_value_lowered)
     {
       param_start++;
     }
@@ -1376,14 +1361,7 @@ static void declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* f_name,
 
   if(return_by_value)
   {
-    if(ffi_decl->try_return_info.return_by_value)
-    {
-      apply_function_value_return_attribute(c, ffi_decl->try_return_info.t, func);
-    }
-    else
-    {
-      apply_function_value_return_attribute(c, reified_ret, func);
-    }
+    apply_function_value_return_attribute(c, reified_ret, func);
   }
 
   if(f_params != NULL)
@@ -1488,7 +1466,6 @@ LLVMValueRef generate_and_get_ffi_decl(compile_t* c, ast_t* use, ast_t* decl,
     ffi_decl->num_params = 0;
     ffi_decl->params = NULL;
     ffi_decl->ret_reach_type = NULL;
-    ffi_decl->try_return_info = init_try_return_info();
     ffi_decl->return_by_value = false;
     ffi_decl->return_value_lowered = false;
     ffi_decl->is_partial = false;
@@ -1548,9 +1525,8 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
   deferred_reification_t* reify = c->frame->reify;
 
   bool return_by_value = false;
-  bool return_value_lowering = false;
+  bool return_value_lowered = false;
   LLVMValueRef assign_side = NULL;
-  LLVMValueRef partial_wrapper = NULL;
   ffi_decl_t* ffi_decl = NULL;
 
   ast_t* decl = (ast_t*)ast_data(ast);
@@ -1562,9 +1538,8 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
 
   if(ffi_decl != NULL)
   {
-    return_by_value = ffi_decl->return_by_value || ffi_decl->try_return_info.return_by_value;
-    return_value_lowering = ffi_decl->return_value_lowered ||
-      ffi_decl->try_return_info.return_value_lowered;
+    return_by_value = ffi_decl->return_by_value;
+    return_value_lowered = ffi_decl->return_value_lowered;
     func = ffi_decl->func;
   }
 
@@ -1575,16 +1550,16 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
   pony_assert(t != NULL);
   ast_free_unattached(type);
 
-  if (return_by_value)
-  {
-    if(ffi_decl->try_return_info.return_by_value &&
-       !ffi_decl->try_return_info.return_value_lowered)
-    {
-      compile_type_t* wrapper_c_t = (compile_type_t*)ffi_decl->try_return_info.t->c_type;
-      partial_wrapper = LLVMBuildAlloca(c->builder, wrapper_c_t->structure,"");
-    }
+  compile_type_t* c_t = (compile_type_t*)t->c_type;
 
-    if(ffi_decl->return_by_value)
+  LLVMTypeRef f_type = LLVMGlobalGetValueType(func);
+  if(return_by_value)
+  {
+    if(t->underlying == TK_TUPLETYPE)
+    {
+      assign_side = LLVMBuildAlloca(c->builder, c_t->use_type, "");
+    }
+    else
     {
       assign_side = gen_alloc_return_value(c, t, ast);
     }
@@ -1592,7 +1567,7 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
 
   // Generate the arguments.
   int count = (int)ast_childcount(args);
-  if(return_by_value && !return_value_lowering)
+  if(return_by_value && !return_value_lowered)
   {
     count++;
   }
@@ -1600,7 +1575,6 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
   size_t buf_size = count * sizeof(LLVMValueRef);
   LLVMValueRef* f_args = (LLVMValueRef*)ponyint_pool_alloc_size(buf_size);
 
-  LLVMTypeRef f_type = LLVMGlobalGetValueType(func);
   LLVMTypeRef* f_params = NULL;
   bool vararg = (LLVMIsFunctionVarArg(f_type) != 0);
 
@@ -1628,16 +1602,9 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
   ast_t* arg = ast_child(args);
 
   int arg_start = 0;
-  if (return_by_value && !return_value_lowering)
+  if(return_by_value && !return_value_lowered)
   {
-    if(partial_wrapper != NULL)
-    {
-      f_args[arg_start] = partial_wrapper;
-    }
-    else
-    {
-      f_args[arg_start] = assign_side;
-    }
+    f_args[arg_start] = assign_side;
     arg_start++;
   }
 
@@ -1695,7 +1662,7 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
   if(ffi_decl != NULL)
   {
     size_t param_start = 0;
-    if(return_by_value && !return_value_lowering)
+    if(return_by_value && !return_value_lowered)
     {
       param_start++;
     }
@@ -1712,14 +1679,7 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
 
     if(return_by_value)
     {
-      if(ffi_decl->try_return_info.return_by_value)
-      {
-        apply_function_value_return_attribute(c, ffi_decl->try_return_info.t, func);
-      }
-      else
-      {
-        apply_call_site_value_return_attribute(c, t, result);
-      }
+      apply_call_site_value_return_attribute(c, t, result);
     }
   }
 
@@ -1729,28 +1689,32 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
   if(!vararg)
     ponyint_pool_free_size(buf_size, f_params);
 
-  compile_type_t* c_t = (compile_type_t*)t->c_type;
-
   // Special case a None return value, which is used for void functions.
   bool isnone = is_none(t->ast);
   bool isvoid = LLVMGetReturnType(f_type) == c->void_type;
 
-  if(ffi_decl != NULL && ffi_decl->try_return_info.return_type != TRYRETURNTYPE_NONE)
+  if(ffi_decl != NULL && return_by_value)
   {
-    result = unwrap_try_return_value(c, &ffi_decl->try_return_info, result, partial_wrapper,
-      t);
-
-    // If the unwrap result is a none instance, then there is no value aka C void function
-    isvoid = result == c->none_instance;
-  }
-
-  if(ffi_decl != NULL && ffi_decl->return_by_value)
-  {
-    if(return_value_lowering || ffi_decl->try_return_info.return_type != TRYRETURNTYPE_NONE)
+    if(t->underlying != TK_TUPLETYPE)
     {
-      copy_lowered_return_value_to_ptr(c, assign_side, result, t);
+      if(return_value_lowered)
+      {
+        copy_lowered_return_value_to_ptr(c, assign_side, result, t);
+      }
+      result = assign_side;
     }
-    result = assign_side;
+    else
+    {
+      if(!return_value_lowered)
+      {
+        result = load_lowered_return_value_from_ptr(c, assign_side, c_t->use_type, t);
+      }
+      else
+      {
+        copy_lowered_return_value_to_ptr(c, assign_side, result, t);
+        result = LLVMBuildLoad2(c->builder, c_t->use_type, assign_side, "");
+      }
+    }
   }
   else if(isnone && isvoid)
   {
