@@ -39,6 +39,12 @@ actor Main
       return
     end
 
+    ret = test_return_tuples[40]()
+    if ret != 0 then
+      @pony_exitcode(ret)
+      return
+    end
+
   fun test_small_struct[ret_add: I32](): I32 =>
     let lambda_clobber: @{(\byval\ S1Small, \byval\ S1Small)} =
       @{(x: \byval\ S1Small, y: \byval\ S1Small) =>
@@ -190,3 +196,25 @@ actor Main
     end
 
     true
+
+  fun test_return_tuples[ret_add: I32](): I32 =>
+
+    // This should be lowered on most CPUs
+    let l1: @{(): (Bool, Bool)} = @{(): (Bool, Bool) => (false, true) }
+
+    (let a, let b) = l1()
+
+    if (a != false) or (b != true) then
+      return 1 + ret_add
+    end
+
+    // This should not be lowered on most CPUs
+    let l2: @{(): (USize, I32, I8, ISize)} = @{(): (USize, I32, I8, ISize) => (11, 22, 33, 44) }
+
+    (let a2, let b2, let c2, let d2) = l2()
+
+    if (a2 != 11) or (b2 != 22) or (c2 != 33) or (d2 != 44) then
+      return 2 + ret_add
+    end
+
+    0
