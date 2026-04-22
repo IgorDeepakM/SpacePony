@@ -10,6 +10,8 @@
 #define SMALL_SIZE 2
 #define LARGE_SIZE 64
 
+typedef void* Pointer;
+
 typedef struct
 {
   int32_t ar[SMALL_SIZE];
@@ -91,7 +93,7 @@ EXPORT_SYMBOL S1Large (*get_FFI_add_large())(S1Large, S1Large)
   S_##T1 FFI_Test_1_##T1(S_##T1 s1, S_##T1 s2)\
   {\
     S_##T1 s1_ret;\
-    s1_ret.a = s1.a + s2.a;\
+    s1_ret.a = (T1)((uint64_t)s1.a + (uint64_t)s2.a);\
 \
     s1.a = 0;\
     s2.a = 0;\
@@ -109,8 +111,8 @@ EXPORT_SYMBOL S1Large (*get_FFI_add_large())(S1Large, S1Large)
   S_##T1##_##T2 FFI_Test_2_##T1##_##T2(S_##T1##_##T2 s1, S_##T1##_##T2 s2)\
   {\
     S_##T1##_##T2 s1_ret;\
-    s1_ret.a = s1.a + s2.a;\
-    s1_ret.b = s1.b + s2.b;\
+    s1_ret.a = (T1)((uint64_t)s1.a + (uint64_t)s2.a);\
+    s1_ret.b = (T2)((uint64_t)s1.b + (uint64_t)s2.b);\
 \
     s1.a = 0;\
     s1.b = 0;\
@@ -131,9 +133,9 @@ EXPORT_SYMBOL S1Large (*get_FFI_add_large())(S1Large, S1Large)
   S_##T1##_##T2##_##T3 FFI_Test_3_##T1##_##T2##_##T3(S_##T1##_##T2##_##T3 s1, S_##T1##_##T2##_##T3 s2)\
   {\
     S_##T1##_##T2##_##T3 s1_ret;\
-    s1_ret.a = s1.a + s2.a;\
-    s1_ret.b = s1.b + s2.b;\
-    s1_ret.c = s1.c + s2.c;\
+    s1_ret.a = (T1)((uint64_t)s1.a + (uint64_t)s2.a);\
+    s1_ret.b = (T2)((uint64_t)s1.b + (uint64_t)s2.b);\
+    s1_ret.c = (T3)((uint64_t)s1.c + (uint64_t)s2.c);\
 \
     s1.a = 0;\
     s1.b = 0;\
@@ -157,10 +159,10 @@ EXPORT_SYMBOL S1Large (*get_FFI_add_large())(S1Large, S1Large)
   S_##T1##_##T2##_##T3##_##T4 FFI_Test_4_##T1##_##T2##_##T3##_##T4(S_##T1##_##T2##_##T3##_##T4 s1, S_##T1##_##T2##_##T3##_##T4 s2)\
   {\
     S_##T1##_##T2##_##T3##_##T4 s1_ret;\
-    s1_ret.a = s1.a + s2.a;\
-    s1_ret.b = s1.b + s2.b;\
-    s1_ret.c = s1.c + s2.c;\
-    s1_ret.d = s1.c + s2.d;\
+    s1_ret.a = (T1)((uint64_t)s1.a + (uint64_t)s2.a);\
+    s1_ret.b = (T2)((uint64_t)s1.b + (uint64_t)s2.b);\
+    s1_ret.c = (T3)((uint64_t)s1.c + (uint64_t)s2.c);\
+    s1_ret.d = (T4)((uint64_t)s1.d + (uint64_t)s2.d);\
 \
     s1.a = 0;\
     s1.b = 0;\
@@ -217,6 +219,7 @@ TEST_1_MEMBER_STRUCT(int32_t)
 TEST_1_MEMBER_STRUCT(int64_t)
 TEST_1_MEMBER_STRUCT(float)
 TEST_1_MEMBER_STRUCT(double)
+TEST_1_MEMBER_STRUCT(Pointer)
 
 TEST_2_MEMBER_STRUCT(int8_t, int8_t)
 TEST_2_MEMBER_STRUCT(int8_t, int32_t)
@@ -226,6 +229,8 @@ TEST_2_MEMBER_STRUCT(int32_t, int32_t)
 TEST_2_MEMBER_STRUCT(int64_t, int64_t)
 TEST_2_MEMBER_STRUCT(float, float)
 TEST_2_MEMBER_STRUCT(double, double)
+TEST_2_MEMBER_STRUCT(int8_t, Pointer)
+TEST_2_MEMBER_STRUCT(Pointer, int32_t)
 
 TEST_3_MEMBER_STRUCT(int32_t, int32_t, double)
 TEST_3_MEMBER_STRUCT(float, float, int64_t)
@@ -233,11 +238,14 @@ TEST_3_MEMBER_STRUCT(int32_t, float, int64_t)
 TEST_3_MEMBER_STRUCT(double, int32_t, int32_t)
 TEST_3_MEMBER_STRUCT(float, float, float)
 TEST_3_MEMBER_STRUCT(double, double, double)
+TEST_3_MEMBER_STRUCT(double, Pointer, double)
+TEST_3_MEMBER_STRUCT(int32_t, Pointer, int64_t)
 
 TEST_4_MEMBER_STRUCT(int32_t, int32_t, int32_t, int32_t)
 TEST_4_MEMBER_STRUCT(int64_t, int64_t, int64_t, int64_t)
 TEST_4_MEMBER_STRUCT(float, float, float, float)
 TEST_4_MEMBER_STRUCT(double, double, double, double)
+TEST_4_MEMBER_STRUCT(Pointer, Pointer, Pointer, Pointer)
 
 TEST_2_MEMBER_STRUCT_12_PARAMS(int32_t, int32_t)
 TEST_2_MEMBER_STRUCT_12_PARAMS(int64_t, int64_t)
