@@ -246,6 +246,7 @@ TEST_4_MEMBER_STRUCT(int64_t, int64_t, int64_t, int64_t)
 TEST_4_MEMBER_STRUCT(float, float, float, float)
 TEST_4_MEMBER_STRUCT(double, double, double, double)
 TEST_4_MEMBER_STRUCT(Pointer, Pointer, Pointer, Pointer)
+TEST_4_MEMBER_STRUCT(int64_t, Pointer, int64_t, int64_t)
 
 TEST_2_MEMBER_STRUCT_12_PARAMS(int32_t, int32_t)
 TEST_2_MEMBER_STRUCT_12_PARAMS(int64_t, int64_t)

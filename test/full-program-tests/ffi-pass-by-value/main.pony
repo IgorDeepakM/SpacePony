@@ -47,6 +47,7 @@ use @FFI_Test_4_int64_t_int64_t_int64_t_int64_t[\byval\ S4Member[I64, I64, I64, 
 use @FFI_Test_4_float_float_float_float[\byval\ S4Member[F32, F32, F32, F32]](s1: \byval\ S4Member[F32, F32, F32, F32], s2: \byval\ S4Member[F32, F32, F32, F32])
 use @FFI_Test_4_double_double_double_double[\byval\ S4Member[F64, F64, F64, F64]](s1: \byval\ S4Member[F64, F64, F64, F64], s2: \byval\ S4Member[F64, F64, F64, F64])
 use @FFI_Test_4_Pointer_Pointer_Pointer_Pointer[\byval\ S4Member[C, C, C, C]](s1: \byval\ S4Member[C, C, C, C], s2: \byval\ S4Member[C, C, C, C])
+use @FFI_Test_4_int64_t_Pointer_int64_t_int64_t[\byval\ S4Member[I64, C, I64, I64]](s1: \byval\ S4Member[I64, C, I64, I64], s2: \byval\ S4Member[I64, C, I64, I64])
 
 use @FFI_Test_2_12_int32_t_int32_t[\byval\ S2Member[I32, I32]](s1: \byval\ S2Member[I32, I32], s2: \byval\ S2Member[I32, I32],
   s3: \byval\ S2Member[I32, I32], s4: \byval\ S2Member[I32, I32],
@@ -462,9 +463,13 @@ actor Main
       @{(s1: \byval\ S4Member[F64, F64, F64, F64], s2: \byval\ S4Member[F64, F64, F64, F64]): \byval\ S4Member[F64, F64, F64, F64] =>
         @FFI_Test_4_double_double_double_double(s1, s2)
       })
-     test_4_member_struct[C, C, C, C](
+    test_4_member_struct[C, C, C, C](
       @{(s1: \byval\ S4Member[C, C, C, C], s2: \byval\ S4Member[C, C, C, C]): \byval\ S4Member[C, C, C, C] =>
         @FFI_Test_4_Pointer_Pointer_Pointer_Pointer(s1, s2)
+      })
+    test_4_member_struct[I64, C, I64, I64](
+      @{(s1: \byval\ S4Member[I64, C, I64, I64], s2: \byval\ S4Member[I64, C, I64, I64]): \byval\ S4Member[I64, C, I64, I64] =>
+        @FFI_Test_4_int64_t_Pointer_int64_t_int64_t(s1, s2)
       })
 
     test_2_member_struct_12_params[I32, I32](
