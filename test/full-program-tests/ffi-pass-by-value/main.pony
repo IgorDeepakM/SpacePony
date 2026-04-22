@@ -372,7 +372,6 @@ actor Main
         @FFI_Test_1_Pointer(s1, s2)
       })
 
-
     test_2_member_struct[I8, I8](
       @{(s1: \byval\ S2Member[I8, I8], s2: \byval\ S2Member[I8, I8]): \byval\ S2Member[I8, I8] =>
         @FFI_Test_2_int8_t_int8_t(s1, s2)
