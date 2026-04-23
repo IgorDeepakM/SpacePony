@@ -726,7 +726,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 * Unwind exceptions are completely removed in SpacePony and the implementation of partial methods is done by augmenting the return type and returning a value. This is similar to how for example Swift works, by using return values under the hood but they look like traditional exceptions for the programmer.
 
-* Since partial functions is now just an augment for the return value, there is no longer any point in supporting partial FFI function calls or bare lambdas because you can just use the return type directly in order to determine if the operation failed or succeeded, just like you would in C. In order to make it easier, SpacePony supports returning tuples by value.
+* Since partial functions just augments the return value, there is no longer any point in supporting partial FFI function calls or bare lambdas because you can just use the return value directly in order to determine if the operation failed or succeeded, just like you would in C. In order to make it easier, SpacePony supports returning tuples by value.
 
 * Below is an example how the code inside the standard library of SpacePony was adapted to just using return values.
 
