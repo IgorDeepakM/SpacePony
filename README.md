@@ -507,6 +507,15 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   end
   ```
 
+* When a comptime expression returns an object, the calculated object will be stored as read only data (stored in a read only section in the executable). If assigning this object to a variable, it will be copied to the allocated object if the capability is anything other than val. It will use the object directly in the read only section, if the object being assigned to has a val capability
+
+ ```pony
+ var a: Array[I32] ref = comptime [as I32: 1, 2, 3, 4] end   // [1, 2, 3, 5] will be stored as a constant global Array
+                                                             // object and copied to a
+ let a2: Array[I32] val = comptime [as I32: 1, 2, 3, 4] end  // [1, 2, 3, 5] will be stored as a constant global Array
+                                                             // object and a2 uses the constant array object directly
+ ```
+
 ### Enums (sort of)
 
 * Added the possibility using enum like declarations inside a primitive, a class or a struct. The Pony language doesn't have enums and the goto method is to use methods inside a primitive [like this](https://tutorial.ponylang.io/appendices/examples.html#enumeration-with-values). However, this adds a lot of boiler plate to just write an enum which is very tedious for large amounts of enums and there is no auto increment of the value. Adding a completely new enum type classification in SpacePony is a lot of work so instead a syntax that lowers the enumerations to methods inside the primitive was chosen. Unlike C/C++ enums, the enums must be give a type and there is no automatic type inference to the smallest possible type that fits the enumerations.
