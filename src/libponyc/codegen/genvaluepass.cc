@@ -383,6 +383,8 @@ static void lower_structure_x86_64_systemv(compile_t* c, StructType* structure,
   size_t current_byte_in_word = 0;
   Type::TypeID last_type_kind = Type::TypeID::VoidTyID;
 
+  bool first = true;
+
   for(Type* t : flat)
   {
     Type::TypeID kind = t->getTypeID();
@@ -390,16 +392,29 @@ static void lower_structure_x86_64_systemv(compile_t* c, StructType* structure,
 
     size_t next_byte_in_word = current_byte_in_word + size;
 
+    if(next_byte_in_word > bytes_per_word && !first)
+    {
+      current_word++;
+      current_byte_in_word = 0;
+    }
+
     if(current_byte_in_word == 0)
     {
       lowered.resize(current_word + 1);
     }
 
-    if(current_byte_in_word == 0 || kind == Type::TypeID::DoubleTyID)
+    bool next_word = false;
+
+    if(current_byte_in_word == 0 || kind == Type::TypeID::DoubleTyID ||
+       kind == Type::TypeID::PointerTyID)
     {
       if(kind == Type::TypeID::IntegerTyID)
       {
         lowered[current_word] = get_type_from_size(c, next_power_of_2(size));
+      }
+      else if(kind == Type::TypeID::PointerTyID)
+      {
+        lowered[current_word] = unwrap(c->ptr);
       }
       else if(kind == Type::TypeID::DoubleTyID)
       {
@@ -427,13 +442,9 @@ static void lower_structure_x86_64_systemv(compile_t* c, StructType* structure,
       current_byte_in_word = next_byte_in_word;
     }
 
-    last_type_kind = kind;
+    first = false;
 
-    if(next_byte_in_word >= bytes_per_word)
-    {
-      current_word++;
-      current_byte_in_word = 0;
-    }
+    last_type_kind = kind;
   }
 }
 

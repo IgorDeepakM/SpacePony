@@ -1278,9 +1278,10 @@ static ast_result_t syntax_compile_error(pass_opt_t* opt, ast_t* ast)
   ast_t* parent = ast_parent(ast);
   pony_assert(ast_id(parent) == TK_SEQ);
 
-  if(ast_id(ast_parent(parent)) != TK_IFDEF)
+  if(ast_id(ast_parent(parent)) != TK_IFDEF &&
+     ast_id(ast_parent(parent)) != TK_IFTYPE_SET)
   {
-    ast_error(opt->check.errors, ast, "a compile error must be in an ifdef");
+    ast_error(opt->check.errors, ast, "a compile error must be in an ifdef or an iftype");
     return AST_ERROR;
   }
 
