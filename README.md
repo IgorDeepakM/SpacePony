@@ -509,12 +509,12 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 * When a comptime expression returns an object, the calculated object will be stored as read only data (stored in a read only section in the executable). If assigning this object to a variable, it will be copied to the allocated object if the capability is anything other than val. It will use the object directly in the read only section, if the object being assigned to has a val capability
 
- ```pony
- var a: Array[I32] ref = comptime [as I32: 1, 2, 3, 4] end   // [1, 2, 3, 5] will be stored as a constant global Array
-                                                             // object and copied to a
- let a2: Array[I32] val = comptime [as I32: 1, 2, 3, 4] end  // [1, 2, 3, 5] will be stored as a constant global Array
-                                                             // object and a2 uses the constant array object directly
- ```
+  ```pony
+  var a: Array[I32] ref = comptime [as I32: 1, 2, 3, 4] end   // [1, 2, 3, 5] will be stored as a constant global Array
+                                                              // object and copied to a
+  let a2: Array[I32] val = comptime [as I32: 1, 2, 3, 4] end  // [1, 2, 3, 5] will be stored as a constant global Array
+                                                              // object and a2 uses the constant array object directly
+  ```
 
 ### Enums (sort of)
 
