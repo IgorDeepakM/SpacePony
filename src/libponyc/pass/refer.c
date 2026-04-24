@@ -1986,7 +1986,6 @@ ast_result_t pass_refer(ast_t** astp, pass_opt_t* options)
     case TK_COMPILE_ERROR:
                        r = refer_compile_error(options, ast); break;
     case TK_LAMBDA:
-    case TK_BARELAMBDA:
                        r = refer_lambda(options, ast); break;
     default: {}
   }

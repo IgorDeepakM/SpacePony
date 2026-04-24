@@ -535,8 +535,8 @@ switch ($Command.ToLower())
             $env:PONYPATH = "$srcDir\packages"
 
             $numTestSuitesRun += 1;
-            Write-Output "$outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\json-ng --path $srcDir\tools\lib\ponylang\pony_compiler -b pony-lint-tests -o $outDir $srcDir\tools\pony-lint\test"
-            & $outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\json-ng --path $srcDir\tools\lib\ponylang\pony_compiler -b pony-lint-tests -o $outDir $srcDir\tools\pony-lint\test
+            Write-Output "$outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\pony_compiler -b pony-lint-tests -o $outDir $srcDir\tools\pony-lint\test"
+            & $outDir\ponyc.exe --path $srcDir\tools\lib\ponylang\pony_compiler -b pony-lint-tests -o $outDir $srcDir\tools\pony-lint\test
             if ($LastExitCode -eq 0)
             {
                 try
