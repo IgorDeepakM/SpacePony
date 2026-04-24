@@ -2992,6 +2992,17 @@ bool is_allowed_pointer_conversion(ast_t* l_type, ast_t* r_type, pass_opt_t* opt
     r_type = unfolded;
   }
 
+  if(ast_id(l_type) == TK_TYPEALIASREF)
+  {
+    ast_t* unfolded = typealias_unfold(l_type);
+    if(unfolded == NULL)
+    {
+      return false;
+    }
+
+    l_type = unfolded;
+  }
+
   if(is_bare(l_type))
   {
     // Implicit pointer to lambda conversion
