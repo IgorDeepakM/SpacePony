@@ -284,7 +284,6 @@ static void init_runtime(compile_t* c)
     LLVM_MEMORYEFFECTS_ARG(LLVM_MEMORYEFFECTS_READWRITE) |
     LLVM_MEMORYEFFECTS_INACCESSIBLEMEM(LLVM_MEMORYEFFECTS_READWRITE));
   LLVM_DECLARE_ATTRIBUTEREF(noalias_attr, noalias, 0);
-  LLVM_DECLARE_ATTRIBUTEREF(noreturn_attr, noreturn, 0);
   LLVM_DECLARE_ATTRIBUTEREF(deref_actor_attr, dereferenceable,
     PONY_ACTOR_PAD_SIZE + align_value);
   LLVM_DECLARE_ATTRIBUTEREF(align_attr, align, align_value);

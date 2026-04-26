@@ -21,7 +21,6 @@
 
 static void compile_method_free(void* p)
 {
-  compile_method_t* c_m = (compile_method_t*)p;
   POOL_FREE(compile_method_t, p);
 }
 
