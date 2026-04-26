@@ -22,7 +22,6 @@
 static void compile_method_free(void* p)
 {
   compile_method_t* c_m = (compile_method_t*)p;
-  delete_try_return_info(&c_m->try_return_info);
   POOL_FREE(compile_method_t, p);
 }
 
@@ -122,9 +121,7 @@ static void make_signature(compile_t* c, reach_type_t* t,
   LLVMTypeRef partial_ret_type = NULL;
   if(ast_id(ast_childidx(m->fun->ast, 5)) == TK_QUESTION)
   {
-    compile_type_t* res_c_t = (compile_type_t*)m->result->c_type;
-    partial_ret_type = generate_try_return_type(c, &c_m->try_return_info, m->result,
-      res_c_t->use_type);
+    partial_ret_type = generate_try_return_type(c, &c_m->try_return_info, m->result);
   }
 
   if(m->return_by_value)
@@ -169,21 +166,13 @@ static void make_signature(compile_t* c, reach_type_t* t,
       {
         // First argument when return by value is a pointer where the
         // value should be stored.
-        if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
+        if(m->result->underlying != TK_TUPLETYPE)
         {
-          compile_type_t* partial_ret_c_t = (compile_type_t*)c_m->try_return_info.t->c_type;
-          tparams[0] = partial_ret_c_t->use_type;
+          tparams[0] = ((compile_type_t*)m->result->c_type)->use_type;
         }
         else
         {
-          if(m->result->underlying != TK_TUPLETYPE)
-          {
-            tparams[0] = ((compile_type_t*)m->result->c_type)->use_type;
-          }
-          else
-          {
-            tparams[0] = ((compile_type_t*)m->result->c_type)->structure_ptr;
-          }
+          tparams[0] = ((compile_type_t*)m->result->c_type)->structure_ptr;
         }
       }
     }
@@ -633,16 +622,8 @@ static bool genfun_fun(compile_t* c, reach_type_t* t, reach_method_t* m)
 
       LLVMValueRef ret = NULL;
 
-      bool assign_cast = true;
-
-      if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
+      if(return_by_value && return_value_lowered)
       {
-        ret = wrap_try_return_success(c, &c_m->try_return_info, value, m->result);
-      }
-      else if(return_by_value && return_value_lowered)
-      {
-        assign_cast = false;
-
         if(m->result->underlying != TK_TUPLETYPE)
         {
           ret = load_lowered_return_value_from_ptr(c, value, r_type, m->result);
@@ -656,16 +637,24 @@ static bool genfun_fun(compile_t* c, reach_type_t* t, reach_method_t* m)
       }
       else
       {
-        ret = value;
-      }
+        if(c_m->try_return_info.return_type == TRYRETURNTYPE_OTHER)
+        {
+          r_type = get_try_return_unwrapped_type(&c_m->try_return_info);
+        }
 
-      if(assign_cast)
-      {
-        ast_t* body_type = deferred_reify(m->fun, ast_type(body), c->opt);
-        ret = gen_assign_cast(c, r_type, ret, body_type);
-        ast_free_unattached(body_type);
+        if(c_m->try_return_info.return_type != TRYRETURNTYPE_BOOL)
+        {
+          ast_t* body_type = deferred_reify(m->fun, ast_type(body), c->opt);
+          ret = gen_assign_cast(c, r_type, value, body_type);
+          ast_free_unattached(body_type);
 
-        ast_free_unattached(r_result);
+          ast_free_unattached(r_result);
+        }
+
+        if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
+        {
+          ret = wrap_try_return_success(c, &c_m->try_return_info, ret);
+        }
       }
 
       if(ret == NULL)
@@ -756,7 +745,7 @@ static bool genfun_new(compile_t* c, reach_type_t* t, reach_method_t* m)
 
   if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
   {
-    value = wrap_try_return_success(c, &c_m->try_return_info, value, m->result);
+    value = wrap_try_return_success(c, &c_m->try_return_info, value);
   }
 
   // Return 'this'.
@@ -795,13 +784,18 @@ static bool genfun_newbe(compile_t* c, reach_type_t* t, reach_method_t* m)
   if(value == NULL)
     return false;
 
-  if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
+  codegen_scope_lifetime_end(c);
+
+  if(c_m->try_return_info.return_type == TRYRETURNTYPE_NONE)
   {
-    value = wrap_try_return_success(c, &c_m->try_return_info, value, m->result);
+    genfun_build_ret_void(c);
+  }
+  else
+  {
+    value = wrap_try_return_success(c, &c_m->try_return_info, value);
+    genfun_build_ret(c, value);
   }
 
-  codegen_scope_lifetime_end(c);
-  genfun_build_ret_void(c);
   codegen_finishfun(c);
 
   // Generate the sender.
@@ -841,6 +835,7 @@ static void copy_subordinate(reach_method_t* m)
     compile_method_t* c_m2 = (compile_method_t*)m2->c_method;
     c_m2->func_type = c_m->func_type;
     c_m2->func = c_m->func;
+    c_m2->try_return_info = c_m->try_return_info;
     m2 = m2->subordinate;
   }
 }
@@ -972,7 +967,7 @@ static bool genfun_forward(compile_t* c, reach_type_t* t,
 
   if(c_m2->try_return_info.return_type != TRYRETURNTYPE_NONE)
   {
-    ret = unwrap_try_return_value(c, &c_m2->try_return_info, ret, m2->result);
+    ret = unwrap_try_return_value_jump_if_error(c, &c_m2->try_return_info, ret);
   }
 
   ret = gen_assign_cast(c, ((compile_type_t*)m->result->c_type)->use_type, ret,
@@ -980,10 +975,11 @@ static bool genfun_forward(compile_t* c, reach_type_t* t,
 
   if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
   {
-    ret = wrap_try_return_success(c, &c_m->try_return_info, ret, m->result);
+    ret = wrap_try_return_success(c, &c_m->try_return_info, ret);
   }
 
   genfun_build_ret(c, ret);
+
   codegen_finishfun(c);
   ponyint_pool_free_size(buf_size, args);
 

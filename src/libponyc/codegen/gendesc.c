@@ -74,8 +74,7 @@ static LLVMValueRef make_unbox_function(compile_t* c, reach_type_t* t,
   LLVMTypeRef ret_type = NULL;
   if(needs_error_wrap)
   {
-    compile_type_t* wrapped_c_t = (compile_type_t * )c_m->try_return_info.t->c_type;
-    ret_type = wrapped_c_t->use_type;
+    ret_type = get_try_return_wrapped_type(&c_m->try_return_info);
   }
   else
   {
@@ -132,7 +131,7 @@ static LLVMValueRef make_unbox_function(compile_t* c, reach_type_t* t,
 
   if(needs_error_wrap)
   {
-    result = wrap_try_return_success(c, &c_m->try_return_info, result, m->result);
+    result = wrap_try_return_success(c, &c_m->try_return_info, result);
   }
 
   genfun_build_ret(c, result);
@@ -217,9 +216,7 @@ static LLVMValueRef make_error_wrap_function(compile_t* c,
 
   TryReturnInfo tr_info = init_try_return_info();
 
-  compile_type_t* ret_c_t = (compile_type_t*)m->result->c_type;
-  LLVMTypeRef wrapped_ret =
-    generate_try_return_type(c, &tr_info, m->result, ret_c_t->use_type);
+  LLVMTypeRef wrapped_ret = generate_try_return_type(c, &tr_info, m->result);
 
   const char* wrap_name = genname_error_wrap(m->full_name);
   LLVMTypeRef wrap_type = LLVMFunctionType(wrapped_ret, params, count, false);
@@ -236,12 +233,11 @@ static LLVMValueRef make_error_wrap_function(compile_t* c,
   LLVMValueRef result = codegen_call(c, f_type, c_m->func, args, count,
     m->cap != TK_AT);
 
-  result = wrap_try_return_success(c, &tr_info, result, m->result);
+  result = wrap_try_return_success(c, &tr_info, result);
   genfun_build_ret(c, result);
 
   codegen_finishfun(c);
 
-  delete_try_return_info(&tr_info);
   ponyint_pool_free_size(buf_size, params);
   ponyint_pool_free_size(args_size, args);
   return wrap_fun;

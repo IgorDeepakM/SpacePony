@@ -1057,10 +1057,9 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
   {
     r = c->none_instance;
   }
-
-  if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
+  else if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
   {
-    r = unwrap_try_return_value(c, &c_m->try_return_info, r, m->result);
+    r = unwrap_try_return_value_jump_if_error(c, &c_m->try_return_info, r);
   }
 
   if(return_by_value)
