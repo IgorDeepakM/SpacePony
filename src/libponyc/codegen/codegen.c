@@ -607,12 +607,6 @@ static void init_runtime(compile_t* c)
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, nounwind_attr);
   LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, memory_readonly);
 
-  // void pony_error()
-  type = LLVMFunctionType(c->void_type, NULL, 0, false);
-  value = LLVMAddFunction(c->module, "pony_error", type);
-
-  LLVMAddAttributeAtIndex(value, LLVMAttributeFunctionIndex, noreturn_attr);
-
   // i32 memcmp(i8*, i8*, intptr)
   params[0] = c->ptr;
   params[1] = c->ptr;

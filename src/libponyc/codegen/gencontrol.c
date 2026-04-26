@@ -621,12 +621,11 @@ LLVMValueRef gen_return(compile_t* c, ast_t* ast)
     partial_ret = c_m->try_return_info.return_type != TRYRETURNTYPE_NONE;
   }
 
-  if(LLVMGetTypeKind(r_type) || partial_ret)
+  if(LLVMGetTypeKind(r_type) != LLVMVoidTypeKind)
   {
     if(partial_ret)
     {
-      compile_type_t* ret_c_t = (compile_type_t*)c->frame->m->result->c_type;
-      r_type = ret_c_t->use_type;
+      r_type = get_try_return_unwrapped_type(&c_m->try_return_info);
     }
     ast_t* type = deferred_reify(c->frame->reify, ast_type(expr), c->opt);
     LLVMValueRef ret = gen_assign_cast(c, r_type, value, type);
@@ -634,7 +633,7 @@ LLVMValueRef gen_return(compile_t* c, ast_t* ast)
 
     if(partial_ret)
     {
-      ret = wrap_try_return_success(c, &c_m->try_return_info, ret, c->frame->m->result);
+      ret = wrap_try_return_success(c, &c_m->try_return_info, ret);
     }
 
     codegen_scope_lifetime_end(c);
@@ -720,7 +719,6 @@ LLVMValueRef gen_try(compile_t* c, ast_t* ast)
       return NULL;
 
     gen_expr(c, then_clause);
-
     else_block = LLVMGetInsertBlock(c->builder);
     LLVMBuildBr(c->builder, post_block);
   }
@@ -947,7 +945,7 @@ LLVMValueRef gen_error(compile_t* c, ast_t* ast)
 
     pony_assert(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE);
 
-    LLVMValueRef ret = wrap_try_return_error(c, &c_m->try_return_info, r_m->result);
+    LLVMValueRef ret = wrap_try_return_error(c, &c_m->try_return_info);
     genfun_build_ret(c, ret);
   }
 
