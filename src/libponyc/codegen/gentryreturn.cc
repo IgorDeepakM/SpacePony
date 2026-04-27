@@ -255,7 +255,7 @@ extern "C" LLVMValueRef wrap_try_return_error(compile_t* c, TryReturnInfo* try_r
 
       LLVMValueRef tuple = LLVMGetUndef(try_return_info->wrapped_type);
       LLVMTypeRef mem_type = ((compile_type_t*)try_return_info->unwrapped_type->c_type)->mem_type;
-      tuple = LLVMBuildInsertValue(c->builder, tuple, LLVMConstNull(mem_type), 0, "");
+      tuple = LLVMBuildInsertValue(c->builder, tuple, LLVMGetUndef(mem_type), 0, "");
       ret = LLVMBuildInsertValue(c->builder, tuple, LLVMConstInt(bool_c_t->mem_type, 0, false), 1, "");
       break;
     }
