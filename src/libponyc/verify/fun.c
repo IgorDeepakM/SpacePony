@@ -604,5 +604,23 @@ bool verify_fun(pass_opt_t* opt, ast_t* ast)
     }
   }
 
+  bool naked = ast_has_annotation(ast, "naked");
+  bool noinline = ast_has_annotation(ast, "noinline");
+  bool alwaysinline = ast_has_annotation(ast, "alwaysinline");
+
+  if(naked && alwaysinline)
+  {
+    ast_error(opt->check.errors, ast, "naked functions are implicitly "
+     "noinline cannot be combined with the 'alwaysinline' annotation");
+    return false;
+  }
+
+  if(noinline && alwaysinline)
+  {
+    ast_error(opt->check.errors, ast, "'noinline' and 'alwaysinline' annotations "
+      "cannot be used at the same time");
+    return false;
+  }
+
   return true;
 }

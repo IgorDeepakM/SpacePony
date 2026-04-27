@@ -347,6 +347,7 @@ static void make_prototype(compile_t* c, reach_type_t* t,
     // Generate the function prototype.
     c_m->func = codegen_addfun(c, m->full_name, c_m->func_type, true);
     genfun_param_attrs(c, t, m, c_m->func);
+    genfun_function_attrs(c, m, c_m->func);
     make_function_debug(c, t, m, c_m->func);
   } else {
     size_t count = LLVMCountParamTypes(c_m->func_type);
@@ -572,17 +573,34 @@ static bool genfun_fun(compile_t* c, reach_type_t* t, reach_method_t* m)
 
   codegen_startfun(c, c_m->func, c_m->di_file, c_m->di_method, m->fun, m,
     ast_id(cap) == TK_AT);
-  name_params(c, t, m, c_m->func);
 
   bool finaliser = c_m->func == c_t->final_fn;
+  bool naked = ast_has_annotation(m->fun->ast, "naked");
 
-  if(finaliser)
-    call_embed_finalisers(c, t, body, gen_this(c, NULL));
+  if(!naked)
+  {
+    name_params(c, t, m, c_m->func);
+
+    if(finaliser)
+      call_embed_finalisers(c, t, body, gen_this(c, NULL));
+  }
 
   LLVMValueRef value = gen_expr(c, body);
 
   if(value == NULL)
     return false;
+
+  // Naked function, nothing more to do just get out
+  if(naked)
+  {
+    codegen_debugloc(c, ast_childlast(body));
+    // Naked functions do not use a LLVM IR ret instruction but just unreachable
+    // The ret instruction must be inserted manually with inline assembler
+    LLVMBuildUnreachable(c->builder);
+    codegen_debugloc(c, NULL);
+    codegen_finishfun(c);
+    return true;
+  }
 
   bool return_by_value = m->return_by_value;
   bool return_value_lowered = c_m->return_value_lowered;
@@ -1167,6 +1185,35 @@ void genfun_param_attrs(compile_t* c, reach_type_t* t, reach_method_t* m,
 
     param = LLVMGetNextParam(param);
     ++i;
+  }
+}
+
+void genfun_function_attrs(compile_t* c, reach_method_t* m, LLVMValueRef fun)
+{
+  bool naked = ast_has_annotation(m->fun->ast, "naked");
+
+  if(naked)
+  {
+    unsigned attr_id = LLVMGetEnumAttributeKindForName("naked",
+      sizeof("naked") - 1);
+    LLVMAttributeRef attr_ref = LLVMCreateEnumAttribute(c->context, attr_id, 0);
+    LLVMAddAttributeAtIndex(fun, LLVMAttributeFunctionIndex, attr_ref);
+  }
+
+  if(naked || ast_has_annotation(m->fun->ast, "noinline"))
+  {
+    unsigned attr_id = LLVMGetEnumAttributeKindForName("noinline",
+      sizeof("noinline") - 1);
+    LLVMAttributeRef attr_ref = LLVMCreateEnumAttribute(c->context, attr_id, 0);
+    LLVMAddAttributeAtIndex(fun, LLVMAttributeFunctionIndex, attr_ref);
+  }
+
+  if(ast_has_annotation(m->fun->ast, "alwaysinline"))
+  {
+    unsigned attr_id = LLVMGetEnumAttributeKindForName("alwaysinline",
+      sizeof("alwaysinline") - 1);
+    LLVMAttributeRef attr_ref = LLVMCreateEnumAttribute(c->context, attr_id, 0);
+    LLVMAddAttributeAtIndex(fun, LLVMAttributeFunctionIndex, attr_ref);
   }
 }
 
