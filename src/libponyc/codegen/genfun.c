@@ -347,7 +347,7 @@ static void make_prototype(compile_t* c, reach_type_t* t,
     // Generate the function prototype.
     c_m->func = codegen_addfun(c, m->full_name, c_m->func_type, true);
     genfun_param_attrs(c, t, m, c_m->func);
-    genfun_function_attrs(c, t, m, c_m->func);
+    genfun_function_attrs(c, m, c_m->func);
     make_function_debug(c, t, m, c_m->func);
   } else {
     size_t count = LLVMCountParamTypes(c_m->func_type);
@@ -1188,8 +1188,7 @@ void genfun_param_attrs(compile_t* c, reach_type_t* t, reach_method_t* m,
   }
 }
 
-void genfun_function_attrs(compile_t* c, reach_type_t* t, reach_method_t* m,
-  LLVMValueRef fun)
+void genfun_function_attrs(compile_t* c, reach_method_t* m, LLVMValueRef fun)
 {
   bool naked = ast_has_annotation(m->fun->ast, "naked");
 
