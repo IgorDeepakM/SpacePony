@@ -1924,3 +1924,23 @@ TEST_F(BadPonyTest, MatchLiteralCaseWithTypecheckErrorElse)
 
   TEST_ERRORS_1(src, "argument not assignable to parameter");
 }
+
+TEST_F(BadPonyTest, NakedAndAlwaysInlineNotAllowed)
+{
+  const char* src =
+    "primitive Foo\n"
+    "  fun \\naked, alwaysinline\\ bar(x: U32): U32 => x\n";
+
+  TEST_ERRORS_1(src, "naked functions are implicitly "
+    "noinline cannot be combined with the 'alwaysinline' annotation");
+}
+
+TEST_F(BadPonyTest, NoInlineAndAlwaysInlineNotAllowed)
+{
+  const char* src =
+    "primitive Foo\n"
+    "  fun \\noinline, alwaysinline\\ bar(x: U32): U32 => x\n";
+
+  TEST_ERRORS_1(src, "'noinline' and 'alwaysinline' annotations "
+    "cannot be used at the same time");
+}
