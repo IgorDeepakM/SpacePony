@@ -1613,7 +1613,7 @@ static bool check_annotation_location(pass_opt_t* opt, ast_t* ast,
       pony_assert(ast_id(ast_parent(parent2)) == TK_PARAMS);
       ast_t* parent4 = ast_parent(ast_parent(parent2));
       if(ast_id(parent4) == TK_FFIDECL || ast_id(parent4) == TK_BARELAMBDA ||
-         ast_id(parent4) == TK_FUN && ast_id(ast_child(parent4)) == TK_AT)
+         (ast_id(parent4) == TK_FUN && ast_id(ast_child(parent4)) == TK_AT))
       {
         return true;
       }
@@ -1636,9 +1636,9 @@ static bool check_annotation_location(pass_opt_t* opt, ast_t* ast,
       }
     }
     else if(ast_id(parent2) == TK_BARELAMBDATYPE || ast_id(parent2) == TK_BARELAMBDA ||
-            ast_id(parent2) == TK_FUN && ast_id(ast_child(parent2)) == TK_AT)
+            (ast_id(parent2) == TK_FUN && ast_id(ast_child(parent2)) == TK_AT))
     {
-      // The return value of a bare lambda call or type declaration
+      // The return value of a bare lambda call or type declaration or bare method
       return true;
     }
 
