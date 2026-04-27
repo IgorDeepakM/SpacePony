@@ -354,7 +354,7 @@ bool expr_typeref(pass_opt_t* opt, ast_t** astp)
 
     // This is needed in order to evaluate the value type arguments and give them a type
     // for type references. If Array or Pointer, skip the check.
-    if (ast_id(typeargs) != TK_NONE)
+    if(ast_id(typeargs) != TK_NONE)
     {
       ast_t* underlying_type = (ast_t*)ast_data(ast);
       if((underlying_type != NULL) &&

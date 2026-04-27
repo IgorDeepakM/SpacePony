@@ -209,8 +209,30 @@ static void reify_valueformalparamref(pass_opt_t* opt, ast_t** astp, ast_t* type
 
   if(ast_id(typearg) == TK_VALUEFORMALARG)
   {
-    ast_t* type = ast_childidx(found_typeparam, 1);
-    ast_settype(typearg, type);
+    ast_t* lit = ast_child(typearg);
+    ast_t* typeparam_type = ast_childidx(found_typeparam, 1);
+
+    ast_t* literal_type = ast_type(lit);
+    if(literal_type == NULL)
+    {
+      // Why do we need to run the pass_expr and coerce_literals here?
+      // When reifying and replacing the TK_VALUEFORMALPARAMREF with
+      // a TK_VALUEFORMALARG the literals might not have been processed
+      // yet becuase it originates from something later on in the AST tree
+
+      // Here we make literals out of the expression
+      pass_expr(&lit, opt);
+
+      // Let's coerce the literal
+      if(!coerce_literals(&lit, typeparam_type, opt))
+      {
+        pony_assert(false);
+        return;
+      }
+    }
+
+    ast_setdata(typearg, found_typeparam);
+    ast_settype(typearg, typeparam_type);
   }
   ast_replace(astp, typearg);
 }
@@ -567,22 +589,13 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
     // Check if the constraint is name "AnyNoCheck" which will
     // skip any checks for the type parameter. This is used by
     // the builtin types like Pointer and Array among others.
-    ast_t* constraint_id = NULL;
-    ast_t* ref_or_type = ast_childidx(typeparam, 1);
-    if(ast_id(ref_or_type) == TK_NOMINAL)
-    {
-      constraint_id = ast_childidx(ref_or_type, 1);
-    }
-    else if(ast_id(ref_or_type) == TK_TYPEPARAMREF)
-    {
-      ast_t* constraint = typeparam_constraint(ref_or_type);
-      if(constraint != NULL && ast_id(constraint) == TK_NOMINAL)
-      {
-        constraint_id = ast_childidx(constraint, 1);
-      }
-    }
 
-    if (constraint_id != NULL && strcmp(ast_name(constraint_id), "AnyNoCheck") == 0)
+    // Reify the constraint.
+    ast_t* constraint = ast_childidx(typeparam, 1);
+    ast_t* r_constraint = reify(constraint, typeparams, typeargs, opt,
+      true);
+
+    if(is_literal(r_constraint, "AnyNoCheck"))
     {
       typeparam = ast_sibling(typeparam);
       typearg = ast_sibling(typearg);
@@ -606,7 +619,7 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
       {
         ast_t* def = (ast_t*)ast_data(typearg);
 
-        if(ast_id(def) == TK_STRUCT)
+        if(ast_id(def) == TK_STRUCT && !ast_has_annotation(r_constraint, "allowstruct"))
         {
           if(report_errors)
           {
@@ -678,11 +691,6 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
       return false;
     }
 
-    // Reify the constraint.
-    ast_t* constraint = ast_childidx(typeparam, 1);
-    ast_t* r_constraint = reify(constraint, typeparams, typeargs, opt,
-      true);
-
     // A bound type must be a subtype of the constraint.
     errorframe_t info = NULL;
     errorframe_t* infop = (report_errors ? &info : NULL);
@@ -691,6 +699,7 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
     if(ast_id(typearg) == TK_VALUEFORMALARG)
     {
       ast_t* literal = ast_child(typearg);
+
       if (!coerce_literals(&literal, r_constraint, opt))
         return false;
 

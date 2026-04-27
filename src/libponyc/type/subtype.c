@@ -256,6 +256,36 @@ static bool is_literal_equal(ast_t* a, ast_t* b)
   return false;
 }
 
+static ast_t* get_valueformalarg_type(ast_t* ast)
+{
+  ast_t* parent = ast_parent(ast);
+  ast_t* parent2 = ast_parent(parent);
+
+  ast_t* def = NULL;
+
+  switch(ast_id(parent2))
+  {
+    case TK_NOMINAL:
+    case TK_TYPEREF:
+      def = (ast_t*)ast_data(parent2);
+      break;
+
+    default:
+      pony_assert(false);
+      break;
+  }
+
+  size_t index = ast_index(ast);
+
+  ast_t* type_params = ast_childidx(def, 1);
+
+  ast_t* typeparam = ast_childidx(type_params, index);
+
+  ast_t* arg_type = ast_childidx(typeparam, 1);
+
+  return arg_type;
+}
+
 static bool is_eq_typeargs(ast_t* a, ast_t* b, errorframe_t* errorf,
   pass_opt_t* opt)
 {
@@ -282,7 +312,7 @@ static bool is_eq_typeargs(ast_t* a, ast_t* b, errorframe_t* errorf,
       if (!is_literal_equal(lit_a, lit_b))
         ret = false;
 
-      if (!is_eqtype(ast_type(lit_a), ast_type(lit_b), errorf, opt))
+      if (!is_eqtype(get_valueformalarg_type(a_arg), get_valueformalarg_type(b_arg), errorf, opt))
         ret = false;
     }
     else

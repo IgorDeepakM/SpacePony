@@ -721,6 +721,16 @@ static bool method_call(pass_opt_t* opt, ast_t* ast)
     return false;
 
   AST_GET_CHILDREN(type, cap, typeparams, params, result);
+
+  // This is needed because the return type might be unprocessed
+  // because the method appears later on in the AST.
+  // We must run the expression pass here because the return type
+  // is being set here and used for inferring the assigned type
+  if(!ast_passes_subtree(&result, opt, PASS_EXPR))
+  {
+    return false;
+  }
+
   ast_settype(ast, result);
 
   return true;
