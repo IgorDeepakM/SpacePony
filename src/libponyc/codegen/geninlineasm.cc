@@ -2,9 +2,6 @@
 #include "gentype.h"
 #include "genexpr.h"
 #include "genopt.h"
-#include "genbox.h"
-
-#include "../type/subtype.h"
 
 #include "llvm_config_begin.h"
 
@@ -47,14 +44,6 @@ extern "C" LLVMValueRef gen_inlineasm(compile_t* c, ast_t* ast)
       asm_func_type_params.push_back(unwrap(param_cp->use_type));
 
       Value* val = unwrap(gen_expr(c, ast_param));
-      if(is_c_fixed_sized_array(ast_type(ast_param)))
-      {
-        if(ast_has_annotation(ast_param, "byval"))
-        {
-          auto builder = unwrap(c->builder);
-          val = builder->CreateLoad(unwrap(param_cp->use_type), val);
-        }
-      }
       asm_func_value_params.push_back(val);
 
       pos_arg = ast_sibling(pos_arg);
