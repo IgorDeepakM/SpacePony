@@ -111,6 +111,7 @@ GROUP(value_formal_literal,
   int_literal, float_literal, bool_literal, string);
 
 RULE(value_formal_arg,
+  HAS_DATA
   CHILD(value_formal_literal, seq, comptime_expr)
   HAS_TYPE(type),
   TK_VALUEFORMALARG);
