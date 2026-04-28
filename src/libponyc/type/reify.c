@@ -700,6 +700,15 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
     {
       ast_t* literal = ast_child(typearg);
 
+      // Make literal if it hasn't been done yet.
+      if(ast_type(literal) == NULL)
+      {
+        if(pass_expr(&literal, opt) != AST_OK)
+        {
+          return false;
+        }
+      }
+
       if (!coerce_literals(&literal, r_constraint, opt))
         return false;
 

@@ -726,7 +726,7 @@ static bool method_call(pass_opt_t* opt, ast_t* ast)
   // because the method appears later on in the AST.
   // We must run the expression pass here because the return type
   // is being set here and used for inferring the assigned type
-  if(!ast_passes_subtree(&result, opt, PASS_EXPR))
+  if(pass_expr(&result, opt) != AST_OK)
   {
     return false;
   }
