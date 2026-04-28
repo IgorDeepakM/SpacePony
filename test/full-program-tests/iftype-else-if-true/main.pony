@@ -70,28 +70,28 @@ actor Main
 
     false
 
-  fun is_class[A: AnyNoCheck](): Bool =>
+  fun is_class[\allowstruct\ A](): Bool =>
     iftype A <: class then
       true
     else
       false
     end
 
-  fun is_struct[A: AnyNoCheck](): Bool =>
+  fun is_struct[\allowstruct\ A](): Bool =>
     iftype A <: struct then
       true
     else
       false
     end
 
-  fun is_primitive[A: AnyNoCheck](): Bool =>
+  fun is_primitive[\allowstruct\ A](): Bool =>
     iftype A <: primitive then
       true
     else
       false
     end
 
-  fun is_class_or_primitive[A: AnyNoCheck](): Bool =>
+  fun is_class_or_primitive[\allowstruct\ A](): Bool =>
     iftype A <: (class | struct) then
       true
     else

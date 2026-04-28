@@ -128,6 +128,7 @@ DEF(typearg);
 // ID [COLON type] [ASSIGN typearg]
 DEF(typeparam);
   AST_NODE(TK_TYPEPARAM);
+  ANNOTATE(annotations);
   TOKEN("name", TK_ID);
   IF(TK_COLON, RULE("type constraint", type));
   IF(TK_ASSIGN, RULE("default type argument", typearg));

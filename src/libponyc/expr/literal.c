@@ -841,6 +841,17 @@ static bool coerce_literal_to_type(ast_t** astp, ast_t* target_type,
       break;
     }
 
+    case TK_VALUEFORMALARG:
+    {
+      ast_t* l = ast_child(literal_expr);
+      if(!coerce_literal_to_type(&l, target_type, chain, opt,
+        report_errors))
+        return false;
+
+      ast_settype(literal_expr, ast_type(l));
+      break;
+    }
+
     default:
       ast_error(opt->check.errors, literal_expr, "Internal error, coerce_literal_to_type node %s",
         ast_get_print(literal_expr));

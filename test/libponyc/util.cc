@@ -84,13 +84,12 @@ static const char* const _builtin =
   "  => None\n"
   "primitive None\n"
   "interface tag Any\n"
-  "interface tag AnyNoCheck\n"
   "primitive Bool\n"
   "  new create(a: Bool) => a\n"
   "  fun op_and(a: Bool): Bool => this and a\n"
   "  fun op_not(): Bool => not this\n"
   "class val String\n"
-  "struct Pointer[A: AnyNoCheck]\n"
+  "struct Pointer[\\allowstruct\\ A]\n"
   "  new create() => compile_intrinsic\n"
   "  fun tag is_null(): Bool => compile_intrinsic\n"
   "interface Seq[A]\n"
@@ -103,7 +102,7 @@ static const char* const _builtin =
   "class ArrayValues[A]\n"
   "  fun ref has_next(): Bool => false\n"
   "  fun ref next(): A ? => error\n"
-  "class Array[A: AnyNoCheck] is Seq[A]\n"
+  "class Array[\\allowstruct\\ A] is Seq[A]\n"
   "  var _size: USize = 0\n"
   "  var _alloc: USize = 0\n"
   "  var _ptr: Pointer[A] = Pointer[A]\n"
@@ -117,16 +116,9 @@ static const char* const _builtin =
   "  fun ref next(): A ?\n"
   "primitive DoNotOptimise\n"
   "  fun apply[A](obj: A) => compile_intrinsic\n"
-  "struct NullablePointer[A]\n"
+  "struct NullablePointer[\\allowstruct\\ A]\n"
   "  new create(that: A) => compile_intrinsic\n"
-  "struct RuntimeOptions\n"
-  "struct box Optional[A: AnyNoCheck]"
-  "  new none() => compile_intrinsic\n"
-  "  new create(init: A) => compile_intrinsic\n"
-  "  fun is_none() : Bool => compile_intrinsic\n"
-  "  fun is_some(): Bool => compile_intrinsic\n"
-  "  fun apply(): A? => error\n"
-  "  fun get_no_check(): A => compile_intrinsic\n";
+  "struct RuntimeOptions\n";
 
 
 void Main_runtime_override_defaults_oo(void* opt)
