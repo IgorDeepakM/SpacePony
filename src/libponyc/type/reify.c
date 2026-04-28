@@ -336,7 +336,10 @@ bool reify_defaults(ast_t* typeparams, ast_t* typeargs, bool errors,
        opt->program_pass == PASS_EXPR)
     {
       ast_t* lit_child = ast_child(defarg);
-      pass_expr(&lit_child, opt);
+      if(ast_visit(&lit_child, NULL, pass_expr, opt, PASS_EXPR) != AST_OK)
+      {
+        return false;
+      }
     }
 
     ast_append(typeargs, defarg);

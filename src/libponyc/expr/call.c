@@ -726,7 +726,7 @@ static bool method_call(pass_opt_t* opt, ast_t* ast)
   // because the method appears later on in the AST.
   // We must run the expression pass here because the return type
   // is being set here and used for inferring the assigned type
-  if(pass_expr(&result, opt) != AST_OK)
+  if(ast_visit(&result, NULL, pass_expr, opt, PASS_EXPR) != AST_OK)
   {
     return false;
   }
