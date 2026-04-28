@@ -221,7 +221,11 @@ static void reify_valueformalparamref(pass_opt_t* opt, ast_t** astp, ast_t* type
       // yet becuase it originates from something later on in the AST tree
 
       // Here we make literals out of the expression
-      pass_expr(&lit, opt);
+      if(ast_visit(&lit, NULL, pass_expr, opt, PASS_EXPR) != AST_OK)
+      {
+        pony_assert(false);
+        return;
+      }
 
       // Let's coerce the literal
       if(!coerce_literals(&lit, typeparam_type, opt))
@@ -589,22 +593,6 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
 
   while(typeparam != NULL)
   {
-    // Check if the constraint is name "AnyNoCheck" which will
-    // skip any checks for the type parameter. This is used by
-    // the builtin types like Pointer and Array among others.
-
-    // Reify the constraint.
-    ast_t* constraint = ast_childidx(typeparam, 1);
-    ast_t* r_constraint = reify(constraint, typeparams, typeargs, opt,
-      true);
-
-    if(is_literal(r_constraint, "AnyNoCheck"))
-    {
-      typeparam = ast_sibling(typeparam);
-      typearg = ast_sibling(typearg);
-      continue;
-    }
-
     if (is_bare(typearg))
     {
       if(report_errors)
@@ -622,7 +610,7 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
       {
         ast_t* def = (ast_t*)ast_data(typearg);
 
-        if(ast_id(def) == TK_STRUCT && !ast_has_annotation(r_constraint, "allowstruct"))
+        if(ast_id(def) == TK_STRUCT && !ast_has_annotation(typeparam, "allowstruct"))
         {
           if(report_errors)
           {
@@ -694,6 +682,11 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
       return false;
     }
 
+    // Reify the constraint.
+    ast_t* constraint = ast_childidx(typeparam, 1);
+    ast_t* r_constraint = reify(constraint, typeparams, typeargs, opt,
+      true);
+
     // A bound type must be a subtype of the constraint.
     errorframe_t info = NULL;
     errorframe_t* infop = (report_errors ? &info : NULL);
@@ -702,15 +695,6 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
     if(ast_id(typearg) == TK_VALUEFORMALARG)
     {
       ast_t* literal = ast_child(typearg);
-
-      // Make literal if it hasn't been done yet.
-      if(ast_type(literal) == NULL)
-      {
-        if(pass_expr(&literal, opt) != AST_OK)
-        {
-          return false;
-        }
-      }
 
       if (!coerce_literals(&literal, r_constraint, opt))
         return false;

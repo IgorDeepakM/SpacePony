@@ -6,6 +6,9 @@
 #define TEST_COMPILE(src) DO(test_compile(src, "expr"))
 #define TEST_ERROR(src) DO(test_error(src, "expr"))
 
+#define TEST_COMPILE_REACH(src) DO(test_compile(src, "reach"))
+#define TEST_ERROR_REACH(src) DO(test_error(src, "reach"))
+
 class VDTTest: public PassTest
 {};
 
@@ -588,5 +591,33 @@ TEST_F(VDTTest, DISABLED_VDTTypeWithCompileTimeConstantError)
     "    let c2: C1[408] = c1.join[618]()";
 
   TEST_ERROR(src);
+}
+
+TEST_F(VDTTest, VDTTypeUseReturnTypeLaterInAst)
+{
+  const char* src =
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    let a1: C[U8, 4] = C[U8, 4]\n"
+    "    let a2: C[U8, 4] = C[U8, 4]\n"
+    "    let a3 = foo(a1, a2)\n"
+    "    for v in a3.values() do\n"
+    "      v\n"
+    "    end\n"
+    "  fun foo(x: C[U8, 4], y: C[U8, 4]): C[U8, 4] =>\n"
+    "    x\n"
+    "struct C[\\allowstruct\\ A, _size: USize]\n"
+    "  fun values(): C2[A, _size, this->C[A, _size]]^ =>\n"
+    "    C2[A, _size, this->C[A, _size]](this)\n"
+    "struct C2[A, _size: USize, \\allowstruct\\ B : C[A, _size] #read] is Iterator[B]\n"
+    "  var _a: B"
+    "  new create(a': B) =>\n"
+    "    _a = a'\n"
+    "  fun has_next(): Bool =>\n"
+    "    true\n"
+    "  fun ref next(): B =>\n"
+    "    _a\n";
+
+  TEST_COMPILE_REACH(src);
 }
 

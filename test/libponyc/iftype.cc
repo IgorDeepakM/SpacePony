@@ -326,7 +326,7 @@ TEST_F(IftypeTest, TestUnderlyingType)
     "    foo[S1]()\n"
     "    foo[P1]()\n"
 
-    "  fun foo[A: AnyNoCheck]() =>\n"
+    "  fun foo[\\allowstruct\\ A]() =>\n"
     "    iftype A <: class then\n"
     "      None\n"
     "    end\n"
