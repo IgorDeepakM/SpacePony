@@ -966,6 +966,12 @@ DEF(recover);
   TERMINATE("recover expression", TK_END);
   DONE();
 
+DEF(asm_positional);
+  AST_NODE(TK_POSITIONALARGS);
+  RULE("argument", annotatedrawseq);
+  WHILE(TK_COMMA, RULE("argument", annotatedrawseq));
+  DONE();
+
 // ASM [annotations] string seq END
 DEF(inline_asm);
   PRINT_INLINE();
@@ -981,7 +987,7 @@ DEF(inline_asm);
   WHILE(TK_COMMA, RULE("type argument", typearg));
   TERMINATE("type arguments", TK_RSQUARE);
   SKIP(NULL, TK_LPAREN, TK_LPAREN_NEW);
-  OPT RULE("inline asm argument", positional);
+  OPT RULE("inline asm argument", asm_positional);
   TERMINATE("inline arguments", TK_RPAREN);
   TERMINATE("inline asm expression", TK_END);
   DONE();

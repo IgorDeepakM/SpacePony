@@ -1605,7 +1605,7 @@ static bool check_annotation_location(pass_opt_t* opt, ast_t* ast,
 
         return false;
     }
-  } else if(strcmp(str, PONY_BYVAL_ANNOTATION) == 0) {
+  } /*else if(strcmp(str, PONY_BYVAL_ANNOTATION) == 0) {
     ast_t* parent1 = ast_parent(ast);
     ast_t* parent2 = ast_parent(parent1);
     if(ast_id(parent2) == TK_PARAM)
@@ -1646,7 +1646,7 @@ static bool check_annotation_location(pass_opt_t* opt, ast_t* ast,
       "a '" PONY_BYVAL_ANNOTATION "' annotation can only be used on parameter types in FFI "
       "functions, bare lambda and bare functions declarations");
     return false;
-  }
+  }*/
   else if(strcmp(str, "property") == 0)
   {
     ast_t* fundef = ast_parent(ast);
