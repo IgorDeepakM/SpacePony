@@ -198,6 +198,15 @@ static bool is_sub_cap_and_eph(ast_t* sub, ast_t* super, check_cap_t check_cap,
 
 static bool is_literal_equal(ast_t* a, ast_t* b)
 {
+  // TODO:
+  // If a valueformalarg is TK_SEQ or TK_COMPTIME just allow it for now
+  // This should be checked in the expr2 pass instead
+  if(ast_id(a) == TK_SEQ || ast_id(a) == TK_COMPTIME ||
+     ast_id(b) == TK_SEQ || ast_id(b) == TK_COMPTIME)
+  {
+    return true;
+  }
+
   switch(ast_id(a))
   {
     case TK_INT:

@@ -34,6 +34,7 @@ static const char* const _builtin =
   "  fun mul(a: I16): I16 => this * a\n"
   "primitive U32 is Real[U32]"
   "  new create(a: U32 = 0) => a\n"
+  "  fun add(a: U32): U32 => this + a\n"
   "primitive I32 is Real[I32]"
   "  new create(a: I32 = 0) => a\n"
   "  fun neg(): I32 => -this\n"

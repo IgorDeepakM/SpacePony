@@ -368,7 +368,7 @@ TEST_F(VDTTest, MatchingValueDependentTypeCallFailure)
   TEST_ERROR(src);
 }
 
-TEST_F(VDTTest, DISABLED_BadParamFuctionReturnType)
+TEST_F(VDTTest, BadParamFuctionReturnType)
 {
   const char* src =
     "class C1[n: U32]\n"
@@ -468,12 +468,12 @@ TEST_F(VDTTest, TestNestedReifications)
   TEST_COMPILE(src);
 }
 
-TEST_F(VDTTest, DISABLED_TestCompileTimeExpressionScope)
+TEST_F(VDTTest, TestCompileTimeExpressionScope)
 {
   const char* src =
     "class C1\n"
     "  new create() =>\n"
-    "    let x: U32 = # (let y: U32; y + 2)\n"
+    "    let x: U32 = comptime let y: U32 = 0; y + 2 end\n"
     "    let z: U32 = y";
 
   TEST_ERROR(src);
@@ -482,7 +482,7 @@ TEST_F(VDTTest, DISABLED_TestCompileTimeExpressionScope)
 // FIXME: these tests fails as the operations cannot be found due to builtin
 // not being included -- fail in dot_or_tilde, these do not fail when
 // run outside of the testing framework
-TEST_F(VDTTest, DISABLED_IsSubTypeClassWithCompileConstantGenericValueDependentType)
+TEST_F(VDTTest, IsSubTypeClassWithCompileConstantGenericValueDependentType)
 {
   const char* src =
     "trait T1[A: (U32 | U64), n: A]\n"
@@ -490,30 +490,30 @@ TEST_F(VDTTest, DISABLED_IsSubTypeClassWithCompileConstantGenericValueDependentT
     "class C1 is T1[U32, 4]\n"
 
     "interface Test\n"
-    "  fun z(c1: C1, t1: T1[U32, #(1+3)])";
+    "  fun z(c1: C1, t1: T1[U32, = 1 + 3])";
 
   TEST_COMPILE(src);
 }
 
-TEST_F(VDTTest, DISABLED_ExpressionEqualityOfTypeArgs)
+TEST_F(VDTTest, ExpressionEqualityOfTypeArgs)
 {
   const char* src =
     "class C1[n: U32]\n"
 
     "class C2\n"
-    "  let c: C1[4] = C1[#(1 + 3)]";
+    "  let c: C1[4] = C1[= 1 + 3]";
 
   TEST_COMPILE(src);
 }
 
-TEST_F(VDTTest, DISABLED_ValueTypeSumOfInputTypes)
+TEST_F(VDTTest, ValueTypeSumOfInputTypes)
 {
   const char* src =
     "class C1[n: U32]\n"
 
     "class C2\n"
     "  fun apply[n: U32, m: U32]() =>\n"
-    "    C1[#(n + m)]";
+    "    C1[= n + m]";
 
   TEST_COMPILE(src);
 }
@@ -524,8 +524,8 @@ TEST_F(VDTTest, DISABLED_ReturnTypeSumOfInputTypesCallSuccess)
     "class C1[n: U32]\n"
 
     "class C2\n"
-    "  fun apply(c1: C1[n], c2: C1[m]) : C1[n + m] =>\n"
-    "    C1[n + m]\n"
+    "  fun apply(c1: C1[n], c2: C1[m]) : C1[= n + m] =>\n"
+    "    C1[= n + m]\n"
 
     "class C3\n"
     "    let c: C1[6] = C2.create().apply(C1[4], C1[2])";
@@ -533,7 +533,7 @@ TEST_F(VDTTest, DISABLED_ReturnTypeSumOfInputTypesCallSuccess)
   TEST_COMPILE(src);
 }
 
-TEST_F(VDTTest, DISABLED_ReturnTypeSumOfInputTypesCallError)
+TEST_F(VDTTest, ReturnTypeSumOfInputTypesCallError)
 {
   const char* src =
     "class C1[n: U32]\n"
@@ -563,13 +563,13 @@ TEST_F(VDTTest, VDTClassInheritsFromInterface)
   TEST_ERROR(src);
 }
 
-TEST_F(VDTTest, DISABLED_VDTTypeWithCompileTimeConstant)
+TEST_F(VDTTest, VDTTypeWithCompileTimeConstant)
 {
   const char* src =
     "class C1[n: U32]\n"
     "  fun apply(): U32 => n\n"
-    "  fun join[m: U32](): C1[#(n + m)] =>\n"
-    "    C1[#(n + m)]\n"
+    "  fun join[m: U32](): C1[= n + m] =>\n"
+    "    C1[= n + m]\n"
     "class C2\n"
     "  new create() =>\n"
     "    let c1: C1[82] = C1[82]\n"
@@ -583,8 +583,8 @@ TEST_F(VDTTest, DISABLED_VDTTypeWithCompileTimeConstantError)
   const char* src =
     "class C1[n: U32]\n"
     "  fun apply(): U32 => n\n"
-    "  fun join[m: U32](): C1[#(n + m)] =>\n"
-    "    C1[#(n + m)]\n"
+    "  fun join[m: U32](): C1[= n + m] =>\n"
+    "    C1[= n + m]\n"
     "class C2\n"
     "  new create() =>\n"
     "    let c1: C1[82] = C1[82]\n"
