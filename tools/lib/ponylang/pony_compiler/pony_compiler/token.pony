@@ -245,6 +245,8 @@ primitive TokenIds
     tk_lambdatype
     tk_barelambdatype
     tk_dontcaretype
+    tk_bool_true
+    tk_bool_false
     tk_infertype
     tk_errortype
 
@@ -488,6 +490,8 @@ primitive TokenIds
     | TokenIds.tk_lambdatype => "TK_LAMBDATYPE"
     | TokenIds.tk_barelambdatype => "TK_BARELAMBDATYPE"
     | TokenIds.tk_dontcaretype => "TK_DONTCARETYPE"
+    | TokenIds.tk_bool_true => "TK_BOOL_TRUE"
+    | TokenIds.tk_bool_false => "TK_BOOL_FALSE"
     | TokenIds.tk_infertype => "TK_INFERTYPE"
     | TokenIds.tk_errortype => "TK_ERRORTYPE"
     | TokenIds.tk_literal => "TK_LITERAL"
