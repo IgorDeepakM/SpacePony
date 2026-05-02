@@ -6,8 +6,8 @@
 #define TEST_COMPILE(src) DO(test_compile(src, "expr"))
 #define TEST_ERROR(src) DO(test_error(src, "expr"))
 
-#define TEST_COMPILE_REACH(src) DO(test_compile(src, "reach"))
-#define TEST_ERROR_REACH(src) DO(test_error(src, "reach"))
+#define TEST_COMPILE_REACH(src) DO(test_compile(src, "ir"))
+#define TEST_ERROR_REACH(src) DO(test_error(src, "ir"))
 
 class VDTTest: public PassTest
 {};
@@ -578,9 +578,10 @@ TEST_F(VDTTest, VDTTypeWithCompileTimeConstant)
   TEST_COMPILE(src);
 }
 
-TEST_F(VDTTest, DISABLED_VDTTypeWithCompileTimeConstantError)
+TEST_F(VDTTest, VDTTypeWithCompileTimeConstantError)
 {
   const char* src =
+    "use @ffi_func[None](x: C1[408])\n"
     "class C1[n: U32]\n"
     "  fun apply(): U32 => n\n"
     "  fun join[m: U32](): C1[= n + m] =>\n"
@@ -588,9 +589,10 @@ TEST_F(VDTTest, DISABLED_VDTTypeWithCompileTimeConstantError)
     "class C2\n"
     "  new create() =>\n"
     "    let c1: C1[82] = C1[82]\n"
-    "    let c2: C1[408] = c1.join[618]()";
+    "    let c2: C1[408] = c1.join[618]()\n"
+    "    @ffi_func(c2)";
 
-  TEST_ERROR(src);
+  TEST_COMPILE_REACH(src);
 }
 
 TEST_F(VDTTest, VDTTypeUseReturnTypeLaterInAst)

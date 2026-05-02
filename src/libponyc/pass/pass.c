@@ -12,6 +12,7 @@
 #include "verify.h"
 #include "finalisers.h"
 #include "serialisers.h"
+#include "expr2.h"
 #include "../ast/ast.h"
 #include "../ast/parser.h"
 #include "../ast/treecheck.h"
@@ -113,6 +114,8 @@ void pass_opt_init(pass_opt_t* options)
 void pass_opt_done(pass_opt_t* options)
 {
   plugin_unload(options);
+
+  delete_expr2_data(options);
 
   // free userflags if any
   userflags_free(options->user_flags);

@@ -316,6 +316,7 @@ typedef struct pass_opt_t
   userflags_t* user_flags;
 
   void* data; // User-defined data for unit test callbacks.
+  void* expr2_data;
 } pass_opt_t;
 
 /** Limit processing to the specified pass. All passes up to and including the

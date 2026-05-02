@@ -9,6 +9,7 @@
 #include "viewpoint.h"
 #include "../ast/astbuild.h"
 #include "../expr/literal.h"
+#include "../pass/expr2.h"
 #include "ponyassert.h"
 #include "pony_defines.h"
 #include <string.h>
@@ -196,14 +197,14 @@ static bool is_sub_cap_and_eph(ast_t* sub, ast_t* super, check_cap_t check_cap,
   return false;
 }
 
-static bool is_literal_equal(ast_t* a, ast_t* b)
+static bool is_literal_equal(ast_t* a, ast_t* b, pass_opt_t* opt)
 {
   // TODO:
   // If a valueformalarg is TK_SEQ or TK_COMPTIME just allow it for now
   // This should be checked in the expr2 pass instead
-  if(ast_id(a) == TK_SEQ || ast_id(a) == TK_COMPTIME ||
-     ast_id(b) == TK_SEQ || ast_id(b) == TK_COMPTIME)
+  if(!is_value_formal_arg_literal(a) || !is_value_formal_arg_literal(b))
   {
+    add_to_expr2(opt, a, b);
     return true;
   }
 
@@ -318,7 +319,7 @@ static bool is_eq_typeargs(ast_t* a, ast_t* b, errorframe_t* errorf,
       ast_t* lit_a = ast_child(a_arg);
       ast_t* lit_b = ast_child(b_arg);
 
-      if (!is_literal_equal(lit_a, lit_b))
+      if (!is_literal_equal(lit_a, lit_b, opt))
         ret = false;
 
       if (!is_eqtype(get_valueformalarg_type(a_arg), get_valueformalarg_type(b_arg), errorf, opt))

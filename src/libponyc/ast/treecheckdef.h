@@ -196,7 +196,7 @@ GROUP(expr,
   disposing_block, match, try_expr, lambda, barelambda, array_literal,
   object_literal, int_literal, float_literal, string, bool_literal, id_with_question, id, rawseq,
   package_ref, location, this_ref, ref, fun_ref, type_ref, field_ref,
-  tuple_elem_ref, local_ref, param_ref, value_formal_param_ref, comptime_expr);
+  tuple_elem_ref, local_ref, param_ref, value_formal_param_ref, value_formal_arg, comptime_expr);
 
 RULE(local,
   HAS_TYPE(type)
