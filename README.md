@@ -479,8 +479,6 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
   Why having `=` in front of the expression and not the expression directly? Unfortunately it is a parsing technicality, the `=` is needed for making the parser selecting the correct rule that otherwise would ambiguous.
 
-  One big problem with expressions in the type arguments is that there is no type check when they are used. Right now it just accept a type comparison as soon as an expression is encountered. The problem is that the type checks are done in passes prior to the reach pass where the CTFE is being run. Literals can be easily checked for equality, but not an expression that has not been reduced to a literal. Comparing an AST tree is too difficult, take the following example `C1[= a + b + c] is C1[= c + b + a]` which is potentially the same type but a different expression yields later in the reach pass the same result in the type argument. Hopefully there will be a solution to this in the future.
-
 * It is possible to load and save file during compile time inside a `comptime` expression using `CompTime.load_file` and `CompTime.save_file`. What is loaded in compile time can be processed at compile time but also during runtime because the compiler can create constant object(s) of what is loaded. However, when saving data at compile time, the data must be processed at compile time for obvious reasons.
 
   ```pony
