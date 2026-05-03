@@ -65,7 +65,7 @@ static void type_append(printbuf_t* buf, ast_t* type, bool first, pass_opt_t* op
       ast_t* expr = ast_child(type);
       if(!is_value_formal_arg_literal(expr))
       {
-        reach_comptime(opt, &expr, NULL);
+        reach_comptime(opt, &expr);
         if(opt->check.evaluation_error)
         {
           return;

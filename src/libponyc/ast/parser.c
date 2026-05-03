@@ -108,10 +108,15 @@ DEF(comptime_expr);
   TERMINATE("comptime expression", TK_END);
   DONE();
 
+DEF(assign_comptime_expr);
+  AST_NODE(TK_COMPTIME);
+  RULE("comptime expression value", seq);
+  DONE();
+
 DEF(valueformalarg);
   AST_NODE(TK_VALUEFORMALARG);
   IFELSE(TK_ASSIGN,
-    RULE("value type argument expression", seq),
+    RULE("value type argument expression", assign_comptime_expr),
     RULE("value type argument literal", literal, comptime_expr);
   );
   DONE();

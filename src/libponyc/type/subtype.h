@@ -10,6 +10,8 @@ PONY_EXTERN_C_BEGIN
 
 bool is_literal(ast_t* type, const char* name);
 
+bool is_literal_equal(ast_t* a, ast_t* b, pass_opt_t* opt, bool allow_eq_list);
+
 bool is_subtype(ast_t* sub, ast_t* super, errorframe_t* errorf,
   pass_opt_t* opt);
 

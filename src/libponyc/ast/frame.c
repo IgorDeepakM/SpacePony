@@ -2,8 +2,10 @@
 #include "ast.h"
 #include "error.h"
 #include "../../libponyrt/mem/pool.h"
+#include "../type/valueformaleq.h"
 #include "ponyassert.h"
 #include <string.h>
+
 
 static bool push_frame(typecheck_t* t)
 {

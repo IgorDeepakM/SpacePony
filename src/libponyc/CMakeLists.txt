@@ -71,7 +71,6 @@ add_library(libponyc STATIC
     options/options.c
     pass/completeness.c
     pass/expr.c
-    pass/expr2.cc
     pass/finalisers.c
     pass/flatten.c
     pass/import.c
@@ -108,6 +107,7 @@ add_library(libponyc STATIC
     type/subtype.c
     type/typealias.c
     type/typeparam.c
+    type/valueformaleq.cc
     type/viewpoint.c
     verify/call.c
     verify/control.c

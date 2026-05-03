@@ -1325,11 +1325,6 @@ bool CtfeRunner::run(pass_opt_t* opt, ast_t** astp)
 {
   ast_t* ast = *astp;
 
-  if(contains_valueparamref(ast))
-  {
-    return true;
-  }
-
   // Insert an empty this reference so that we can at least call functions inside the
   // current object. However it is not possible to access any variables.
   m_frames.new_value("this", CtfeValue());

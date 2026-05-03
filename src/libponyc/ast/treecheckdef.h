@@ -103,6 +103,7 @@ RULE(enum_block,
 RULE(type_params, ONE_OR_MORE(type_param, value_formal_param), TK_TYPEPARAMS);
 
 RULE(comptime_expr,
+  HAS_DATA
   HAS_TYPE(type)
   CHILD(seq),
   TK_COMPTIME);
@@ -112,7 +113,7 @@ GROUP(value_formal_literal,
 
 RULE(value_formal_arg,
   HAS_DATA
-  CHILD(value_formal_literal, seq, comptime_expr)
+  CHILD(value_formal_literal, comptime_expr)
   HAS_TYPE(type),
   TK_VALUEFORMALARG);
 
