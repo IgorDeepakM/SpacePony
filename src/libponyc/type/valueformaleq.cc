@@ -92,20 +92,43 @@ public:
           reach_comptime(opt, &new_pair.b);
         }
 
-        bool success = is_literal_equal(new_pair.a, new_pair.b, opt, false);
+        bool is_equal = is_literal_equal(new_pair.a, new_pair.b, opt, false);
+
+        if(!is_equal)
+        {
+          errorframe_t info = NULL;
+          ast_error(opt->check.errors, node, "calculated value formal argument differs in equality check between");
+
+          if(is_value_formal_arg_literal(new_pair.a))
+          {
+            ast_error_continue(opt->check.errors, pair.a, "this value formal argument, with value %s",
+              ast_get_print(new_pair.a));
+          }
+          else
+          {
+            ast_error_continue(opt->check.errors, pair.a,
+              "this value formal argument, which failed to evaluate");
+          }
+
+          if(is_value_formal_arg_literal(new_pair.b))
+          {
+            ast_error_continue(opt->check.errors, pair.b, "and this value formal argument, with value %s",
+              ast_get_print(new_pair.b));
+          }
+          else
+          {
+            ast_error_continue(opt->check.errors, pair.b,
+              "and this value formal argument, which failed to evaluate");
+          }
+
+          opt->check.evaluation_error = true;
+        }
 
         ast_free_unattached(new_pair.a);
         ast_free_unattached(new_pair.b);
-        
-        if(!success)
+
+        if(!is_equal)
         {
-          errorframe_t errors = NULL;
-          errorframe_t frame = NULL;
-          ast_error_frame(&frame, pair.a, "Calculated value formal argument differs from");
-          ast_error_frame(&frame, pair.b, "this argument value");
-          errorframe_append(&frame, &errors);
-          errorframe_report(&frame, opt->check.errors);
-          opt->check.evaluation_error = true;
           return false;
         }
       }
