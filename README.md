@@ -24,6 +24,7 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
   * [iftype on entity types](#iftype-on-entity-types)
   * [alignas](#alignas)
   * [Return value exceptions](#return-value-exceptions)
+  * [naked, noinline and alwaysinline annotations](#naked-noinline-and-alwaysinline-annotations)
 * [Future directions](#future-directions)
   * [Short term](#short-term)
   * [Long term (read never)](#long-term-read-never)
@@ -803,6 +804,17 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   }
 
 * This also means that catching exceptions from C++ is no longer supported in SpacePony
+
+
+### naked, noinline and alwaysinline annotations
+
+* These are equivalent to what you would find in C/C++, for example `__attribute__((naked))` in Clang. The naked, noinline and alwaysinline attributes can be applied to methods or lambdas.
+
+* The naked attribute removes the stack prologue and epilogue as well as the return for the function. Naked methods are intended to be used with inline assembler in rare cases where the inline assembler statements that do everything LLVM would otherwise insert as prologue/epilogue code. These methods are implicitly noinline because LLVM has no idea how to remove your own prologue and epilogue code.
+
+* The noline annotation, never inlines the method.
+
+* The alwaysinline annotation will always inline the method unless LLVM thinks it is too big to be inlined. This annotation together with inline assembler statements can create intrinsic like methods in order access HW functionality that isn't available with LLVM internal functions.
 
 
 ## Future directions
