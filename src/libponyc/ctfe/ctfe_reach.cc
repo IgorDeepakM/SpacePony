@@ -4,14 +4,11 @@
 #include "../ast/ast.h"
 
 
-extern "C" bool reach_comptime(pass_opt_t* opt, ast_t** astp, deferred_reification_t *reify)
+extern "C" bool reach_comptime(pass_opt_t* opt, ast_t** astp)
 {
-  ast_unfreeze(ast_parent(*astp));
-
-  if(reify != nullptr)
+  if(CtfeRunner::contains_valueparamref(*astp))
   {
-    ast_t* r_ast = deferred_reify(reify, *astp, opt);
-    ast_replace(astp, r_ast);
+    return true;
   }
 
   if(ast_id(*astp) == TK_COMPTIME)
@@ -22,6 +19,7 @@ extern "C" bool reach_comptime(pass_opt_t* opt, ast_t** astp, deferred_reificati
 
   CtfeRunner ctfeRunner(opt);
   bool ret = ctfeRunner.run(opt, astp);
+
   ast_freeze(ast_parent(*astp));
   return ret;
 }

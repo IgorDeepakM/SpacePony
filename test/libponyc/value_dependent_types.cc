@@ -573,12 +573,15 @@ TEST_F(VDTTest, VDTTypeWithCompileTimeConstant)
     "class C2\n"
     "  new create() =>\n"
     "    let c1: C1[82] = C1[82]\n"
-    "    let c2: C1[700] = c1.join[618]()";
+    "    let c2: C1[700] = c1.join[618]()\n"
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    let cc = C2\n";
 
-  TEST_COMPILE(src);
+  TEST_COMPILE_REACH(src);
 }
 
-TEST_F(VDTTest, DISABLED_VDTTypeWithCompileTimeConstantError)
+TEST_F(VDTTest, VDTTypeWithCompileTimeConstantError)
 {
   const char* src =
     "class C1[n: U32]\n"
@@ -588,9 +591,12 @@ TEST_F(VDTTest, DISABLED_VDTTypeWithCompileTimeConstantError)
     "class C2\n"
     "  new create() =>\n"
     "    let c1: C1[82] = C1[82]\n"
-    "    let c2: C1[408] = c1.join[618]()";
+    "    let c2: C1[408] = c1.join[618]()\n"
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    let cc = C2\n";
 
-  TEST_ERROR(src);
+  TEST_ERROR_REACH(src);
 }
 
 TEST_F(VDTTest, VDTTypeUseReturnTypeLaterInAst)

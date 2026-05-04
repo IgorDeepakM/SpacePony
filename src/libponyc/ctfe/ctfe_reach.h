@@ -8,7 +8,7 @@
 
 PONY_EXTERN_C_BEGIN
 
-bool reach_comptime(pass_opt_t* opt, ast_t** astp, deferred_reification_t* reify);
+bool reach_comptime(pass_opt_t* opt, ast_t** astp);
 
 PONY_EXTERN_C_END
 

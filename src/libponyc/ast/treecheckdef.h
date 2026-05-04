@@ -103,6 +103,7 @@ RULE(enum_block,
 RULE(type_params, ONE_OR_MORE(type_param, value_formal_param), TK_TYPEPARAMS);
 
 RULE(comptime_expr,
+  HAS_DATA
   HAS_TYPE(type)
   CHILD(seq),
   TK_COMPTIME);
@@ -112,7 +113,7 @@ GROUP(value_formal_literal,
 
 RULE(value_formal_arg,
   HAS_DATA
-  CHILD(value_formal_literal, seq, comptime_expr)
+  CHILD(value_formal_literal, comptime_expr)
   HAS_TYPE(type),
   TK_VALUEFORMALARG);
 
@@ -196,7 +197,7 @@ GROUP(expr,
   disposing_block, match, try_expr, lambda, barelambda, array_literal,
   object_literal, int_literal, float_literal, string, bool_literal, id_with_question, id, rawseq,
   package_ref, location, this_ref, ref, fun_ref, type_ref, field_ref,
-  tuple_elem_ref, local_ref, param_ref, value_formal_param_ref, comptime_expr);
+  tuple_elem_ref, local_ref, param_ref, value_formal_param_ref, value_formal_arg, comptime_expr);
 
 RULE(local,
   HAS_TYPE(type)

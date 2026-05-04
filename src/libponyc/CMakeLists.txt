@@ -107,6 +107,7 @@ add_library(libponyc STATIC
     type/subtype.c
     type/typealias.c
     type/typeparam.c
+    type/valueformaleq.cc
     type/viewpoint.c
     verify/call.c
     verify/control.c

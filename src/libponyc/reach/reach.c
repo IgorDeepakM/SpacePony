@@ -12,6 +12,7 @@
 #include "../../libponyrt/gc/serialise.h"
 #include "../../libponyrt/mem/pool.h"
 #include "../ctfe/ctfe_reach.h"
+#include "../type/valueformaleq.h"
 #include "ponyassert.h"
 #include "int_utils.h"
 #include "pony_defines.h"
@@ -24,7 +25,8 @@ static reach_method_t* add_rmethod(reach_t* r, reach_type_t* t,
   reach_method_name_t* n, token_id cap, ast_t* typeargs, pass_opt_t* opt,
   bool internal);
 
-static reach_type_t* add_type(reach_t* r, ast_t* type, pass_opt_t* opt);
+static reach_type_t* add_type(reach_t* r, ast_t* type, pass_opt_t* opt,
+  deferred_reification_t* dr);
 
 static void reachable_method(reach_t* r, deferred_reification_t* reify,
   ast_t* type, const char* name, ast_t* typeargs, pass_opt_t* opt);
@@ -199,7 +201,7 @@ static void set_method_types(reach_t* r, reach_method_t* m,
 
       m->params[i].name = ast_name(ast_child(param));
       m->params[i].ast = p_type;
-      m->params[i].type = add_type(r, p_type, opt);
+      m->params[i].type = add_type(r, p_type, opt, m->fun);
       m->params[i].pass_by_value = ast_has_annotation(p_type, PONY_BYVAL_ANNOTATION);
 
       if((ast_id(p_type) != TK_NOMINAL) && (ast_id(p_type) != TK_TYPEPARAMREF))
@@ -235,7 +237,7 @@ static void set_method_types(reach_t* r, reach_method_t* m,
   }
 
   ast_t* r_result = deferred_reify(m->fun, result, opt);
-  m->result = add_type(r, r_result, opt);
+  m->result = add_type(r, r_result, opt, m->fun);
   ast_free_unattached(r_result);
 }
 
@@ -431,7 +433,7 @@ static void add_rmethod_to_subtypes(reach_t* r, reach_type_t* t,
 
         deferred_reify_free(find);
 
-        t2 = add_type(r, child, opt);
+        t2 = add_type(r, child, opt, m->fun);
         add_rmethod_to_subtype(r, t2, n, m, opt);
       }
 
@@ -485,6 +487,10 @@ static reach_method_t* add_rmethod(reach_t* r, reach_type_t* t,
 
     m->fun = fun;
     set_method_types(r, m, opt);
+    if(opt->check.evaluation_error)
+    {
+      return NULL;
+    }
 
     if(cap == TK_AT &&
       (ast_has_annotation(ast_childidx(fun->ast, 4), PONY_BYVAL_ANNOTATION) ||
@@ -787,7 +793,6 @@ static void add_fields(reach_t* r, reach_type_t* t, pass_opt_t* opt)
 
         ast_t* r_member = deferred_reify(member_lookup, member_lookup->ast,
           opt);
-        deferred_reify_free(member_lookup);
 
         ast_t* name = ast_pop(r_member);
         ast_t* type = ast_pop(r_member);
@@ -801,7 +806,9 @@ static void add_fields(reach_t* r, reach_type_t* t, pass_opt_t* opt)
         t->fields[index].ast = reify(ast_type(member), typeparams, typeargs,
           opt, true);
         ast_setpos(t->fields[index].ast, NULL, ast_line(name), ast_pos(name));
-        t->fields[index].type = add_type(r, type, opt);
+        t->fields[index].type = add_type(r, type, opt, member_lookup);
+
+        deferred_reify_free(member_lookup);
 
         if(embed && !has_finaliser && !needs_finaliser)
           needs_finaliser = embed_has_finaliser(type, str_final);
@@ -814,7 +821,7 @@ static void add_fields(reach_t* r, reach_type_t* t, pass_opt_t* opt)
           ast_t* align_amount_node = ast_child(alignas_node);
           if(ast_id(align_amount_node) != TK_INT)
           {
-            if(!reach_comptime(opt, &align_amount_node, NULL))
+            if(!reach_comptime(opt, &align_amount_node))
             {
               ast_error(opt->check.errors, alignas_node, "Couldn't evaluate alignas expression");
               return;
@@ -918,7 +925,7 @@ static reach_type_t* add_reach_type(reach_t* r, ast_t* type, pass_opt_t* opt)
 }
 
 static reach_type_t* add_isect_or_union(reach_t* r, ast_t* type,
-  pass_opt_t* opt)
+  pass_opt_t* opt, deferred_reification_t* dr)
 {
   reach_type_t* t = reach_type(r, type, opt);
 
@@ -938,14 +945,15 @@ static reach_type_t* add_isect_or_union(reach_t* r, ast_t* type,
 
   while(child != NULL)
   {
-    add_type(r, child, opt);
+    add_type(r, child, opt, dr);
     child = ast_sibling(child);
   }
 
   return t;
 }
 
-static reach_type_t* add_tuple(reach_t* r, ast_t* type, pass_opt_t* opt)
+static reach_type_t* add_tuple(reach_t* r, ast_t* type, pass_opt_t* opt,
+  deferred_reification_t* dr)
 {
   if(contains_dontcare(type))
     return NULL;
@@ -995,7 +1003,7 @@ static reach_type_t* add_tuple(reach_t* r, ast_t* type, pass_opt_t* opt)
     {
       t->fields[index].ast = ast_dup(child);
     }
-    t->fields[index].type = add_type(r, child, opt);
+    t->fields[index].type = add_type(r, child, opt, dr);
     t->fields[index].embed = false;
     printbuf(mangle, "%s", t->fields[index].type->mangle);
     index++;
@@ -1008,8 +1016,52 @@ static reach_type_t* add_tuple(reach_t* r, ast_t* type, pass_opt_t* opt)
   return t;
 }
 
-static reach_type_t* add_nominal(reach_t* r, ast_t* type, pass_opt_t* opt)
+
+static bool add_typeargs(reach_t* r, ast_t* typeargs, pass_opt_t* opt,
+  deferred_reification_t* dr)
 {
+  pony_assert(ast_id(typeargs) == TK_TYPEARGS || ast_id(typeargs) == TK_NONE);
+
+  ast_t* typearg = ast_child(typeargs);
+
+  while(typearg != NULL)
+  {
+    if(ast_id(typearg) == TK_VALUEFORMALARG)
+    {
+      ast_t* expr = ast_child(typearg);
+      if(!is_value_formal_arg_literal(expr))
+      {
+        size_t comptime_id = (size_t)ast_data(expr);
+        ast_t* r_ast = deferred_reify(dr, expr, opt);
+        ast_unfreeze(ast_parent(typearg));
+        ast_replace(&expr, r_ast);
+        reach_comptime(opt, &expr);
+        ast_freeze(ast_parent(typearg));
+
+        if(!check_value_formal_eq_list(opt, expr, comptime_id, dr))
+        {
+          return false;
+        }
+      }
+    }
+
+    add_type(r, typearg, opt, dr);
+    typearg = ast_sibling(typearg);
+  }
+
+  return true;
+}
+
+static reach_type_t* add_nominal(reach_t* r, ast_t* type, pass_opt_t* opt,
+  deferred_reification_t* dr)
+{
+  AST_GET_CHILDREN(type, pkg, id, typeargs);
+
+  if(!add_typeargs(r, typeargs, opt, dr))
+  {
+    return NULL;
+  }
+
   reach_type_t* t = reach_type(r, type, opt);
 
   if(t != NULL)
@@ -1018,24 +1070,6 @@ static reach_type_t* add_nominal(reach_t* r, ast_t* type, pass_opt_t* opt)
   t = add_reach_type(r, type, opt);
   ast_t* def = (ast_t*)ast_data(type);
   t->underlying = ast_id(def);
-
-  AST_GET_CHILDREN(type, pkg, id, typeargs);
-  ast_t* typearg = ast_child(typeargs);
-
-  while(typearg != NULL)
-  {
-    if(ast_id(typearg) == TK_VALUEFORMALARG)
-    {
-      ast_t* literal = ast_child(typearg);
-      ast_t* literal_type = ast_type(literal);
-      add_type(r, literal_type, opt);
-    }
-    else
-    {
-      add_type(r, typearg, opt);
-    }
-    typearg = ast_sibling(typearg);
-  }
 
   switch(t->underlying)
   {
@@ -1091,7 +1125,7 @@ static reach_type_t* add_nominal(reach_t* r, ast_t* type, pass_opt_t* opt)
         ast_t* typeparams = ast_childidx(def, 1);
         ast_t* r_align_expr = reify(align_amount_node, typeparams, typeargs, opt, true);
 
-        if(!reach_comptime(opt, &r_align_expr, NULL))
+        if(!reach_comptime(opt, &r_align_expr))
         {
           ast_error(opt->check.errors, r_align_expr, "Couldn't evaluate alignas expression");
           return NULL;
@@ -1229,29 +1263,30 @@ static reach_type_t* add_nominal(reach_t* r, ast_t* type, pass_opt_t* opt)
   return t;
 }
 
-static reach_type_t* add_type(reach_t* r, ast_t* type, pass_opt_t* opt)
+static reach_type_t* add_type(reach_t* r, ast_t* type, pass_opt_t* opt,
+  deferred_reification_t* dr)
 {
   switch(ast_id(type))
   {
     case TK_UNIONTYPE:
     case TK_ISECTTYPE:
-      return add_isect_or_union(r, type, opt);
+      return add_isect_or_union(r, type, opt, dr);
 
     case TK_TUPLETYPE:
-      return add_tuple(r, type, opt);
+      return add_tuple(r, type, opt, dr);
 
     case TK_NOMINAL:
-      return add_nominal(r, type, opt);
+      return add_nominal(r, type, opt, dr);
 
     case TK_VALUEFORMALARG:
-      return add_type(r, ast_type(ast_child(type)), opt);
+      return add_type(r, ast_type(ast_child(type)), opt, dr);
 
     case TK_TYPEALIASREF:
     {
       ast_t* unfolded = typealias_unfold(type);
       pony_assert(unfolded != NULL);
 
-      reach_type_t* result = add_type(r, unfolded, opt);
+      reach_type_t* result = add_type(r, unfolded, opt, dr);
       ast_free_unattached(unfolded);
       return result;
     }
@@ -1276,7 +1311,7 @@ static void reachable_pattern(reach_t* r, deferred_reification_t* reify,
     {
       AST_GET_CHILDREN(ast, idseq, type);
       ast_t* r_type = deferred_reify(reify, type, opt);
-      add_type(r, r_type, opt);
+      add_type(r, r_type, opt, reify);
       ast_free_unattached(r_type);
       break;
     }
@@ -1366,7 +1401,7 @@ static void reachable_sizeof(reach_t* r, deferred_reification_t* reify,
     case TK_TYPEREF:
     {
       ast_t* r_type = deferred_reify(reify, ast_type(expr), opt);
-      add_type(r, r_type, opt);
+      add_type(r, r_type, opt, reify);
       ast_free_unattached(r_type);
       break;
     }
@@ -1380,7 +1415,7 @@ static void reachable_inline_asm(reach_t* r, deferred_reification_t* reify,
 {
   ast_t* ast_return_type = ast_childidx(ast, 3);
   ast_t* reified_ret = deferred_reify(reify, ast_return_type, opt);
-  add_type(r, reified_ret, opt);
+  add_type(r, reified_ret, opt, reify);
   ast_free_unattached(reified_ret);
 
   ast_t* pos_args = ast_childidx(ast, 4);
@@ -1392,7 +1427,7 @@ static void reachable_inline_asm(reach_t* r, deferred_reification_t* reify,
       ast_t* ast_param = ast_child(pos_arg);
       ast_t* ast_param_type = ast_type(ast_param);
       ast_t* reified_param = deferred_reify(reify, ast_param_type, opt);
-      add_type(r, reified_param, opt);
+      add_type(r, reified_param, opt, reify);
       ast_free_unattached(reified_param);
 
       pos_arg = ast_sibling(pos_arg);
@@ -1431,7 +1466,7 @@ static void reachable_ffi(reach_t* r, deferred_reification_t* reify,
 
   ast_t* arg = ast_child(params);
   ast_t* return_type = ast_child(return_typeargs);
-  add_type(r, return_type, opt);
+  add_type(r, return_type, opt, reify);
   while(arg != NULL)
   {
     if(ast_id(arg) != TK_ELLIPSIS)
@@ -1441,7 +1476,7 @@ static void reachable_ffi(reach_t* r, deferred_reification_t* reify,
       if(type == NULL)
         type = ast_childidx(arg, 1);
 
-      add_type(r, type, opt);
+      add_type(r, type, opt, reify);
     }
 
     arg = ast_sibling(arg);
@@ -1491,7 +1526,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
       case TK_TUPLE:
       {
         ast_t* type = deferred_reify(reify, ast_type(ast), opt);
-        add_type(r, type, opt);
+        add_type(r, type, opt, reify);
         ast_free_unattached(type);
         break;
       }
@@ -1533,7 +1568,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
         if(is_result_needed(ast) && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
         {
           ast_t* type = deferred_reify(reify, ast_type(ast), opt);
-          add_type(r, type, opt);
+          add_type(r, type, opt, reify);
           ast_free_unattached(type);
         }
 
@@ -1561,7 +1596,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
         if(is_result_needed(ast) && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
         {
           ast_t* type = deferred_reify(reify, ast_type(ast), opt);
-          add_type(r, type, opt);
+          add_type(r, type, opt, reify);
           ast_free_unattached(type);
         }
 
@@ -1590,7 +1625,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
         if(is_result_needed(ast) && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
         {
           ast_t* type = deferred_reify(reify, ast_type(ast), opt);
-          add_type(r, type, opt);
+          add_type(r, type, opt, reify);
           ast_free_unattached(type);
         }
 
@@ -1603,11 +1638,11 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
         AST_GET_CHILDREN(ast, left, right);
 
         ast_t* type = deferred_reify(reify, ast_type(left), opt);
-        add_type(r, type, opt);
+        add_type(r, type, opt, reify);
         ast_free_unattached(type);
 
         type = deferred_reify(reify, ast_type(right), opt);
-        add_type(r, type, opt);
+        add_type(r, type, opt, reify);
         ast_free_unattached(type);
 
         break;
@@ -1617,7 +1652,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
       {
         ast_t* expr = ast_child(ast);
         ast_t* type = deferred_reify(reify, ast_type(expr), opt);
-        add_type(r, type, opt);
+        add_type(r, type, opt, reify);
         ast_free_unattached(type);
 
         break;
@@ -1625,10 +1660,20 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
 
       case TK_COMPTIME:
       {
-        reach_comptime(opt, astp_i, reify);
+        size_t comptime_id = (size_t)ast_data(*astp_i);
+        ast_t* r_ast = deferred_reify(reify, *astp_i, opt);
+        ast_unfreeze(ast_parent(*astp_i));
+        ast_replace(astp_i, r_ast);
+        reach_comptime(opt, astp_i);
+        ast_freeze(ast_parent(*astp_i));
         // The resulting type will be added in consecutive iterations
         ast = *astp_i;
         traverse_children = false;
+
+        if(!check_value_formal_eq_list(opt, ast, comptime_id, reify))
+        {
+          break;
+        }
 
         // The old node also is on the stack so we need to replace it
         // If the stack is null it means it is the first iteration.
@@ -1642,7 +1687,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
       }
 
       case TK_CONSTANT_OBJECT:
-        add_type(r, ast_type(ast), opt);
+        add_type(r, ast_type(ast), opt, reify);
         break;
 
       default: {}
@@ -1699,14 +1744,20 @@ static void reachable_method(reach_t* r, deferred_reification_t* reify,
   if(reify != NULL)
   {
     ast_t* r_type = deferred_reify(reify, type, opt);
-    t = add_type(r, r_type, opt);
+    t = add_type(r, r_type, opt, reify);
     ast_free_unattached(r_type);
-  } else {
-    t = add_type(r, type, opt);
+  }
+  else
+  {
+    t = add_type(r, type, opt, reify);
   }
 
   reach_method_name_t* n = add_method_name(t, name, false);
   reach_method_t* m = add_rmethod(r, t, n, n->cap, typeargs, opt, false);
+  if(m == NULL)
+  {
+    return;
+  }
 
   if((n->id == TK_FUN) && ((n->cap == TK_BOX) || (n->cap == TK_TAG)))
   {
@@ -1763,6 +1814,10 @@ static void handle_method_stack(reach_t* r, pass_opt_t* opt)
 
     ast_t* body = ast_childidx(m->fun->ast, 6);
     reachable_expr(r, m->fun, &body, opt);
+    if(opt->check.evaluation_error)
+    {
+      break;
+    }
   }
 }
 

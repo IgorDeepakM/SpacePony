@@ -44,6 +44,7 @@ typedef struct errormsg_t
   const char* source;
   struct errormsg_t* frame;
   struct errormsg_t* next;
+  bool mark_for_expr2;
 } errormsg_t;
 
 typedef errormsg_t* errorframe_t;

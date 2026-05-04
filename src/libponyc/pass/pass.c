@@ -20,6 +20,7 @@
 #include "../pkg/buildflagset.h"
 #include "../plugin/plugin.h"
 #include "../../libponyrt/mem/pool.h"
+#include "../type/valueformaleq.h"
 #include "ponyassert.h"
 
 #include <stdlib.h>
@@ -113,6 +114,8 @@ void pass_opt_init(pass_opt_t* options)
 void pass_opt_done(pass_opt_t* options)
 {
   plugin_unload(options);
+
+  delete_value_formal_arg_eq(options);
 
   // free userflags if any
   userflags_free(options->user_flags);

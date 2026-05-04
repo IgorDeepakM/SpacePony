@@ -51,6 +51,7 @@ typedef struct typecheck_t
   typecheck_frame_t* frame;
   typecheck_stats_t stats;
   errors_t* errors;
+  void* value_formal_eq_list_data;
   bool evaluation_error;
 } typecheck_t;
 

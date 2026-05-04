@@ -2,6 +2,7 @@
 #include "literal.h"
 #include "../pass/expr.h"
 #include "../type/alias.h"
+#include "../type/valueformaleq.h"
 #include "../ctfe/ctfe_runner.h"
 #include "ponyassert.h"
 
@@ -23,6 +24,11 @@ extern "C" bool expr_comptime(pass_opt_t* opt, ast_t** astp)
   if(is_typecheck_error(ast_type(expression)))
     return false;
 
+  if(ast_data(ast) == NULL)
+  {
+    ast_setdata(ast, reinterpret_cast<void*>(get_comptime_id(opt)));
+  }
+
   ast_settype(ast, expr_type);
 
   return true;
@@ -37,7 +43,7 @@ extern "C" bool expr_ctfe_run(pass_opt_t* opt, ast_t** astp)
     ast_replace(astp, child);
   }
 
-  if(CtfeRunner::contains_any_typeref(*astp))
+  if(CtfeRunner::contains_any_typeref(*astp) || CtfeRunner::contains_valueparamref(*astp))
   {
     return true;
   }
