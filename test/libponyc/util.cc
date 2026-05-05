@@ -90,7 +90,7 @@ static const char* const _builtin =
   "  fun op_and(a: Bool): Bool => this and a\n"
   "  fun op_not(): Bool => not this\n"
   "class val String\n"
-  "struct Pointer[\\allowstruct\\ A]\n"
+  "struct Pointer[\\allowbaretypes\\ A]\n"
   "  new create() => compile_intrinsic\n"
   "  fun tag is_null(): Bool => compile_intrinsic\n"
   "interface Seq[A]\n"
@@ -103,7 +103,7 @@ static const char* const _builtin =
   "class ArrayValues[A]\n"
   "  fun ref has_next(): Bool => false\n"
   "  fun ref next(): A ? => error\n"
-  "class Array[\\allowstruct\\ A] is Seq[A]\n"
+  "class Array[\\allowbaretypes\\ A] is Seq[A]\n"
   "  var _size: USize = 0\n"
   "  var _alloc: USize = 0\n"
   "  var _ptr: Pointer[A] = Pointer[A]\n"
@@ -117,7 +117,7 @@ static const char* const _builtin =
   "  fun ref next(): A ?\n"
   "primitive DoNotOptimise\n"
   "  fun apply[A](obj: A) => compile_intrinsic\n"
-  "struct NullablePointer[\\allowstruct\\ A]\n"
+  "struct NullablePointer[\\allowbaretypes\\ A]\n"
   "  new create(that: A) => compile_intrinsic\n"
   "struct RuntimeOptions\n";
 

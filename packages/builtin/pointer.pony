@@ -1,4 +1,4 @@
-struct Pointer[\allowstruct\ A]
+struct Pointer[\allowbaretypes\ A]
   """
   A Pointer[A] is a raw memory pointer. It has no descriptor and thus can't be
   included in a union or intersection, or be a subtype of any interface. Most
@@ -22,7 +22,7 @@ struct Pointer[\allowstruct\ A]
     """
     compile_intrinsic
   
-  new from_any[\allowstruct\ B](from: B) =>
+  new from_any[\allowbaretypes\ B](from: B) =>
     """
     Initializes from any type to a Pointer.
     """
@@ -46,7 +46,7 @@ struct Pointer[\allowstruct\ A]
     """
     compile_intrinsic
 
-  fun convert[\allowstruct\ B](): this->Pointer[B] =>
+  fun convert[\allowbaretypes\ B](): this->Pointer[B] =>
     """
     Convert from Pointer[A] to Pointer[B].
     """
