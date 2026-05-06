@@ -593,7 +593,9 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
 
   while(typeparam != NULL)
   {
-    if (is_bare(typearg))
+    bool allowbaretypes = ast_has_annotation(typeparam, "allowbaretypes");
+
+    if (is_bare(typearg) && !allowbaretypes)
     {
       if(report_errors)
       {
@@ -610,7 +612,7 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
       {
         ast_t* def = (ast_t*)ast_data(typearg);
 
-        if(ast_id(def) == TK_STRUCT && !ast_has_annotation(typeparam, "allowstruct"))
+        if(ast_id(def) == TK_STRUCT && !allowbaretypes)
         {
           if(report_errors)
           {
@@ -647,7 +649,7 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
           {
             ast_t* def = (ast_t*)ast_data(unfolded);
 
-            if((def != NULL) && (ast_id(def) == TK_STRUCT))
+            if((def != NULL) && (ast_id(def) == TK_STRUCT) && !allowbaretypes)
             {
               ast_free_unattached(unfolded);
 

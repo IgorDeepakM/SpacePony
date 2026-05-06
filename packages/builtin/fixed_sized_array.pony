@@ -1,4 +1,4 @@
-class FixedSizedArray[\allowstruct\ A, _size: USize]
+class FixedSizedArray[\allowbaretypes\ A, _size: USize]
   """
   Contiguous, fixed sized memory to store elements of type A.
   """
