@@ -16,7 +16,7 @@ primitive SymbolKinds
   fun property(): I64 => 7
   fun field(): I64 => 8
   fun constructor(): I64 => 9
-  fun enum(): I64 => 10
+  fun sk_enum(): I64 => 10
   fun sk_interface(): I64 => 11
   fun function(): I64 => 12
   fun variable(): I64 => 13
