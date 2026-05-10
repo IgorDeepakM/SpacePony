@@ -1961,7 +1961,7 @@ TEST_F(BadPonyTest, RecursiveGenericInterfaceDoesNotHang)
   // bounded-time failure on this source.
   const char* src =
     "interface Iter[A]\n"
-    "  fun enum[B](): Iter[(B, A)] => this\n"
+    "  fun enumerate[B](): Iter[(B, A)] => this\n"
 
     "actor Main\n"
     "  new create(env: Env) => None";
@@ -1981,7 +1981,7 @@ TEST_F(BadPonyTest, RecursiveGenericInterfaceEmitsGuardDiagnostic)
   // error with no indication it came from SAME_DEF_LIMIT.
   const char* src =
     "interface Iter[A]\n"
-    "  fun enum[B](): Iter[(B, A)] => this\n"
+    "  fun enumerate[B](): Iter[(B, A)] => this\n"
 
     "actor Main\n"
     "  new create(env: Env) => None";
