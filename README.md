@@ -12,8 +12,7 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
   * [addressof](#addressof)
   * [Constant values in generics](#constant-values-in-generics)
   * [CFixedSizedArray](#cfixedsizedarray)
-  * [offsetof](#offsetof)
-  * [sizeof](#sizeof)
+  * [offset_of and size_of](#offset_of-and-size_of)
   * [FFI pass by value parameters](#ffi-pass-by-value-parameters)
   * [Inline assembler support](#inline-assembler-support)
   * [Atomics](#atomics)
@@ -259,26 +258,9 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   var ar = Array.from_cpointer(s.buf.cpointer(), s.size)
   ```
 
-### offsetof
+### offset_of and size_of
 
-* Added offsetof in order to get an offset of a member in a struct or class.
-
-  ```pony
-  struct S
-    var x: USize
-    var y: USize
-
-  ...
-
-  var s = S
-  let off_y = offsetof s.y // Gets the offset of y
-  let off_y_2 = offsetof S.y // It is possible to use the type directly as base
-  ```
-
-
-### sizeof
-
-* Added sizeof operator to obtain the size of any type. Also works on nested types.
+* Added offset_of special member access variable in order to get an offset of a member in a struct or class.
 
   ```pony
   struct S
@@ -288,14 +270,30 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   ...
 
   var s = S
-  let sz_u32 = sizeof U32 // Any base type can be used
-  let sz_s = sizeof s // Gets the size of the struct s
-  let sz_s_2 = sizeof S // Type can be used directly as base in a dot expression
-  let sz_s_y = sizeof s.y // Size of members can be used
-  let sz_s_y_2_ = sizeof S.y // Also with the type directly as base
+  let off_y = s.y.offset_of // Gets the offset of y
+  let off_y_2 = S.y.offset_of // It is possible to use the type directly as base
   ```
 
-* Keep in mind that both sizeof and offsetof are not compile time constants, meaning they do not behave like a literal and they can unfortunately not be used as type values in generics. sizeof/offsetof are created during the code generation step becoming a compile time constant in the LLVM code and not before that. The reason for this is the the SpacePony compiler uses LLVM in order build target dependent aggregate types in the code generation pass which is one of the last passes. It is possible to make sizeof and offsetof into a literal but that would require using LLVM to build up the types in earlier passes.
+* Added size_of special member access variable to obtain the size of any type. Also works on nested types.
+
+  ```pony
+  struct S
+    var x: USize
+    var y: USize
+
+  ...
+
+  var s = S
+  let sz_u32 = U32.size_of // Any base type can be used
+  let sz_s = s.size_of // Gets the size of the struct s
+  let sz_s_2 = S.size_of // Type can be used directly as base in a dot expression
+  let sz_s_y = s.y.size_of // Size of members can be used
+  let sz_s_y_2_ = S.y.size_of // Also with the type directly as base
+  ```
+
+* offset_of and size_of are reserved variable names and cannot be used general member variables.
+
+* Keep in mind that both size_of and offset_of are not compile time constants, meaning they do not behave like a literal and they can unfortunately not be used as type values in generics. size_of/offset_of are created during the code generation step becoming a compile time constant in the LLVM code and not before that. The reason for this is the the SpacePony compiler uses LLVM in order build target dependent aggregate types in the code generation pass which is one of the last passes. It is possible to make size_of and offset_of into a literal but that would require using LLVM to build up the types in earlier passes.
 
 ### FFI pass by value parameters
 
