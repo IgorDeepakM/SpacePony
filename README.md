@@ -291,7 +291,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   let sz_s_y_2_ = S.y.size_of // Also with the type directly as base
   ```
 
-* offset_of and size_of are reserved variable names and cannot be used general member variables.
+* offset_of and size_of are reserved variable names and cannot be used as general member variables.
 
 * Keep in mind that both size_of and offset_of are not compile time constants, meaning they do not behave like a literal and they can unfortunately not be used as type values in generics. size_of/offset_of are created during the code generation step becoming a compile time constant in the LLVM code and not before that. The reason for this is the the SpacePony compiler uses LLVM in order build target dependent aggregate types in the code generation pass which is one of the last passes. It is possible to make size_of and offset_of into a literal but that would require using LLVM to build up the types in earlier passes.
 
