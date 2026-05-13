@@ -1569,6 +1569,8 @@ static bool fold_string_concat(ast_t** astp)
 
 static ast_result_t sugar_dot(pass_opt_t* opt, ast_t** astp)
 {
+  (void)opt;
+
   ast_t* ast = *astp;
 
   ast_t* child = ast_child(ast);
@@ -1583,7 +1585,7 @@ static ast_result_t sugar_dot(pass_opt_t* opt, ast_t** astp)
 
   if(name == stringtab("size_of") || name == stringtab("offset_of"))
   {
-    token_id token;
+    token_id token = TK_ERROR;
     if(name == stringtab("size_of"))
     {
       token = TK_SIZEOF;
