@@ -229,6 +229,17 @@ static bool check_permission(pass_opt_t* opt, const permission_def_t* def,
 }
 
 
+static bool is_reserved_member_name(const char* name)
+{
+  if(name == stringtab("size_of") || name == stringtab("offset_of"))
+  {
+    return true;
+  }
+
+  return false;
+}
+
+
 // Check whether the given method has any illegal parts
 static bool check_method(pass_opt_t* opt, ast_t* ast, int method_def_index)
 {
@@ -254,6 +265,14 @@ static bool check_method(pass_opt_t* opt, ast_t* ast, int method_def_index)
   } else if(!check_permission(opt, def, METHOD_CAP, cap, "receiver capability",
     cap))
   {
+    r = false;
+  }
+
+  const char* name = ast_name(id);
+  if(is_reserved_member_name(name))
+  {
+    ast_error(opt->check.errors, ast, "cannot name a method, constructor or a behaviour '%s' "
+      "because it is a reserved name", ast_name(id));
     r = false;
   }
 
@@ -936,7 +955,7 @@ static ast_result_t syntax_local(pass_opt_t* opt, ast_t* ast)
 static ast_result_t syntax_fvar_flet(pass_opt_t* opt, ast_t* ast)
 {
   const char* name = ast_name(ast_child(ast));
-  if(name == stringtab("size_of") || name == stringtab("offset_of"))
+  if(is_reserved_member_name(name))
   {
     ast_error(opt->check.errors, ast, "cannot name a field variable '%s' "
       "because it is a reserved name", name);
@@ -952,6 +971,14 @@ static ast_result_t syntax_embed(pass_opt_t* opt, ast_t* ast)
   if(ast_id(ast_parent(ast)) != TK_MEMBERS)
   {
     ast_error(opt->check.errors, ast, "Local variables cannot be embedded");
+    return AST_ERROR;
+  }
+
+  const char* name = ast_name(ast_child(ast));
+  if(is_reserved_member_name(name))
+  {
+    ast_error(opt->check.errors, ast, "cannot name an embedded field variable '%s' "
+      "because it is a reserved name", name);
     return AST_ERROR;
   }
 
