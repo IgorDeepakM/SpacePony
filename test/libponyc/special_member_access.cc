@@ -22,8 +22,8 @@ TEST_F(XOfOperatorTest, OffsetOfUsingVariable)
     "actor Main\n"
     "  new create(env: Env) =>\n"
     "    var s: S = S\n"
-    "    offsetof s.a\n"
-    "    offsetof s.b\n";
+    "    s.a.offset_of\n"
+    "    s.b.offset_of\n";
 
   TEST_COMPILE(src);
 }
@@ -36,8 +36,8 @@ TEST_F(XOfOperatorTest, OffsetOfUsingType)
     "var b: U32 = 1\n"
     "actor Main\n"
     "  new create(env: Env) =>\n"
-    "    offsetof S.a\n"
-    "    offsetof S.b\n";
+    "    S.a.offset_of\n"
+    "    S.b.offset_of\n";
 
     TEST_COMPILE(src);
 }
@@ -55,8 +55,8 @@ TEST_F(XOfOperatorTest, OffsetOfNestedUsingVariable)
     "actor Main\n"
     "  new create(env: Env) =>\n"
     "    var s2: S2 = S2\n"
-    "    offsetof s2.s1.a\n"
-    "    offsetof s2.s1.b\n";
+    "    s2.s1.a.offset_of\n"
+    "    s2.s1.b.offset_of\n";
 
     TEST_COMPILE(src);
 }
@@ -73,8 +73,8 @@ TEST_F(XOfOperatorTest, OffsetOfNestedUsingType)
     "  var c: U32 = 1\n"
     "actor Main\n"
     "  new create(env: Env) =>\n"
-    "    offsetof S2.s1.a\n"
-    "    offsetof S2.s1.b\n";
+    "    S2.s1.a.offset_of\n"
+    "    S2.s1.b.offset_of\n";
 
     TEST_COMPILE(src);
 }
@@ -88,7 +88,7 @@ TEST_F(XOfOperatorTest, OffsetOfFailNotField)
     "actor Main\n"
     "  new create(env: Env) =>\n"
     "    var s: S = S\n"
-    "    offsetof s\n";
+    "    s.offset_of\n";
 
     TEST_ERRORS_1(src, "can't take the offset of a var local");
 }
@@ -101,7 +101,7 @@ TEST_F(XOfOperatorTest, OffsetOfFailOnlyType)
     "  var b: U32 = 1\n"
     "actor Main\n"
     "  new create(env: Env) =>\n"
-    "    offsetof S\n";
+    "    S.offset_of\n";
 
     TEST_ERRORS_1(src, "can only take the offset of a field");
 }
@@ -117,14 +117,14 @@ TEST_F(XOfOperatorTest, SizeOfSuccess)
     "    var v: I32 = 0\n"
     "    let v2: I32 = 0\n"
     "    var s: S = S\n"
-    "    sizeof S\n"
-    "    sizeof s\n"
-    "    sizeof S.a\n"
-    "    sizeof s.b\n"
-    "    sizeof v\n"
-    "    sizeof v2\n"
-    "    sizeof USize\n"
-    "    sizeof F64\n";
+    "    S.size_of\n"
+    "    s.size_of\n"
+    "    S.a.size_of\n"
+    "    s.b.size_of\n"
+    "    v.size_of\n"
+    "    v2.size_of\n"
+    "    USize.size_of\n"
+    "    F64.size_of\n";
 
   TEST_COMPILE(src);
 }

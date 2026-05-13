@@ -201,8 +201,6 @@ static const lextoken_t keywords[] =
 
   { "digestof", TK_DIGESTOF },
   { "addressof", TK_ADDRESS },
-  { "offsetof", TK_OFFSETOF },
-  { "sizeof", TK_SIZEOF },
   { "alignas", TK_ALIGNAS },
   { "__loc", TK_LOCATION },
 
@@ -268,6 +266,8 @@ static const lextoken_t abstract[] =
   { "literal", TK_LITERAL },
   { "branch", TK_LITERALBRANCH },
   { "opliteral", TK_OPERATORLITERAL },
+  { "offsetof", TK_OFFSETOF },
+  { "sizeof", TK_SIZEOF },
 
   { "typeparams", TK_TYPEPARAMS },
   { "typeparam", TK_TYPEPARAM },

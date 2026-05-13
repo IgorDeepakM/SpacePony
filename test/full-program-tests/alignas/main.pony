@@ -9,13 +9,13 @@ struct TT
 
 struct TT2[A]
   var x1: I8 = 33
-  var alignas(4 * sizeof A) x2: U32 = 44
+  var alignas(4 * A.size_of) x2: U32 = 44
 
 struct alignas(64) TT3
   var x1: I8 = 33
   var x2: U32 = 44
 
-struct alignas(sizeof A * 64) TT4[A]
+struct alignas(A.size_of * 64) TT4[A]
   var x1: I8 = 33
   var x2: U32 = 44
 
@@ -34,12 +34,12 @@ actor Main
       return
     end
 
-    if (offsetof tt.x2) != 64 then
+    if tt.x2.offset_of != 64 then
       @pony_exitcode(2)
       return
     end
 
-    if (sizeof tt) != 128 then
+    if tt.size_of != 128 then
       @pony_exitcode(3)
       return
     end
@@ -55,12 +55,12 @@ actor Main
       return
     end
 
-    if (offsetof tt2.x2) != 16 then
+    if tt2.x2.offset_of != 16 then
       @pony_exitcode(5)
       return
     end
 
-    if (sizeof tt2) != 32 then
+    if tt2.size_of != 32 then
       @pony_exitcode(6)
       return
     end
@@ -71,7 +71,7 @@ actor Main
 
     let spacer = CFixedSizedArray[U8, 55](0)
 
-    if (sizeof tt3) != 64 then
+    if tt3.size_of != 64 then
       @pony_exitcode(7)
       return
     end
@@ -87,7 +87,7 @@ actor Main
   for i in Range(0, 100) do
     let tt4: TT4[I32] = TT4[I32]
 
-    if (sizeof tt4) != 256 then
+    if tt4.size_of != 256 then
       @pony_exitcode(9)
       return
     end

@@ -933,6 +933,20 @@ static ast_result_t syntax_local(pass_opt_t* opt, ast_t* ast)
 }
 
 
+static ast_result_t syntax_fvar_flet(pass_opt_t* opt, ast_t* ast)
+{
+  const char* name = ast_name(ast_child(ast));
+  if(name == stringtab("size_of") || name == stringtab("offset_of"))
+  {
+    ast_error(opt->check.errors, ast, "cannot name a field variable '%s' "
+      "because it is a reserved name", name);
+    return AST_ERROR;
+  }
+
+  return AST_OK;
+}
+
+
 static ast_result_t syntax_embed(pass_opt_t* opt, ast_t* ast)
 {
   if(ast_id(ast_parent(ast)) != TK_MEMBERS)
@@ -1836,6 +1850,8 @@ ast_result_t pass_syntax(ast_t** astp, pass_opt_t* options)
     case TK_ERROR:      r = syntax_return(options, ast, 0); break;
     case TK_LET:
     case TK_VAR:        r = syntax_local(options, ast); break;
+    case TK_FLET:
+    case TK_FVAR:       r = syntax_fvar_flet(options, ast); break;
     case TK_EMBED:      r = syntax_embed(options, ast); break;
     case TK_TYPEPARAM:  r = syntax_type_param(options, ast); break;
     case TK_IFDEF:      r = syntax_ifdef(options, ast); break;

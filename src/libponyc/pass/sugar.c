@@ -1567,6 +1567,45 @@ static bool fold_string_concat(ast_t** astp)
 }
 
 
+static ast_result_t sugar_dot(pass_opt_t* opt, ast_t** astp)
+{
+  ast_t* ast = *astp;
+
+  ast_t* child = ast_child(ast);
+  ast_t* id = ast_sibling(child);
+
+  if(id == NULL || ast_id(id) != TK_ID)
+  {
+    return AST_OK;
+  }
+
+  const char* name = ast_name(id);
+
+  if(name == stringtab("size_of") || name == stringtab("offset_of"))
+  {
+    token_id token;
+    if(name == stringtab("size_of"))
+    {
+      token = TK_SIZEOF;
+    }
+    else if(name == stringtab("offset_of"))
+    {
+      token = TK_OFFSETOF;
+    }
+
+    BUILD(new_tree, ast,
+      NODE(token,
+        TREE(ast_dup(ast_child(ast)))
+      )
+    );
+
+    ast_replace(astp, new_tree);
+  }
+
+  return AST_OK;
+}
+
+
 ast_result_t pass_sugar(ast_t** astp, pass_opt_t* options)
 {
   ast_t* ast = *astp;
@@ -1640,6 +1679,7 @@ ast_result_t pass_sugar(ast_t** astp, pass_opt_t* options)
     case TK_BARELAMBDATYPE:      return sugar_lambdatype(options, astp);
     case TK_BARELAMBDA:          return sugar_barelambda(options, ast);
     case TK_LOCATION:            return sugar_location(options, astp);
+    case TK_DOT:                 return sugar_dot(options, astp);
     default:                     return AST_OK;
   }
 }

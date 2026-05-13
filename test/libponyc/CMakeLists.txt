@@ -40,6 +40,7 @@ add_executable(libponyc.tests
     refer.cc
     scope.cc
     signature.cc
+    special_member_access.cc
     stable_type.cc
     sugar.cc
     sugar_expr.cc
@@ -57,7 +58,6 @@ add_executable(libponyc.tests
     value_dependent_types.cc
     verify.cc
     with.cc
-    x_of_operator.cc
 )
 
 target_compile_definitions(libponyc.tests PRIVATE
