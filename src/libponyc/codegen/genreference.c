@@ -495,13 +495,7 @@ LLVMValueRef gen_alignof(compile_t* c, ast_t* ast)
       uint32_t index;
       get_fieldinfo(br_type, bt, right, &def, &field, &index);
 
-      ast_t* field_type = ast_childidx(field, 1);
-
-      ast_t* fr_type = deferred_reify(c->frame->reify, field_type, c->opt);
-      reach_type_t* ft = reach_type(c->reach, fr_type, c->opt);
-
       ast_free_unattached(br_type);
-      ast_free_unattached(fr_type);
 
       compile_type_t* b_c_t = (compile_type_t*)bt->c_type;
 
