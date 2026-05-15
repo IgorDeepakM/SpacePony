@@ -12,7 +12,7 @@ SpacePony is an experimental fork of the [Pony programming language](https://git
   * [addressof](#addressof)
   * [Constant values in generics](#constant-values-in-generics)
   * [CFixedSizedArray](#cfixedsizedarray)
-  * [offset_of and size_of](#offset_of-and-size_of)
+  * [offset_of, size_of and align_of](#offset_of-size_of-and-align_of)
   * [FFI pass by value parameters](#ffi-pass-by-value-parameters)
   * [Inline assembler support](#inline-assembler-support)
   * [Atomics](#atomics)
@@ -256,7 +256,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   var ar = Array.from_cpointer(s.buf.cpointer(), s.size)
   ```
 
-### offset_of and size_of
+### offset_of, size_of and align_of
 
 * Added offset_of special member access variable in order to get an offset of a member in a struct or class.
 
@@ -289,9 +289,26 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
   let sz_s_y_2_ = S.y.size_of // Also with the type directly as base
   ```
 
-* offset_of and size_of are reserved variable names and cannot be used as general member variables.
+* Added align_of special member access variable in order to obtain the alignment in memory of the type, variable or field. It works in similar fashion as size_of.
 
-* Keep in mind that both size_of and offset_of are not compile time constants, meaning they do not behave like a literal and they can unfortunately not be used as type values in generics. size_of/offset_of are created during the code generation step becoming a compile time constant in the LLVM code and not before that. The reason for this is the the SpacePony compiler uses LLVM in order build target dependent aggregate types in the code generation pass which is one of the last passes. It is possible to make size_of and offset_of into a literal but that would require using LLVM to build up the types in earlier passes.
+```pony
+  struct S
+    var x: USize
+    var y: USize
+
+  ...
+
+  var s = S
+  let sz_u32 = U32.align_of // Any base type can be used
+  let sz_s = s.align_of // Gets the alignment of the struct s in memory
+  let sz_s_2 = S.align_of // Type can be used directly as base in a dot expression
+  let sz_s_y = s.y.align_of // alignment of members can be used and this is the alignment in memory, not offset alignment
+  let sz_s_y_2_ = S.y.align_of // Also with the type directly as base
+  ```
+
+* offset_of, size_of and align_of are reserved variable names and cannot be used as general member variables.
+
+* Keep in mind that the result of these operations are not compile time constants, meaning they do not behave like a literal and they can unfortunately not be used as type values in generics. The values are created during the code generation step becoming a compile time constant in the LLVM code and not before that. The reason for this is the the SpacePony compiler uses LLVM in order build target dependent aggregate types in the code generation pass which is one of the last passes. It is possible to make size_of, offset_of and align_of into a literal but that would require using LLVM to build up the types in earlier passes.
 
 ### FFI pass by value parameters
 
