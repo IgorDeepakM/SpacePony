@@ -425,6 +425,7 @@ LLVMValueRef gen_offsetof(compile_t* c, ast_t* ast)
   switch (ast_id(expr))
   {
     case TK_FVARREF:
+    case TK_FLETREF:
     case TK_EMBEDREF:
     {
       return gen_fieldoffset(c, expr);
@@ -468,6 +469,86 @@ LLVMValueRef gen_sizeof(compile_t* c, ast_t* ast)
   ast_free_unattached(r_type);
 
   return LLVMConstInt(c->intptr, size_of_type, false);
+}
+
+LLVMValueRef gen_alignof(compile_t* c, ast_t* ast)
+{
+  ast_t* left = ast_child(ast);
+
+  size_t align_of_value = 0;
+
+  switch(ast_id(left))
+  {
+    case TK_FVARREF:
+    case TK_FLETREF:
+    case TK_EMBEDREF:
+    {
+      AST_GET_CHILDREN(left, base, right);
+
+      ast_t* b_type = ast_type(base);
+
+      ast_t* br_type = deferred_reify(c->frame->reify, b_type, c->opt);
+      reach_type_t* bt = reach_type(c->reach, br_type, c->opt);
+
+      ast_t* def;
+      ast_t* field;
+      uint32_t index;
+      get_fieldinfo(br_type, bt, right, &def, &field, &index);
+
+      ast_t* field_type = ast_childidx(field, 1);
+
+      ast_t* fr_type = deferred_reify(c->frame->reify, field_type, c->opt);
+      reach_type_t* ft = reach_type(c->reach, fr_type, c->opt);
+
+      ast_free_unattached(br_type);
+      ast_free_unattached(fr_type);
+
+      compile_type_t* b_c_t = (compile_type_t*)bt->c_type;
+
+      if(bt->custom_alignment != 0)
+      {
+        align_of_value = bt->custom_alignment;
+      }
+      else
+      {
+        align_of_value = (size_t)LLVMABIAlignmentOfType(c->target_data, b_c_t->mem_type);
+      }
+
+      size_t offset = (size_t)LLVMOffsetOfElement(c->target_data, b_c_t->structure, index);
+
+      if(offset != 0)
+      {
+        size_t lowest_bit_set = offset & -offset;
+        if(lowest_bit_set < align_of_value)
+        {
+          align_of_value = lowest_bit_set;
+        }
+      }
+      break;
+    }
+
+    default:
+    {
+      ast_t* l_type = ast_type(left);
+
+      ast_t* rl_type = deferred_reify(c->frame->reify, l_type, c->opt);
+      reach_type_t* lt = reach_type(c->reach, rl_type, c->opt);
+      ast_free_unattached(rl_type);
+
+      if(lt->custom_alignment != 0)
+      {
+        align_of_value = lt->custom_alignment;
+      }
+      else
+      {
+        compile_type_t* c_t = (compile_type_t*)lt->c_type;
+        align_of_value = (size_t)LLVMABIAlignmentOfType(c->target_data, c_t->mem_type);
+      }
+      break;
+    }
+  }
+
+  return LLVMConstInt(c->intptr, align_of_value, false);
 }
 
 static LLVMValueRef gen_digestof_box(compile_t* c, reach_type_t* type,
@@ -892,6 +973,10 @@ LLVMValueRef gen_constant_object(compile_t* c, ast_t* ast)
     ponyint_pool_free_size(buf_size, args);
 
     LLVMValueRef g_inst = LLVMAddGlobal(c->module, c_t->structure, obj_name);
+    if(t->custom_alignment != 0)
+    {
+      LLVMSetAlignment(g_inst, t->custom_alignment);
+    }
     LLVMSetInitializer(g_inst, inst);
     LLVMSetGlobalConstant(g_inst, true);
     LLVMSetLinkage(g_inst, LLVMPrivateLinkage);

@@ -337,7 +337,8 @@ static bool type_access(pass_opt_t* opt, ast_t** astp)
       }
 
       if(parent != NULL &&
-         (ast_id(parent) == TK_OFFSETOF || ast_id(parent) == TK_SIZEOF))
+         (ast_id(parent) == TK_OFFSETOF || ast_id(parent) == TK_SIZEOF ||
+          ast_id(parent) == TK_ALIGNOF))
       {
         ast_t* typeref = ast_child(ast);
         pony_assert(ast_id(typeref) == TK_TYPEREF);

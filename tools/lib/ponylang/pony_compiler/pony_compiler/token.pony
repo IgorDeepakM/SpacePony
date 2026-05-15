@@ -216,6 +216,7 @@ primitive TokenIds
     tk_address
     tk_offsetof
     tk_sizeof
+    tk_alignof
     tk_alignas
     tk_location
 
@@ -467,6 +468,7 @@ primitive TokenIds
     | TokenIds.tk_address => "TK_ADDRESS"
     | TokenIds.tk_offsetof => "TK_OFFSETOF"
     | TokenIds.tk_sizeof => "TK_SIZEOF"
+    | TokenIds.tk_alignof => "TK_ALIGNOF"
     | TokenIds.tk_alignas => "TK_ALIGNAS"
     | TokenIds.tk_location => "TK_LOCATION"
     | TokenIds.tk_program => "TK_PROGRAM"
