@@ -1583,7 +1583,8 @@ static ast_result_t sugar_dot(pass_opt_t* opt, ast_t** astp)
 
   const char* name = ast_name(id);
 
-  if(name == stringtab("size_of") || name == stringtab("offset_of"))
+  if(name == stringtab("size_of") || name == stringtab("offset_of") ||
+     name == stringtab("align_of"))
   {
     token_id token = TK_ERROR;
     if(name == stringtab("size_of"))
@@ -1593,6 +1594,10 @@ static ast_result_t sugar_dot(pass_opt_t* opt, ast_t** astp)
     else if(name == stringtab("offset_of"))
     {
       token = TK_OFFSETOF;
+    }
+    else if(name == stringtab("align_of"))
+    {
+      token = TK_ALIGNOF;
     }
 
     BUILD(new_tree, ast,

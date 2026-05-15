@@ -15,6 +15,7 @@ add_executable(libponyc.tests
     codegen_ffi.cc
     codegen_optimisation.cc
     compiler_serialisation.cc
+    data_layout_operations.cc
     dontcare.cc
     ffi.cc
     finalisers.cc
@@ -40,7 +41,6 @@ add_executable(libponyc.tests
     refer.cc
     scope.cc
     signature.cc
-    special_member_access.cc
     stable_type.cc
     sugar.cc
     sugar_expr.cc

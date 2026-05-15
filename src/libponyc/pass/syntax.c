@@ -231,7 +231,8 @@ static bool check_permission(pass_opt_t* opt, const permission_def_t* def,
 
 static bool is_reserved_member_name(const char* name)
 {
-  if(name == stringtab("size_of") || name == stringtab("offset_of"))
+  if(name == stringtab("size_of") || name == stringtab("offset_of") ||
+     name == stringtab("align_of"))
   {
     return true;
   }

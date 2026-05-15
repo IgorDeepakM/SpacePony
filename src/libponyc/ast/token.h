@@ -184,6 +184,7 @@ typedef enum token_id
   TK_ADDRESS,
   TK_OFFSETOF,
   TK_SIZEOF,
+  TK_ALIGNOF,
   TK_ALIGNAS,
   TK_LOCATION,
 

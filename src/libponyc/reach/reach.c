@@ -1391,7 +1391,7 @@ static void reachable_addressof(reach_t* r, deferred_reification_t* reify,
   }
 }
 
-static void reachable_sizeof(reach_t* r, deferred_reification_t* reify,
+static void reachable_x_of(reach_t* r, deferred_reification_t* reify,
   ast_t* ast, pass_opt_t* opt)
 {
   ast_t* expr = ast_child(ast);
@@ -1552,7 +1552,8 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
         break;
 
       case TK_SIZEOF:
-        reachable_sizeof(r, reify, ast, opt);
+      case TK_ALIGNOF:
+        reachable_x_of(r, reify, ast, opt);
         break;
 
       case TK_ASM:

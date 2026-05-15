@@ -400,6 +400,7 @@ bool expr_typeref(pass_opt_t* opt, ast_t** astp)
     case TK_TILDE:
     case TK_CHAIN:
     case TK_SIZEOF:
+    case TK_ALIGNOF:
       break;
 
     case TK_CALL:
@@ -831,41 +832,9 @@ bool expr_offsetof(pass_opt_t* opt, ast_t* ast)
   switch (ast_id(expr))
   {
     case TK_FVARREF:
-    case TK_FUNREF:
-    case TK_BEREF:
-    case TK_EMBEDREF:
-    case TK_TYPEREF:
-      break;
-
     case TK_FLETREF:
-      ast_error(opt->check.errors, ast,
-        "can't take the offset of a let field");
-      return false;
-
-    case TK_VARREF:
-      ast_error(opt->check.errors, ast,
-        "can't take the offset of a var local");
-      return false;
-
-    case TK_TUPLEELEMREF:
-      ast_error(opt->check.errors, ast,
-        "can't take the offset of a tuple element");
-      return false;
-
-    case TK_LETREF:
-      ast_error(opt->check.errors, ast,
-        "can't take the offset of a let local");
-      return false;
-
-    case TK_PARAMREF:
-      ast_error(opt->check.errors, ast,
-        "can't take the offset of a function parameter");
-      return false;
-
-    case TK_VALUEFORMALPARAMREF:
-      ast_error(opt->check.errors, ast,
-        "can't take the offset of a value type parameter");
-      return false;
+    case TK_EMBEDREF:
+      break;
 
     default:
       ast_error(opt->check.errors, ast,
@@ -909,6 +878,39 @@ bool expr_sizeof(pass_opt_t* opt, ast_t* ast)
   ast_t* expr_type = ast_type(expr);
 
   if (is_typecheck_error(expr_type))
+    return false;
+
+  ast_t* type = type_builtin(opt, expr_type, "USize");
+
+  ast_settype(ast, type);
+  return true;
+}
+
+bool expr_alignof(pass_opt_t* opt, ast_t* ast)
+{
+  ast_t* expr = ast_child(ast);
+
+  switch(ast_id(expr))
+  {
+    case TK_FVARREF:
+    case TK_FLETREF:
+    case TK_EMBEDREF:
+    case TK_TYPEREF:
+    case TK_VARREF:
+    case TK_LETREF:
+    case TK_TUPLEELEMREF:
+    case TK_PARAMREF:
+      break;
+
+    default:
+      ast_error(opt->check.errors, ast,
+        "can't use alignof on this expression");
+      return false;
+  }
+
+  ast_t* expr_type = ast_type(expr);
+
+  if(is_typecheck_error(expr_type))
     return false;
 
   ast_t* type = type_builtin(opt, expr_type, "USize");
