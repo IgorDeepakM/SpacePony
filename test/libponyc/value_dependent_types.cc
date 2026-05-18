@@ -9,6 +9,8 @@
 #define TEST_COMPILE_REACH(src) DO(test_compile(src, "reach"))
 #define TEST_ERROR_REACH(src) DO(test_error(src, "reach"))
 
+#define TEST_COMPILE_IR(src) DO(test_compile(src, "ir"))
+
 class VDTTest: public PassTest
 {};
 
@@ -627,3 +629,25 @@ TEST_F(VDTTest, VDTTypeUseReturnTypeLaterInAst)
   TEST_COMPILE_REACH(src);
 }
 
+TEST_F(VDTTest, RecursiveValueTypeParameterConstraintCompiles)
+{
+  const char* src =
+    "actor Main\n"
+    "  new create(env: Env) => None\n"
+
+    "  fun flatten[n: USize, \\allowbaretypes\\ A: CFixedSizedArray[CFixedSizedArray[A, n], n] #read](arrayin: CFixedSizedArray[CFixedSizedArray[A, n], n])\n"
+    "    : CFixedSizedArray[A, = n * 2]\n"
+    "  =>\n"
+    "    let rv: CFixedSizedArray[A, = n * 2] = CFixedSizedArray[A, = n * 2]\n"
+    "    var i: USize = 0\n"
+    "    for f in arrayin.values() do\n"
+    "      for g in f.values() do\n"
+    "        try\n"
+    "          rv(i)? = g\n"
+    "        end\n"
+    "      end\n"
+    "    end\n"
+    "    rv";
+
+  TEST_COMPILE_IR(src);
+}

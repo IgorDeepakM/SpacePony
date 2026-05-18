@@ -52,6 +52,39 @@ static void struct_cant_be_x(ast_t* sub, ast_t* super, errorframe_t* errorf,
     ast_print_type(sub), ast_print_type(super), entity);
 }
 
+static ast_t* get_valueformalarg_def(ast_t* ast)
+{
+  if(ast_id(ast) != TK_VALUEFORMALPARAMREF && ast_id(ast) != TK_VALUEFORMALARG)
+  {
+    return NULL;
+  }
+
+  ast_t* parent = ast_parent(ast);
+  ast_t* parent2 = ast_parent(parent);
+
+  ast_t* def = NULL;
+
+  switch(ast_id(parent2))
+  {
+    case TK_NOMINAL:
+    case TK_TYPEREF:
+      def = (ast_t*)ast_data(parent2);
+      break;
+
+    default:
+      pony_assert(false);
+      break;
+  }
+
+  size_t index = ast_index(ast);
+
+  ast_t* type_params = ast_childidx(def, 1);
+
+  ast_t* typeparam = ast_childidx(type_params, index);
+
+  return typeparam;
+}
+
 // Structural AST equality on type expressions, used by check_assume to
 // recognize when the current (sub, super) pair has already been pushed
 // onto the assume stack. This must NOT call back into the subtype
@@ -114,6 +147,29 @@ static bool exact_type(ast_t* a, ast_t* b)
       // Children of TK_TYPEPARAMREF: id, cap, ephemeral.
       return (ast_id(ast_childidx(a, 1)) == ast_id(ast_childidx(b, 1)))
         && (ast_id(ast_childidx(a, 2)) == ast_id(ast_childidx(b, 2)));
+    }
+
+    case TK_VALUEFORMALARG:
+      return false;
+
+    case TK_VALUEFORMALPARAMREF:
+    {
+      ast_t* a_data = (ast_t*)ast_data(a);
+      ast_t* b_data = (ast_t*)ast_data(b);
+
+      if(a_data != b_data)
+      {
+        return false;
+      }
+
+      ast_t* a_def = get_valueformalarg_def(a);
+      ast_t* b_def = get_valueformalarg_def(b);
+      if(a_def == NULL || b_def == NULL)
+      {
+        return false;
+      }
+
+      return a_def == b_def;
     }
 
     case TK_TYPEALIASREF:
@@ -375,36 +431,6 @@ bool is_literal_equal(ast_t* a, ast_t* b, pass_opt_t* opt, bool allow_eq_list)
   return false;
 }
 
-static ast_t* get_valueformalarg_type(ast_t* ast)
-{
-  ast_t* parent = ast_parent(ast);
-  ast_t* parent2 = ast_parent(parent);
-
-  ast_t* def = NULL;
-
-  switch(ast_id(parent2))
-  {
-    case TK_NOMINAL:
-    case TK_TYPEREF:
-      def = (ast_t*)ast_data(parent2);
-      break;
-
-    default:
-      pony_assert(false);
-      break;
-  }
-
-  size_t index = ast_index(ast);
-
-  ast_t* type_params = ast_childidx(def, 1);
-
-  ast_t* typeparam = ast_childidx(type_params, index);
-
-  ast_t* arg_type = ast_childidx(typeparam, 1);
-
-  return arg_type;
-}
-
 static bool is_eq_typeargs(ast_t* a, ast_t* b, errorframe_t* errorf,
   pass_opt_t* opt)
 {
@@ -431,7 +457,10 @@ static bool is_eq_typeargs(ast_t* a, ast_t* b, errorframe_t* errorf,
       if (!is_literal_equal(lit_a, lit_b, opt, true))
         ret = false;
 
-      if (!is_eqtype(get_valueformalarg_type(a_arg), get_valueformalarg_type(b_arg), errorf, opt))
+      ast_t* typeparam_a = get_valueformalarg_def(a_arg);
+      ast_t* typeparam_b = get_valueformalarg_def(b_arg);
+
+      if (!is_eqtype(ast_childidx(typeparam_a, 1), ast_childidx(typeparam_b, 1), errorf, opt))
         ret = false;
     }
     else
