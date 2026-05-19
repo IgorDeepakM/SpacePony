@@ -1533,3 +1533,75 @@ TEST_F(SubTypeTest, IsExactTypeWalksIntersectionTypes)
   ASSERT_TRUE(is_exact_type(t_a, t_b));
   ASSERT_FALSE(is_exact_type(t_a, t_c));
 }
+
+TEST_F(SubTypeTest, IsExactTypeValueTypeParamDistinguishesTypeParamScopes)
+{
+  const char* src =
+    "class _W[n: USize]\n"
+
+    "class _C1[u: USize]\n"
+    "  fun ref method_c1(p_in_c1: _W[u]) => None\n"
+
+    "class _C2[u: USize]\n"
+    "  fun ref method_c2(p_in_c2: _W[u]) => None\n"
+
+    "actor Main\n"
+    "  new create(env: Env) => None";
+
+  TEST_COMPILE(src);
+
+  ast_t* t_c1 = type_of("p_in_c1");
+  ast_t* t_c2 = type_of("p_in_c2");
+  ASSERT_NE((void*)NULL, t_c1);
+  ASSERT_NE((void*)NULL, t_c2);
+
+  ASSERT_STREQ(ast_print_type(t_c1), ast_print_type(t_c2));
+
+  ASSERT_FALSE(is_exact_type(t_c1, t_c2));
+}
+
+TEST_F(SubTypeTest, IsExactTypeValueTypeParamDistinguishesMethodTypeParamScopes)
+{
+  const char* src =
+    "class _W[n: USize]\n"
+
+    "class _C\n"
+    "  fun ref method_a[u: USize](p_in_a: _W[u]) => None\n"
+    "  fun ref method_b[u: USize](p_in_b: _W[u]) => None\n"
+
+    "actor Main\n"
+    "  new create(env: Env) => None";
+
+  TEST_COMPILE(src);
+
+  ast_t* t_a = type_of("p_in_a");
+  ast_t* t_b = type_of("p_in_b");
+  ASSERT_NE((void*)NULL, t_a);
+  ASSERT_NE((void*)NULL, t_b);
+
+  ASSERT_STREQ(ast_print_type(t_a), ast_print_type(t_b));
+
+  ASSERT_FALSE(is_exact_type(t_a, t_b));
+}
+
+TEST_F(SubTypeTest, IsExactTypeValueTypeParamMatchesSameTypeParamRef)
+{
+  const char* src =
+    "class _W[u: USize]\n"
+
+    "class _C[v: USize]\n"
+    "  fun ref method_a(p_a: _W[v]) => None\n"
+    "  fun ref method_b(p_b: _W[v]) => None\n"
+
+    "actor Main\n"
+    "  new create(env: Env) => None";
+
+  TEST_COMPILE(src);
+
+  ast_t* t_a = type_of("p_a");
+  ast_t* t_b = type_of("p_b");
+  ASSERT_NE((void*)NULL, t_a);
+  ASSERT_NE((void*)NULL, t_b);
+
+  ASSERT_TRUE(is_exact_type(t_a, t_b));
+}

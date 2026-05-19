@@ -67,6 +67,7 @@ static const char* const _builtin =
   "  new create(a: USize = 0) => a\n"
   "  fun u64(): U64 => compile_intrinsic\n"
   "  fun op_xor(a: USize): USize => this xor a\n"
+  "  fun mul(a: USize): USize => this * a\n"
   "primitive ISize is Real[ISize]"
   "  new create(a: ISize = 0) => a\n"
   "  fun neg(): ISize => -this\n"
@@ -119,7 +120,20 @@ static const char* const _builtin =
   "  fun apply[A](obj: A) => compile_intrinsic\n"
   "struct NullablePointer[\\allowbaretypes\\ A]\n"
   "  new create(that: A) => compile_intrinsic\n"
-  "struct RuntimeOptions\n";
+  "struct RuntimeOptions\n"
+  "class CFixedSizedArrayValues[\\allowbaretypes\\ A, _size: USize, \\allowbaretypes\\ B: CFixedSizedArray[A, _size] #read] is Iterator[B->A]\n"
+  "  let _array : B\n"
+  "  var _i : USize\n"
+  "  new create(array : B) =>\n"
+  "  _array = array\n"
+  "  _i = 0\n"
+  "  fun has_next() : Bool => false\n"
+  "  fun ref next() : B->A ? => error\n"
+  "struct CFixedSizedArray[\\allowbaretypes\\ A, _size: USize]\n"
+  "fun values(): CFixedSizedArrayValues[A, _size, this->CFixedSizedArray[A, _size]]^ =>\n"
+  "  CFixedSizedArrayValues[A, _size, this->CFixedSizedArray[A, _size]](this)\n"
+  "  fun apply(index: USize) : this->A ? => error\n"
+  "  fun ref update(i: USize, value: A): A^ ? => error\n";
 
 
 void Main_runtime_override_defaults_oo(void* opt)

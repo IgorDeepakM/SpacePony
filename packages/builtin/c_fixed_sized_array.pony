@@ -211,7 +211,7 @@ fun pairs(): CFixedSizedArrayPairs[A, _size, this->CFixedSizedArray[A, _size]]^ 
   CFixedSizedArrayPairs[A, _size, this->CFixedSizedArray[A, _size]](this)
 
 
-class CFixedSizedArrayKeys[A, _size: USize, \allowbaretypes\ B: CFixedSizedArray[A, _size] #read] is Iterator[USize]
+class CFixedSizedArrayKeys[\allowbaretypes\ A, _size: USize, \allowbaretypes\ B: CFixedSizedArray[A, _size] #read] is Iterator[USize]
   let _array: B
   var _i: USize
 
@@ -230,7 +230,7 @@ class CFixedSizedArrayKeys[A, _size: USize, \allowbaretypes\ B: CFixedSizedArray
     end
 
 
-class CFixedSizedArrayValues[A, _size: USize, \allowbaretypes\ B: CFixedSizedArray[A, _size] #read] is Iterator[B->A]
+class CFixedSizedArrayValues[\allowbaretypes\ A, _size: USize, \allowbaretypes\ B: CFixedSizedArray[A, _size] #read] is Iterator[B->A]
   let _array: B
   var _i: USize
 
@@ -245,7 +245,7 @@ class CFixedSizedArrayValues[A, _size: USize, \allowbaretypes\ B: CFixedSizedArr
     _array(_i = _i + 1)?
 
 
-class CFixedSizedArrayPairs[A, _size: USize, \allowbaretypes\ B: CFixedSizedArray[A, _size] #read] is Iterator[(USize, B->A)]
+class CFixedSizedArrayPairs[\allowbaretypes\ A, _size: USize, \allowbaretypes\ B: CFixedSizedArray[A, _size] #read] is Iterator[(USize, B->A)]
   let _array: B
   var _i: USize
 
