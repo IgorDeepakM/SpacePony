@@ -589,11 +589,25 @@ extern "C" LLVMTypeRef lower_param(compile_t* c, LoweringObject* lowering_object
 
   auto target_data = unwrap(c->target_data);
 
-  // If no lowering is needed then just return with the same pointer to structure type
-  if(!pass_by_value || !is_param_value_lowering_needed(c, pt))
+  if(!pass_by_value)
   {
-    count_registers(c, *lowering_object, unwrap(p_t->use_type));
     return p_t->use_type;
+  }
+
+  // If no lowering is needed then just return with the same pointer to structure type
+  if(!is_param_value_lowering_needed(c, pt))
+  {
+    Type* use_type = unwrap(p_t->use_type);
+    count_registers(c, *lowering_object, use_type);
+    if(pt->underlying == TK_TUPLETYPE)
+    {
+      Type* ptr_type = PointerType::get(use_type, 0);
+      return wrap(ptr_type);
+    }
+    else
+    {
+      return p_t->use_type;
+    }
   }
 
   StructType* s = get_structure_type(c, pt);
@@ -785,6 +799,13 @@ extern "C" LLVMValueRef load_lowered_param_value_from_ptr(compile_t* c, LLVMValu
   auto builder = unwrap(c->builder);
 
   compile_type_t* p_c_t = (compile_type_t*)real_type->c_type;
+
+  if(real_type->underlying == TK_TUPLETYPE)
+  {
+    Value* alloca_ptr = builder->CreateAlloca(unwrap(p_c_t->use_type));
+    builder->CreateStore(unwrap(ptr), alloca_ptr);
+    ptr = wrap(alloca_ptr);
+  }
 
   // If no lowering is needed then just return the pointer and byval will be used
   if(!is_param_value_lowering_needed(c, real_type))

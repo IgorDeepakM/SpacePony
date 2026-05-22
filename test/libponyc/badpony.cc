@@ -1353,18 +1353,6 @@ TEST_F(BadPonyTest, AsFromUninferredReference)
     "cannot infer type of b");
 }
 
-TEST_F(BadPonyTest, FFIDeclaredTupleArgument)
-{
-  const char* src =
-    "use @foo[None](x: (U8, U8))\n"
-
-    "actor Main\n"
-    "  new create(env: Env) =>\n"
-    "    @foo((0, 0))";
-
-  TEST_ERRORS_1(src, "cannot pass tuples as FFI arguments");
-}
-
 TEST_F(BadPonyTest, FFICallInDefaultInterfaceFun)
 {
   const char* src =

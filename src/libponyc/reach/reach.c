@@ -202,7 +202,9 @@ static void set_method_types(reach_t* r, reach_method_t* m,
       m->params[i].name = ast_name(ast_child(param));
       m->params[i].ast = p_type;
       m->params[i].type = add_type(r, p_type, opt, m->fun);
-      m->params[i].pass_by_value = ast_has_annotation(p_type, PONY_BYVAL_ANNOTATION);
+      m->params[i].pass_by_value = (m->cap == TK_AT) &&
+        (ast_has_annotation(p_type, PONY_BYVAL_ANNOTATION) ||
+         ast_id(p_type) == TK_TUPLETYPE);
 
       if((ast_id(p_type) != TK_NOMINAL) && (ast_id(p_type) != TK_TYPEPARAMREF))
       {
@@ -229,7 +231,9 @@ static void set_method_types(reach_t* r, reach_method_t* m,
         }
       }
       else
+      {
         m->params[i].cap = ast_id(cap_fetch(p_type));
+      }
 
       ++i;
       param = ast_sibling(param);

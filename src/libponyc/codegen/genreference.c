@@ -59,7 +59,11 @@ LLVMValueRef gen_param(compile_t* c, ast_t* ast)
 
   // Since parameter passed by value generation a heap allocated
   // shadow variable, it must be instead loaded.
-  if(ast_has_annotation(ast_childidx(def, 1), PONY_BYVAL_ANNOTATION))
+
+  ast_t* param_type = ast_childidx(def, 1);
+
+  if((c->frame->bare_function && ast_id(param_type) == TK_TUPLETYPE) ||
+      ast_has_annotation(param_type, PONY_BYVAL_ANNOTATION))
   {
     return gen_localload(c, ast);
   }
@@ -68,24 +72,14 @@ LLVMValueRef gen_param(compile_t* c, ast_t* ast)
     if(!c->frame->bare_function)
       index++;
 
-    ast_t* fun = ast_parent(ast_parent(def));
-    if(ast_id(fun) == TK_FUN)
+    reach_method_t* current_m = c->frame->m;
+    compile_method_t* c_m = (compile_method_t*)current_m->c_method;
+
+    // If return by value and not lowered (sret pointer), increase the
+    // parameter index
+    if(current_m->return_by_value && !c_m->return_value_lowered)
     {
-      // If return declaration is passed by value, then
-      // parameters are shifted one step
-      // TODO: this can be done better by having a return_by_value
-      // in the frame structure like bare_function.
-      ast_t* ret_decl = ast_childidx(fun, 4);
-      ast_t* reified_ret = deferred_reify(c->frame->reify, ret_decl, c->opt);
-      if(ast_has_annotation(reified_ret, PONY_BYVAL_ANNOTATION))
-      {
-        reach_type_t* t = reach_type(c->reach, reified_ret, c->opt);
-        if(!is_return_value_lowering_needed(c, t))
-        {
-          index++;
-        }
-      }
-      ast_free_unattached(reified_ret);
+      index++;
     }
 
     return LLVMGetParam(codegen_fun(c), index);
@@ -241,6 +235,9 @@ static LLVMValueRef make_tupleelemptr(compile_t* c, LLVMValueRef l_value,
   (void)l_type;
   pony_assert(ast_id(l_type) == TK_TUPLETYPE);
   int index = (int)ast_int(right)->low;
+
+  LLVMTypeRef tt = LLVMTypeOf(l_value);
+  LLVMTypeKind tk = LLVMGetTypeKind(tt);
 
   return LLVMBuildExtractValue(c->builder, l_value, index, "");
 }
