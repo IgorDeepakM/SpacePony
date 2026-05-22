@@ -66,7 +66,7 @@ static bool declared_ffi(pass_opt_t* opt, ast_t* call, ast_t* decl)
       return false;
     }
 
-    ast_t* a_type = alias(arg_type);
+    ast_t* a_type = alias(arg_type, opt);
     errorframe_t info = NULL;
 
     if(!is_allowed_pointer_conversion(a_type, p_type, opt, &info))

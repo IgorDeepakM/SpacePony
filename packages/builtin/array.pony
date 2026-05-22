@@ -1,4 +1,4 @@
-class Array[\allowbaretypes\ A] is Seq[A]
+class Array[\allowbaretypes, noconstraintcheck\ A] is Seq[A]
   """
   Contiguous, resizable memory to store elements of type A.
 

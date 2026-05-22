@@ -8,6 +8,7 @@
 #include <ast/stringtab.h>
 #include <pass/pass.h>
 #include <pkg/package.h>
+#include <type/subtype_cache.h>
 #include <../libponyrt/pony.h>
 #include <../libponyrt/mem/pool.h>
 #include <ponyassert.h>
@@ -91,7 +92,7 @@ static const char* const _builtin =
   "  fun op_and(a: Bool): Bool => this and a\n"
   "  fun op_not(): Bool => not this\n"
   "class val String\n"
-  "struct Pointer[\\allowbaretypes\\ A]\n"
+  "struct Pointer[\\allowbaretypes, noconstraintcheck\\ A]\n"
   "  new create() => compile_intrinsic\n"
   "  fun tag is_null(): Bool => compile_intrinsic\n"
   "interface Seq[A]\n"
@@ -104,7 +105,7 @@ static const char* const _builtin =
   "class ArrayValues[A]\n"
   "  fun ref has_next(): Bool => false\n"
   "  fun ref next(): A ? => error\n"
-  "class Array[\\allowbaretypes\\ A] is Seq[A]\n"
+  "class Array[\\allowbaretypes, noconstraintcheck\\ A] is Seq[A]\n"
   "  var _size: USize = 0\n"
   "  var _alloc: USize = 0\n"
   "  var _ptr: Pointer[A] = Pointer[A]\n"
@@ -265,6 +266,14 @@ extern const char* test_argv0;
 
 void PassTest::SetUp()
 {
+  // Reset thread-local subtype-cache state so tests can't inherit it
+  // from one another. The cache otherwise clears at every depth-0
+  // is_x_sub_x entry, but a test that exits without making any
+  // subtype query leaves the previous test's accumulator and
+  // hashmap pinned on this thread. Future cache tests should be
+  // free to assume an empty cache on entry without remembering to
+  // call subtype_cache_clear themselves.
+  subtype_cache_clear();
   pass_opt_init(&opt);
   opt.argv0 = test_argv0;
   codegen_pass_init(&opt);
