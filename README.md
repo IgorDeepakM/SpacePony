@@ -355,7 +355,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 
 * Note pass by value in lambdas is currently essentially a double copy (only inside SpacePony). First the argument is copied to the stack and then it is copied to a heap allocated structure. Why? Because there is no escape analysis and the passed aggregate can be sent or stored somewhere and because of that it cannot be on the stack. There is room for future optimizations regarding this, similar to how Pony can allocate on stack rather than heap.
 
-* It is also possible to return C structs to SpacePony tuples. No \byval\ annotation is needed in this case since tuples are values types by default. In C the struct should be returned by value.
+* It is possible to return C structs to SpacePony tuples. No \byval\ annotation is needed in this case since tuples are values types by default. In C the struct should be returned by value.
 
   ```pony
   use @FFI_Func[(I64, Bool)]()
@@ -364,6 +364,31 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
  
   (let s, let b) = FFI_Func()
   ```
+
+* Tuples as arguments to FFI functions are also possible and they are pass by value by default. C functions can receive tuples as corresponding C structs.
+  ```pony
+  use @FFI_Func[None](x: (I8, I64))
+
+  ...
+
+  let t: (I8, I64) = (1, 2)
+  FI_Func(t)
+  ```
+
+  ```c
+  typedef struct
+  {
+    int8_t x1;
+    int64_t x2;
+  }TupleFromSpacePony;
+
+  void FFI_Func(TupleFromSpacePony t)
+  {
+    ...
+  }
+  ```
+ 
+* Tuples are passed as values according to the lowering C ABI from/to C FFI functions, bare methods and bare lamdas. This makes it possible for C code to use bare methods/lambda function pointers and the SpacePony bare methods can receive structs as tuples from C code.
 
 * Currently not supported is the C `const` qualifier. This might affect lowering for some targets and therefore it must taken into account in the future. To map the `const` qualifier in SpacePony, one possibility to have `let` be const in the C FFI. However, this doesn't cover everything as `embed` also might be const. Adding an annotation `\cconst\` to the type can cover this.
 
@@ -815,6 +840,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
     ReturnStruct rs = { 0, false };  // return { 0, false } for error
     return rs;
   }
+  ```
 
 * This also means that catching exceptions from C++ is no longer supported in SpacePony
 
