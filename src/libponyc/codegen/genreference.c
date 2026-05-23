@@ -236,9 +236,6 @@ static LLVMValueRef make_tupleelemptr(compile_t* c, LLVMValueRef l_value,
   pony_assert(ast_id(l_type) == TK_TUPLETYPE);
   int index = (int)ast_int(right)->low;
 
-  LLVMTypeRef tt = LLVMTypeOf(l_value);
-  LLVMTypeKind tk = LLVMGetTypeKind(tt);
-
   return LLVMBuildExtractValue(c->builder, l_value, index, "");
 }
 

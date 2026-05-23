@@ -601,7 +601,7 @@ extern "C" LLVMTypeRef lower_param(compile_t* c, LoweringObject* lowering_object
     count_registers(c, *lowering_object, use_type);
     if(pt->underlying == TK_TUPLETYPE)
     {
-      Type* ptr_type = PointerType::get(use_type, 0);
+      Type* ptr_type = PointerType::get(*unwrap(c->context), 0);
       return wrap(ptr_type);
     }
     else
