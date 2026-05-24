@@ -103,7 +103,7 @@ DEF(literal);
 DEF(comptime_expr);
   PRINT_INLINE();
   TOKEN(NULL, TK_COMPTIME);
-  ANNOTATE(annotations)
+  ANNOTATE(annotations);
   RULE("comptime expression value", seq);
   TERMINATE("comptime expression", TK_END);
   DONE();
@@ -183,7 +183,6 @@ DEF(bare);
 // ID [DOT ID] [typeargs] [CAP] [EPHEMERAL | ALIASED]
 DEF(nominal);
   AST_NODE(TK_NOMINAL);
-  ANNOTATE(annotations);
   TOKEN("name", TK_ID);
   IFELSE(TK_DOT,
     TOKEN("name", TK_ID),
@@ -310,6 +309,7 @@ DEF(viewpoint);
 
 // atomtype [viewpoint]
 DEF(type);
+  ANNOTATE_NEXT(annotations);
   RULE("type", atomtype);
   OPT_NO_DFLT RULE("viewpoint", viewpoint);
   DONE();

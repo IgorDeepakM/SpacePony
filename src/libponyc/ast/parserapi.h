@@ -81,6 +81,7 @@ typedef struct rule_state_t
   const char* fn_name;  // Name of the current function, for tracing
   ast_t* ast;           // AST built for this rule
   ast_t* last_child;    // Last child added to current ast
+  ast_t* annotate_next; // saved annotation to be applied to the next rule
   const char* desc;     // Rule description (set by parent)
   token_id* restart;    // Restart token set, NULL for none
   token_id deflt_id;    // ID of node to create when an optional token or rule
@@ -105,6 +106,13 @@ typedef ast_t* (*rule_t)(parser_t* parser, builder_fn_t *out_builder,
 #define PARSE_ERROR     ((ast_t*)2)   // A parse error has occurred
 #define RULE_NOT_FOUND  ((ast_t*)3)   // Sub item was not found
 
+enum AnnotationMode
+{
+  ANNOTATE_NONE,
+  ANNOTATE_CURRENT,
+  ANNOTATE_NEXT
+};
+
 
 // Functions used by macros
 
@@ -120,7 +128,7 @@ ast_t* parse_token_set(parser_t* parser, rule_state_t* state, const char* desc,
   bool* out_found);
 
 ast_t* parse_rule_set(parser_t* parser, rule_state_t* state, const char* desc,
-  const rule_t* rule_set, bool* out_found, bool annotate);
+  const rule_t* rule_set, bool* out_found, AnnotationMode annotate);
 
 void parse_set_next_flags(parser_t* parser, uint32_t flags);
 
@@ -157,7 +165,7 @@ bool parse(ast_t* package, source_t* source, rule_t start, const char* expected,
     const char* rule_desc) \
   { \
     (void)out_builder; \
-    rule_state_t state = {#rule, NULL, NULL, rule_desc, NULL, TK_LEX_ERROR, \
+    rule_state_t state = {#rule, NULL, NULL, NULL, rule_desc, NULL, TK_LEX_ERROR, \
       false, false, false, TK_NONE, 0, 0}
 
 
@@ -314,7 +322,7 @@ bool parse(ast_t* package, source_t* source, rule_t start, const char* expected,
 #define RULE(desc, ...) \
   { \
     static const rule_t rule_set[] = { __VA_ARGS__, NULL }; \
-    ast_t* r = parse_rule_set(parser, &state, desc, rule_set, NULL, false); \
+    ast_t* r = parse_rule_set(parser, &state, desc, rule_set, NULL, ANNOTATE_NONE); \
     if(r != PARSE_OK) return r; \
   }
 
@@ -399,7 +407,7 @@ bool parse(ast_t* package, source_t* source, rule_t start, const char* expected,
     { \
       state.deflt_id = TK_EOF; \
       ast_t* r = parse_rule_set(parser, &state, desc, rule_set, &found, \
-        false); \
+        ANNOTATE_NONE); \
       if(r != PARSE_OK) return r; \
     } \
   }
@@ -484,7 +492,21 @@ bool parse(ast_t* package, source_t* source, rule_t start, const char* expected,
     state.deflt_id = TK_EOF; \
     static const rule_t rule_set[] = { rule, NULL }; \
     ast_t* r = parse_rule_set(parser, &state, "annotations", rule_set, NULL, \
-      true); \
+      ANNOTATE_CURRENT); \
+    if(r != PARSE_OK) return r; \
+  }
+
+ /** Annotate the next AST with another AST node from an arbitrary rule.
+  *
+  * Example:
+  *    ANNOTATE_NEXT(annotations)
+  */
+#define ANNOTATE_NEXT(rule) \
+  { \
+    state.deflt_id = TK_EOF; \
+    static const rule_t rule_set[] = { rule, NULL }; \
+    ast_t* r = parse_rule_set(parser, &state, "annotations", rule_set, NULL, \
+      ANNOTATE_NEXT); \
     if(r != PARSE_OK) return r; \
   }
 
