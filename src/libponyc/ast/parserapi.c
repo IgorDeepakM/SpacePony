@@ -209,11 +209,18 @@ static void add_ast(parser_t* parser, rule_state_t* state, ast_t* new_ast,
 
   process_deferred_ast(parser, state);
 
+  // annotate_next is handled by build_fn = annotation_next_builder even if state->ast is NULL
   if(state->ast == NULL && annotation != ANNOTATE_NEXT)
   {
     // The new AST is our only AST so far
     state->ast = new_ast;
     state->last_child = NULL;
+
+    if(state->annotate_next != NULL)
+    {
+      ast_setannotation(new_ast, state->annotate_next);
+      state->annotate_next = NULL;
+    }
   }
   else
   {
