@@ -167,11 +167,6 @@ static void annotation_builder(rule_state_t* state, ast_t* new_ast)
   pony_assert(state != NULL);
   pony_assert(new_ast != NULL);
 
-  if(strcmp(ast_name(ast_child(new_ast)), "byval") == 0)
-  {
-    int i = 0;
-  }
-
   ast_setannotation(state->ast, new_ast);
 }
 
@@ -525,11 +520,6 @@ ast_t* parse_rule_set(parser_t* parser, rule_state_t* state, const char* desc,
       state->fn_name,
       (state->deflt_id == TK_LEX_ERROR) ? "required" : "optional",
       (rule_set[1] == NULL) ? "" : "s", desc);
-  }
-
-  if(id == TK_BACKSLASH)
-  {
-    int i = 0;
   }
 
   builder_fn_t build_fn = NULL;

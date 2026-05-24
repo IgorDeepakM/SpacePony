@@ -106,12 +106,12 @@ typedef ast_t* (*rule_t)(parser_t* parser, builder_fn_t *out_builder,
 #define PARSE_ERROR     ((ast_t*)2)   // A parse error has occurred
 #define RULE_NOT_FOUND  ((ast_t*)3)   // Sub item was not found
 
-enum AnnotationMode
+typedef enum
 {
   ANNOTATE_NONE,
   ANNOTATE_CURRENT,
   ANNOTATE_NEXT
-};
+}AnnotationMode;
 
 
 // Functions used by macros
