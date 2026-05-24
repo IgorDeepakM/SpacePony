@@ -60,12 +60,6 @@ static bool declared_ffi(pass_opt_t* opt, ast_t* call, ast_t* decl)
     if(is_typecheck_error(arg_type))
       return false;
 
-    if(ast_id(arg_type) == TK_TUPLETYPE)
-    {
-      ast_error(opt->check.errors, arg, "cannot pass tuples as FFI arguments");
-      return false;
-    }
-
     ast_t* a_type = alias(arg_type, opt);
     errorframe_t info = NULL;
 

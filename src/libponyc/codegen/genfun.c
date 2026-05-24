@@ -35,13 +35,22 @@ static void name_param(compile_t* c, reach_type_t* t, reach_method_t* m,
 
   // If passed by value, create an allocated copy of the structure
   // so that it can be used everywhere and even escape.
-  if(param != NULL && param->pass_by_value &&
-     (t->underlying == TK_STRUCT || t->underlying == TK_CLASS))
+  if(param != NULL && param->pass_by_value)
   {
-    LLVMValueRef heap_allocated = gencall_allocstruct(c, t);
-    copy_lowered_param_value_to_ptr(c, heap_allocated, value, t);
-    value = heap_allocated;
+    if(t->underlying == TK_TUPLETYPE)
+    {
+      LLVMValueRef tmp_alloc = LLVMBuildAlloca(c->builder, c_t->mem_type, "");
+      copy_lowered_param_value_to_ptr(c, tmp_alloc, value, t);
+      value = LLVMBuildLoad2(c->builder, c_t->mem_type, tmp_alloc, "");
+    }
+    else
+    {
+      LLVMValueRef heap_allocated = gencall_allocstruct(c, t);
+      copy_lowered_param_value_to_ptr(c, heap_allocated, value, t);
+      value = heap_allocated;
+    }
   }
+
   LLVMSetValueName(value, name);
 
   LLVMValueRef alloc = LLVMBuildAlloca(c->builder, c_t->mem_type, name);

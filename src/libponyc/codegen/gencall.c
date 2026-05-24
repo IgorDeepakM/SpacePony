@@ -1316,7 +1316,9 @@ static void declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* f_name,
       p_type = deferred_reify(reify, p_type, c->opt);
       reach_type_t* pt = reach_type(c->reach, p_type, c->opt);
       pony_assert(pt != NULL);
-      bool pass_by_value = ast_has_annotation(ast_childidx(arg, 1), PONY_BYVAL_ANNOTATION);
+      bool pass_by_value =
+        ast_has_annotation(ast_childidx(arg, 1), PONY_BYVAL_ANNOTATION) ||
+        pt->underlying == TK_TUPLETYPE;
       ffi_decl->params[param_count].reach_type = pt;
       ffi_decl->params[param_count].pass_by_value = pass_by_value;
 
@@ -1511,7 +1513,7 @@ LLVMValueRef generate_and_get_ffi_decl(compile_t* c, ast_t* use, ast_t* decl,
 
 LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
 {
-  AST_GET_CHILDREN(ast, id, typeargs, args, named_args, can_err);
+  AST_GET_CHILDREN(ast, id, typeargs, args, named_args);
 
   deferred_reification_t* reify = c->frame->reify;
 
@@ -1619,7 +1621,7 @@ LLVMValueRef gen_ffi(compile_t* c, ast_t* ast)
         real_type = ffi_decl->params[i].reach_type;
       }
 
-      if(param_decl != NULL && ast_has_annotation(ast_childidx(param_decl, 1), PONY_BYVAL_ANNOTATION))
+      if(param_decl != NULL && ffi_decl->params[i].pass_by_value)
       {
         f_args[i] = load_lowered_param_value_from_ptr(c, f_args[i], f_params[i], real_type);
       }

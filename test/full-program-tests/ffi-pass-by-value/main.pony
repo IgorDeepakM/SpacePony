@@ -23,7 +23,7 @@ use @FFI_Test_1_double[\byval\ S1Member[F64]](s1: \byval\ S1Member[F64], s2: \by
 use @FFI_Test_1_Pointer[\byval\ S1Member[C]](s1: \byval\ S1Member[C], s2: \byval\ S1Member[C])
 
 use @FFI_Test_2_int8_t_int8_t[\byval\ S2Member[I8, I8]](s1: \byval\ S2Member[I8, I8], s2: \byval\ S2Member[I8, I8])
-use @FFI_Test_2_int8_t_int32_t[\byval\ S2Member[I8, I32]](s1: \byval\ S2Member[I8, I32], s2: \byval\ S2Member[I8, I32])
+use @FFI_Test_2_int8_t_int32_t[(I8, I32)](s1: (I8, I32), s2: (I8, I32))
 use @FFI_Test_2_int32_t_float[\byval\ S2Member[I32, F32]](s1: \byval\ S2Member[I32, F32], s2: \byval\ S2Member[I32, F32])
 use @FFI_Test_2_int64_t_double[\byval\ S2Member[I64, F64]](s1: \byval\ S2Member[I64, F64], s2: \byval\ S2Member[I64, F64])
 use @FFI_Test_2_int32_t_int32_t[\byval\ S2Member[I32, I32]](s1: \byval\ S2Member[I32, I32], s2: \byval\ S2Member[I32, I32])
@@ -48,6 +48,7 @@ use @FFI_Test_4_float_float_float_float[\byval\ S4Member[F32, F32, F32, F32]](s1
 use @FFI_Test_4_double_double_double_double[\byval\ S4Member[F64, F64, F64, F64]](s1: \byval\ S4Member[F64, F64, F64, F64], s2: \byval\ S4Member[F64, F64, F64, F64])
 use @FFI_Test_4_Pointer_Pointer_Pointer_Pointer[\byval\ S4Member[C, C, C, C]](s1: \byval\ S4Member[C, C, C, C], s2: \byval\ S4Member[C, C, C, C])
 use @FFI_Test_4_int64_t_Pointer_int64_t_int64_t[\byval\ S4Member[I64, C, I64, I64]](s1: \byval\ S4Member[I64, C, I64, I64], s2: \byval\ S4Member[I64, C, I64, I64])
+use @FFI_Test_4_int8_t_int16_t_int32_t_int64_t[(I8, I16, I32, I64)](s1: (I8, I16, I32, I64), s2: (I8, I16, I32, I64))
 
 use @FFI_Test_2_12_int32_t_int32_t[\byval\ S2Member[I32, I32]](s1: \byval\ S2Member[I32, I32], s2: \byval\ S2Member[I32, I32],
   s3: \byval\ S2Member[I32, I32], s4: \byval\ S2Member[I32, I32],
@@ -376,8 +377,8 @@ actor Main
       @{(s1: \byval\ S2Member[I8, I8], s2: \byval\ S2Member[I8, I8]): \byval\ S2Member[I8, I8] =>
         @FFI_Test_2_int8_t_int8_t(s1, s2)
       })
-    test_2_member_struct[I8, I32](
-      @{(s1: \byval\ S2Member[I8, I32], s2: \byval\ S2Member[I8, I32]): \byval\ S2Member[I8, I32] =>
+    test_2_member_tuple[I8, I32](
+      @{(s1: (I8, I32), s2: (I8, I32)): (I8, I32) =>
         @FFI_Test_2_int8_t_int32_t(s1, s2)
       })
     test_2_member_struct[I32, F32](
@@ -469,6 +470,10 @@ actor Main
     test_4_member_struct[I64, C, I64, I64](
       @{(s1: \byval\ S4Member[I64, C, I64, I64], s2: \byval\ S4Member[I64, C, I64, I64]): \byval\ S4Member[I64, C, I64, I64] =>
         @FFI_Test_4_int64_t_Pointer_int64_t_int64_t(s1, s2)
+      })
+    test_4_member_tuple[I8, I16, I32, I64](
+      @{(s1: (I8, I16, I32, I64), s2: (I8, I16, I32, I64)): (I8, I16, I32, I64) =>
+        @FFI_Test_4_int8_t_int16_t_int32_t_int64_t(s1, s2)
       })
 
     test_2_member_struct_12_params[I32, I32](
@@ -745,6 +750,30 @@ actor Main
       end
     end
 
+ fun test_2_member_tuple[T1: (Real[T1] val & Number), T2: (Real[T2] val & Number)](
+   ffi_function: @{((T1, T2), (T1, T2)): (T1, T2)}) =>
+
+    let s1: (T1, T2) = (T1.from[I32](1), T2.from[I32](1))
+    let s2: (T1, T2) = (T1.from[I32](2), T2.from[I32](2))
+
+    let old_s1 = s1
+    let old_s2 = s2
+
+    let s_ret = ffi_function(s1, s2)
+
+    if (s1._1 != old_s1._1) or (s1._2 != old_s1._2) then
+      @exit(1)
+    end
+
+    if (s2._1 != old_s2._1) or (s2._2 != old_s2._2)  then
+      @exit(1)
+    end
+
+    if (s_ret._1 != (old_s1._1 + old_s2._1)) or
+       (s_ret._2 != (old_s1._2 + old_s2._2)) then
+      @exit(3)
+    end
+
 fun test_3_member_struct[T1, T2, T3](ffi_function:
     @{(\byval\ S3Member[T1, T2, T3], \byval\ S3Member[T1, T2, T3]): \byval\ S3Member[T1, T2, T3]}) =>
 
@@ -802,6 +831,39 @@ fun test_4_member_struct[T1, T2, T3, T4](
       if s_ret(i) != (old_s1(i) + old_s2(i)) then
         @exit(3)
       end
+    end
+
+  fun test_4_member_tuple[T1: (Real[T1] val & Number), T2: (Real[T2] val & Number),
+    T3: (Real[T3] val & Number), T4: (Real[T4] val & Number)](
+    ffi_function: @{((T1, T2, T3, T4), (T1, T2, T3, T4)): (T1, T2, T3, T4)}) =>
+
+    let s1: (T1, T2, T3, T4) = (T1.from[I32](1), T2.from[I32](1), T3.from[I32](1), T4.from[I32](1))
+    let s2: (T1, T2, T3, T4) = (T1.from[I32](2), T2.from[I32](2), T3.from[I32](2), T4.from[I32](2))
+
+    let old_s1 = s1
+    let old_s2 = s2
+
+    let s_ret = ffi_function(s1, s2)
+
+    if (s1._1 != old_s1._1) or
+       (s1._2 != old_s1._2) or
+       (s1._3 != old_s1._3) or
+       (s1._4 != old_s1._4) then
+      @exit(1)
+    end
+
+    if (s2._1 != old_s2._1) or
+       (s2._2 != old_s2._2) or
+       (s2._3 != old_s2._3) or
+       (s2._4 != old_s2._4) then
+      @exit(2)
+    end
+
+    if (s_ret._1 != (old_s1._1 + old_s2._1)) or
+       (s_ret._2 != (old_s1._2 + old_s2._2)) or
+       (s_ret._3 != (old_s1._3 + old_s2._3)) or
+       (s_ret._4 != (old_s1._4 + old_s2._4)) then
+      @exit(3)
     end
 
   fun test_2_member_struct_12_params[T1: Real[T1] val, T2: Real[T2] val](
