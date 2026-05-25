@@ -122,6 +122,12 @@ static void default_builder(rule_state_t* state, ast_t* new_ast)
     return;
   }
 
+  if(state->annotate_next != NULL)
+  {
+    ast_setannotation(new_ast, state->annotate_next);
+    state->annotate_next = NULL;
+  }
+
   if(state->last_child == NULL)  // No valid last pointer
     ast_append(state->ast, new_ast);
   else  // Add new AST to end of children
@@ -165,6 +171,15 @@ static void annotation_builder(rule_state_t* state, ast_t* new_ast)
 }
 
 
+static void annotation_next_builder(rule_state_t* state, ast_t* new_ast)
+{
+  pony_assert(state != NULL);
+  pony_assert(new_ast != NULL);
+
+  state->annotate_next = new_ast;
+}
+
+
 // Functions called by macros
 
 // Process any deferred token we have
@@ -185,7 +200,7 @@ static void process_deferred_ast(parser_t* parser, rule_state_t* state)
 
 // Add the given AST to ours, handling deferment
 static void add_ast(parser_t* parser, rule_state_t* state, ast_t* new_ast,
-  builder_fn_t build_fn)
+  builder_fn_t build_fn, AnnotationMode annotation)
 {
   pony_assert(parser != NULL);
   pony_assert(state != NULL);
@@ -194,11 +209,18 @@ static void add_ast(parser_t* parser, rule_state_t* state, ast_t* new_ast,
 
   process_deferred_ast(parser, state);
 
-  if(state->ast == NULL)
+  // annotate_next is handled by build_fn = annotation_next_builder even if state->ast is NULL
+  if(state->ast == NULL && annotation != ANNOTATE_NEXT)
   {
     // The new AST is our only AST so far
     state->ast = new_ast;
     state->last_child = NULL;
+
+    if(state->annotate_next != NULL)
+    {
+      ast_setannotation(new_ast, state->annotate_next);
+      state->annotate_next = NULL;
+    }
   }
   else
   {
@@ -227,7 +249,7 @@ void add_deferrable_ast(parser_t* parser, rule_state_t* state, token_id id,
     return;
   }
 
-  add_ast(parser, state, ast_new(token_for_pos, id), default_builder);
+  add_ast(parser, state, ast_new(token_for_pos, id), default_builder, ANNOTATE_NONE);
 }
 
 
@@ -301,7 +323,7 @@ static ast_t* propogate_error(parser_t* parser, rule_state_t* state)
  *    PARSE_OK
  */
 static ast_t* handle_found(parser_t* parser, rule_state_t* state,
-  ast_t* new_ast, builder_fn_t build_fn, bool* out_found)
+  ast_t* new_ast, builder_fn_t build_fn, bool* out_found, AnnotationMode annotation)
 {
   pony_assert(parser != NULL);
   pony_assert(state != NULL);
@@ -319,7 +341,7 @@ static ast_t* handle_found(parser_t* parser, rule_state_t* state,
   }
 
   if(new_ast != NULL)
-    add_ast(parser, state, new_ast, build_fn);
+    add_ast(parser, state, new_ast, build_fn, annotation);
 
   state->deflt_id = TK_LEX_ERROR;
   return PARSE_OK;
@@ -458,11 +480,11 @@ ast_t* parse_token_set(parser_t* parser, rule_state_t* state, const char* desc,
 
       if(make_ast)
         return handle_found(parser, state, consume_token(parser),
-          default_builder, out_found);
+          default_builder, out_found, ANNOTATE_NONE);
 
       // AST not needed, discard token
       consume_token_no_ast(parser);
-      return handle_found(parser, state, NULL, NULL, out_found);
+      return handle_found(parser, state, NULL, NULL, out_found, ANNOTATE_NONE);
     }
   }
 
@@ -487,7 +509,7 @@ ast_t* parse_token_set(parser_t* parser, rule_state_t* state, const char* desc,
  *    NULL to propagate a restarted error.
  */
 ast_t* parse_rule_set(parser_t* parser, rule_state_t* state, const char* desc,
-  const rule_t* rule_set, bool* out_found, bool annotate)
+  const rule_t* rule_set, bool* out_found, AnnotationMode annotate)
 {
   pony_assert(parser != NULL);
   pony_assert(state != NULL);
@@ -507,7 +529,20 @@ ast_t* parse_rule_set(parser_t* parser, rule_state_t* state, const char* desc,
       (rule_set[1] == NULL) ? "" : "s", desc);
   }
 
-  builder_fn_t build_fn = annotate ? annotation_builder : default_builder;
+  builder_fn_t build_fn = NULL;
+  if(annotate == ANNOTATE_CURRENT)
+  {
+    build_fn = annotation_builder;
+  }
+  else if(annotate == ANNOTATE_NEXT)
+  {
+    build_fn = annotation_next_builder;
+  }
+  else
+  {
+    build_fn = default_builder;
+  }
+
   for(const rule_t* p = rule_set; *p != NULL; p++)
   {
     ast_t* rule_ast = (*p)(parser, &build_fn, desc);
@@ -519,7 +554,7 @@ ast_t* parse_rule_set(parser_t* parser, rule_state_t* state, const char* desc,
     {
       // Rule found
       parser->last_matched = desc;
-      return handle_found(parser, state, rule_ast, build_fn, out_found);
+      return handle_found(parser, state, rule_ast, build_fn, out_found, annotate);
     }
   }
 
