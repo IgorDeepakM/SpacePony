@@ -22,7 +22,14 @@ struct lexer_t
   size_t len;
   size_t line;
   size_t pos;
-  bool newline;
+  bool newline;        // Drives LPAREN_NEW/LSQUARE_NEW/MINUS_NEW. Block
+                       // comments clear this so a comment-introduced
+                       // newline is not surfaced to symbol disambiguation.
+  bool token_newline;  // Did a real '\n' character precede the next token?
+                       // Used by the parser to detect statement
+                       // separators. Unlike `newline`, block comments
+                       // preserve this so that a real newline before a
+                       // block comment still counts.
 
   // Position of current token
   size_t token_line;
@@ -383,6 +390,7 @@ static token_t* make_token(lexer_t* lexer, token_id id)
 {
   token_t* t = token_new(id);
   token_set_pos(t, lexer->source, lexer->token_line, lexer->token_pos);
+  token_set_newline(t, lexer->token_newline);
   return t;
 }
 
@@ -487,6 +495,9 @@ static token_t* nested_comment(lexer_t* lexer)
     }
   }
 
+  // Suppress LPAREN_NEW etc. for any `(`/`[`/`-` that follows the comment.
+  // `token_newline` is intentionally left alone so that a real '\n' before
+  // the comment is still surfaced to the parser as a statement separator.
   lexer->newline = false;
   return NULL;
 }
@@ -1289,6 +1300,7 @@ lexer_t* lexer_open(source_t* source, errors_t* errors,
   lexer->line = 1;
   lexer->pos = 1;
   lexer->newline = true;
+  lexer->token_newline = true;
 
   return lexer;
 }
@@ -1330,6 +1342,7 @@ token_t* lexer_next(lexer_t* lexer)
     {
       case '\n':
         lexer->newline = true;
+        lexer->token_newline = true;
         consume_chars(lexer, 1);
         break;
 
@@ -1377,6 +1390,7 @@ token_t* lexer_next(lexer_t* lexer)
   }
 
   lexer->newline = false; // We've found a symbol, so no longer a new line
+  lexer->token_newline = false;
   return t;
 }
 
