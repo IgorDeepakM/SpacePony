@@ -80,7 +80,6 @@ struct ffi_decl_t
   reach_type_t* ret_reach_type;
   bool return_by_value;
   bool return_value_lowered;
-  bool is_partial;
 };
 
 static size_t ffi_decl_hash(ffi_decl_t* d)
@@ -1158,8 +1157,12 @@ LLVMValueRef gen_pattern_eq(compile_t* c, ast_t* pattern, LLVMValueRef r_value)
   if(func == NULL)
     return NULL;
 
-  // Call the function. We know it isn't partial.
-  LLVMTypeRef func_type = LLVMGlobalGetValueType(func);
+  // Call the function. `eq` is non-partial. We pull the call type from
+  // c_m->func_type rather than `func`, since `func` is a loaded pointer
+  // (opaque under LLVM's new pointer model) for interface/trait dispatch and
+  // LLVMGlobalGetValueType only returns a meaningful type for globals.
+  LLVMTypeRef func_type = ((compile_method_t*)m->c_method)->func_type;
+
   LLVMValueRef args[2];
   args[0] = l_value;
   args[1] = r_value;
@@ -1461,9 +1464,6 @@ LLVMValueRef generate_and_get_ffi_decl(compile_t* c, ast_t* use, ast_t* decl,
     ffi_decl->ret_reach_type = NULL;
     ffi_decl->return_by_value = false;
     ffi_decl->return_value_lowered = false;
-    ffi_decl->is_partial = false;
-
-    ffi_decl->is_partial = (ast_id(decl_err) == TK_QUESTION);
 
     declare_ffi(c, ffi_decl, f_name, decl_params, decl_ret, is_intrinsic);
 

@@ -151,32 +151,33 @@ LLVMValueRef unwrap_try_return_value(compile_t* c, TryReturnInfo* try_return_inf
 extern "C" LLVMValueRef unwrap_try_return_value_jump_if_error(compile_t* c, TryReturnInfo* try_return_info,
   LLVMValueRef value)
 {
-  LLVMValueRef bool_expr = unwrap_try_return_bool(c, try_return_info, value);
+  reach_method_t* r_m = c->frame->m;
+  compile_method_t* c_m = (compile_method_t*)r_m->c_method;
 
-  LLVMBasicBlockRef error_block = codegen_block(c, "partial_call_error");
-  LLVMBasicBlockRef continue_block = codegen_block(c, "partial_call_continue");
-  LLVMBuildCondBr(c->builder, bool_expr, error_block, continue_block);
-
-  LLVMPositionBuilderAtEnd(c->builder, error_block);
-
-  if(c->frame->try_else_target != NULL)
+  if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE || c->frame->try_else_target != NULL)
   {
-    // Inside a try block: branch to the error handler.
-    LLVMBuildBr(c->builder, c->frame->try_else_target);
+    LLVMValueRef bool_expr = unwrap_try_return_bool(c, try_return_info, value);
+
+    LLVMBasicBlockRef error_block = codegen_block(c, "partial_call_error");
+    LLVMBasicBlockRef continue_block = codegen_block(c, "partial_call_continue");
+    LLVMBuildCondBr(c->builder, bool_expr, error_block, continue_block);
+
+    LLVMPositionBuilderAtEnd(c->builder, error_block);
+
+    if(c->frame->try_else_target != NULL)
+    {
+      // Inside a try block: branch to the error handler.
+      LLVMBuildBr(c->builder, c->frame->try_else_target);
+    }
+    else
+    {
+      LLVMValueRef error_ret = wrap_try_return_error(c, &c_m->try_return_info);
+      genfun_build_ret(c, error_ret);
+    }
+
+    LLVMMoveBasicBlockAfter(continue_block, LLVMGetInsertBlock(c->builder));
+    LLVMPositionBuilderAtEnd(c->builder, continue_block);
   }
-  else
-  {
-    reach_method_t* r_m = c->frame->m;
-    compile_method_t* c_m = (compile_method_t*)r_m->c_method;
-
-    pony_assert(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE);
-
-    LLVMValueRef error_ret = wrap_try_return_error(c, &c_m->try_return_info);
-    genfun_build_ret(c, error_ret);
-  }
-
-  LLVMMoveBasicBlockAfter(continue_block, LLVMGetInsertBlock(c->builder));
-  LLVMPositionBuilderAtEnd(c->builder, continue_block);
 
   return unwrap_try_return_value(c, try_return_info, value);
 }
