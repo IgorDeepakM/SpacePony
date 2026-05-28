@@ -72,9 +72,10 @@ static LLVMValueRef make_unbox_function(compile_t* c, reach_type_t* t,
   LLVMGetParamTypes(f_type, params);
 
   LLVMTypeRef ret_type = NULL;
+  TryReturnInfo tr_info = init_try_return_info();
   if(needs_error_wrap)
   {
-    ret_type = get_try_return_wrapped_type(&c_m->try_return_info);
+    ret_type = generate_try_return_type(c, &tr_info, m->result);
   }
   else
   {
@@ -131,7 +132,7 @@ static LLVMValueRef make_unbox_function(compile_t* c, reach_type_t* t,
 
   if(needs_error_wrap)
   {
-    result = wrap_try_return_success(c, &c_m->try_return_info, result);
+    result = wrap_try_return_success(c, &tr_info, result);
   }
 
   genfun_build_ret(c, result);
@@ -142,61 +143,20 @@ static LLVMValueRef make_unbox_function(compile_t* c, reach_type_t* t,
   return unbox_fun;
 }
 
-static bool method_needs_error_wrap(reach_type_t* t, reach_method_t* m)
+static bool method_needs_error_wrap(reach_t* r, reach_type_t* t, reach_method_t* m)
 {
   // Check if a non-partial method needs an error-wrapping vtable entry.
   // This happens when the method is dispatched through a trait/interface/union
   // where the same method IS partial. The vtable entry must match the dispatch
   // type's return type ({T, i1} instead of T).
 
-  if(ast_id(ast_childidx(m->fun->ast, 5)) == TK_QUESTION)
+  if(m->internal || m->cap == TK_AT || ast_id(m->fun->ast) == TK_BE ||
+     ast_id(ast_childidx(m->fun->ast, 5)) == TK_QUESTION)
   {
     return false;
   }
 
-  size_t i = HASHMAP_BEGIN;
-  reach_type_t* st;
-
-  while((st = reach_type_cache_next(&t->subtypes, &i)) != NULL)
-  {
-    // Only check dispatch types. Skip concrete types that appear in subtypes
-    // due to the bidirectional relationship in the reach module.
-    switch(st->underlying)
-    {
-      case TK_UNIONTYPE:
-      case TK_ISECTTYPE:
-      case TK_INTERFACE:
-      case TK_TRAIT:
-        break;
-
-      default:
-        continue;
-    }
-
-    // Look for any method on this dispatch type with the same vtable index
-    // that is partial.
-    size_t j = HASHMAP_BEGIN;
-    reach_method_name_t* mn;
-
-    while((mn = reach_method_names_next(&st->methods, &j)) != NULL)
-    {
-      size_t k = HASHMAP_BEGIN;
-      reach_method_t* sm;
-
-      while((sm = reach_mangled_next(&mn->r_mangled, &k)) != NULL)
-      {
-        if((sm->vtable_index == m->vtable_index) && (sm->fun != NULL))
-        {
-          ast_t* err = ast_childidx(sm->fun->ast, 5);
-
-          if((err != NULL) && (ast_id(err) == TK_QUESTION))
-            return true;
-        }
-      }
-    }
-  }
-
-  return false;
+  return reach_vtable_index_has_partial(r, m->vtable_index);
 }
 
 static LLVMValueRef make_error_wrap_function(compile_t* c,
@@ -232,6 +192,13 @@ static LLVMValueRef make_error_wrap_function(compile_t* c,
 
   LLVMValueRef result = codegen_call(c, f_type, c_m->func, args, count,
     m->cap != TK_AT);
+
+  ast_t* underyling_receiver_type = (ast_t*)ast_data(m->fun->thistype);
+  if(ast_id(m->fun->ast) == TK_NEW && 
+     (underyling_receiver_type != NULL && ast_id(underyling_receiver_type) == TK_CLASS))
+  {
+    result = args[0];
+  }
 
   result = wrap_try_return_success(c, &tr_info, result);
   genfun_build_ret(c, result);
@@ -470,7 +437,7 @@ static LLVMValueRef make_vtable(compile_t* c, reach_type_t* t)
       pony_assert(vtable[index] == NULL);
       compile_method_t* c_m = (compile_method_t*)m->c_method;
 
-      bool needs_wrap = !m->internal && method_needs_error_wrap(t, m);
+      bool needs_wrap = method_needs_error_wrap(c->reach, t, m);
 
       if((c_t->primitive != NULL) && !m->internal)
         vtable[index] = make_unbox_function(c, t, m, needs_wrap);
