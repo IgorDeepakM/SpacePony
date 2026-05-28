@@ -31,6 +31,22 @@ TEST_F(RecursiveTypeAliasTest, MutualWithUnionBaseCase)
 }
 
 
+TEST_F(RecursiveTypeAliasTest, MutualWithUnionBaseCaseValueParam)
+{
+  // Mutual recursion through type parameters with a union base case in
+  // the second alias.
+  const char* src =
+    "type B is CFixedSizedArray[C, 4]\n"
+    "type C is (CFixedSizedArray[B, 4] | None)\n"
+
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    None";
+
+  TEST_COMPILE(src);
+}
+
+
 TEST_F(RecursiveTypeAliasTest, JsonLikePatternWithoutCollections)
 {
   // The JSON-pattern shape using only Array (in builtin). Map needs
@@ -38,6 +54,22 @@ TEST_F(RecursiveTypeAliasTest, JsonLikePatternWithoutCollections)
   const char* src =
     "type JsonValue is (String | F64 | Bool | None | JsonArray)\n"
     "type JsonArray is Array[JsonValue]\n"
+
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    None";
+
+  TEST_COMPILE(src);
+}
+
+
+TEST_F(RecursiveTypeAliasTest, JsonLikePatternWithoutCollectionsValueParam)
+{
+  // The JSON-pattern shape using only Array (in builtin). Map needs
+  // collections which the test fixture doesn't fully load.
+  const char* src =
+    "type JsonValue is (String | F64 | Bool | None | JsonArray)\n"
+    "type JsonArray is CFixedSizedArray[JsonValue, 4]\n"
 
     "actor Main\n"
     "  new create(env: Env) =>\n"
@@ -201,6 +233,23 @@ TEST_F(RecursiveTypeAliasTest, ThreeAliasMutualRecursion)
 }
 
 
+TEST_F(RecursiveTypeAliasTest, ThreeAliasMutualRecursionValueParam)
+{
+  // Three-alias mutual recursion (size-3 SCC). Exercises Tarjan
+  // bookkeeping that singletons and pairs don't.
+  const char* src =
+    "type A is (CFixedSizedArray[B, 4] | None)\n"
+    "type B is (CFixedSizedArray[C, 2] | None)\n"
+    "type C is (CFixedSizedArray[A, 8] | None)\n"
+
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    None";
+
+  TEST_COMPILE(src);
+}
+
+
 TEST_F(RecursiveTypeAliasTest, NonRecursiveAliasNotFalseFlagged)
 {
   // Smoke: a trivial non-recursive alias must compile (legality pass
@@ -229,6 +278,18 @@ TEST_F(RecursiveTypeAliasTest, FixForDirectUnionSelfReference)
   // type argument, e.g., 'Array[A]'.
   const char* src =
     "type A is (Array[A] | None)\n"
+
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    None";
+
+  TEST_COMPILE(src);
+}
+
+TEST_F(RecursiveTypeAliasTest, FixForDirectUnionSelfReferenceValueParam)
+{
+  const char* src =
+    "type A is (CFixedSizedArray[A, 4] | None)\n"
 
     "actor Main\n"
     "  new create(env: Env) =>\n"
