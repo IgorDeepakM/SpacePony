@@ -143,7 +143,7 @@ static LLVMValueRef make_unbox_function(compile_t* c, reach_type_t* t,
   return unbox_fun;
 }
 
-static bool method_needs_error_wrap(reach_t* r, reach_type_t* t, reach_method_t* m)
+static bool method_needs_error_wrap(reach_t* r, reach_method_t* m)
 {
   // Check if a non-partial method needs an error-wrapping vtable entry.
   // This happens when the method is dispatched through a trait/interface/union
@@ -437,7 +437,7 @@ static LLVMValueRef make_vtable(compile_t* c, reach_type_t* t)
       pony_assert(vtable[index] == NULL);
       compile_method_t* c_m = (compile_method_t*)m->c_method;
 
-      bool needs_wrap = method_needs_error_wrap(c->reach, t, m);
+      bool needs_wrap = method_needs_error_wrap(c->reach, m);
 
       if((c_t->primitive != NULL) && !m->internal)
         vtable[index] = make_unbox_function(c, t, m, needs_wrap);

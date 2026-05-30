@@ -114,8 +114,6 @@ static void name_params(compile_t* c, reach_type_t* t, reach_method_t* m,
 
 static bool shares_partial_vtable_slot(compile_t* c, reach_type_t* t, reach_method_t* m)
 {
-  compile_method_t* c_m = (compile_method_t*)m->c_method;
-
   bool is_vtable_dispatch =
     (t->underlying == TK_UNIONTYPE) ||
     (t->underlying == TK_ISECTTYPE) ||
