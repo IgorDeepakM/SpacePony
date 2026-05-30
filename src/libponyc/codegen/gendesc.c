@@ -72,6 +72,7 @@ static LLVMValueRef make_unbox_function(compile_t* c, reach_type_t* t,
   LLVMGetParamTypes(f_type, params);
 
   LLVMTypeRef ret_type = LLVMGetReturnType(f_type);
+
   // The unbox function returns whatever the real function returns. When the
   // real function is a partial-slot forwarding wrapper it already returns the
   // `{T, i1}` error-flag form, so no extra wrapping happens here: partiality
@@ -95,7 +96,7 @@ static LLVMValueRef make_unbox_function(compile_t* c, reach_type_t* t,
     count++;
   }
 
-  LLVMTypeRef unbox_type = LLVMFunctionType(ret_type, params, count, false);
+  LLVMTypeRef unbox_type = LLVMFunctionType(unbox_ret_type, params, count, false);
   LLVMValueRef unbox_fun = codegen_addfun(c, unbox_name, unbox_type, true);
   codegen_startfun(c, unbox_fun, NULL, NULL, NULL, NULL, false);
 
