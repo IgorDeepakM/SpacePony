@@ -112,29 +112,6 @@ static void name_params(compile_t* c, reach_type_t* t, reach_method_t* m,
   }
 }
 
-static bool shares_partial_vtable_slot(compile_t* c, reach_type_t* t, reach_method_t* m)
-{
-  bool is_vtable_dispatch =
-    (t->underlying == TK_UNIONTYPE) ||
-    (t->underlying == TK_ISECTTYPE) ||
-    (t->underlying == TK_INTERFACE) ||
-    (t->underlying == TK_TRAIT);
-
-  // is_partial/internal short-circuit here on the CURRENT method: a partial
-  // dispatch method is already handled by the partial-handling block in
-  // gen_call, and internal methods aren't wrapped on the callee side.
-  // reach_vtable_index_has_partial then asks about siblings at the same
-  // vtable index.
-  if(!is_vtable_dispatch || m->internal || m->cap == TK_AT ||
-     ast_id(m->fun->ast) == TK_BE ||
-     ast_id(ast_childidx(m->fun->ast, 5)) == TK_QUESTION)
-  {
-    return false;
-  }
-
-  return reach_vtable_index_has_partial(c->reach, m->vtable_index);
-}
-
 static void make_signature(compile_t* c, reach_type_t* t,
   reach_method_name_t* n, reach_method_t* m, bool message_type)
 {
@@ -150,7 +127,7 @@ static void make_signature(compile_t* c, reach_type_t* t,
   compile_method_t* c_m = (compile_method_t*)m->c_method;
 
   LLVMTypeRef partial_ret_type = NULL;
-  if(ast_id(ast_childidx(m->fun->ast, 5)) == TK_QUESTION || shares_partial_vtable_slot(c, t, m))
+  if(ast_id(ast_childidx(m->fun->ast, 5)) == TK_QUESTION)
   {
     partial_ret_type = generate_try_return_type(c, &c_m->try_return_info, m->result);
   }
@@ -225,7 +202,6 @@ static void make_signature(compile_t* c, reach_type_t* t,
     if(message_type)
       mparams[i + offset + 2] = p_c_t->mem_type;
   }
-
 
   if(c_m->try_return_info.return_type != TRYRETURNTYPE_NONE)
   {
