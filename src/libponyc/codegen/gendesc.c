@@ -59,7 +59,7 @@
 #endif
 
 static LLVMValueRef make_unbox_function(compile_t* c, reach_type_t* t,
-  reach_method_t* m, bool needs_error_wrap)
+  reach_method_t* m)
 {
   // Create a new unboxing function that forwards to the real function.
   compile_method_t* c_m = (compile_method_t*)m->c_method;
@@ -71,16 +71,14 @@ static LLVMValueRef make_unbox_function(compile_t* c, reach_type_t* t,
   LLVMTypeRef* params = (LLVMTypeRef*)ponyint_pool_alloc_size(buf_size);
   LLVMGetParamTypes(f_type, params);
 
-  LLVMTypeRef ret_type = NULL;
-  TryReturnInfo tr_info = init_try_return_info();
-  if(needs_error_wrap)
-  {
-    ret_type = generate_try_return_type(c, &tr_info, m->result);
-  }
-  else
-  {
-    ret_type = LLVMGetReturnType(f_type);
-  }
+  LLVMTypeRef ret_type = LLVMGetReturnType(f_type);
+
+  // The unbox function returns whatever the real function returns. When the
+  // real function is a partial-slot forwarding wrapper it already returns the
+  // `{T, i1}` error-flag form, so no extra wrapping happens here: partiality
+  // is segregated into its own vtable slot (and thus its own forwarding
+  // function) by the mangled name.
+  LLVMTypeRef unbox_ret_type = ret_type;
 
   const char* unbox_name = genname_unbox(m->full_name);
   compile_type_t* c_t = (compile_type_t*)t->c_type;
@@ -98,7 +96,7 @@ static LLVMValueRef make_unbox_function(compile_t* c, reach_type_t* t,
     count++;
   }
 
-  LLVMTypeRef unbox_type = LLVMFunctionType(ret_type, params, count, false);
+  LLVMTypeRef unbox_type = LLVMFunctionType(unbox_ret_type, params, count, false);
   LLVMValueRef unbox_fun = codegen_addfun(c, unbox_name, unbox_type, true);
   codegen_startfun(c, unbox_fun, NULL, NULL, NULL, NULL, false);
 
@@ -130,11 +128,6 @@ static LLVMValueRef make_unbox_function(compile_t* c, reach_type_t* t,
   LLVMValueRef result = codegen_call(c, LLVMGlobalGetValueType(c_m->func),
     c_m->func, args, count, m->cap != TK_AT);
 
-  if(needs_error_wrap)
-  {
-    result = wrap_try_return_success(c, &tr_info, result);
-  }
-
   genfun_build_ret(c, result);
   codegen_finishfun(c);
 
@@ -142,74 +135,6 @@ static LLVMValueRef make_unbox_function(compile_t* c, reach_type_t* t,
   ponyint_pool_free_size(buf_size, args);
   return unbox_fun;
 }
-
-static bool method_needs_error_wrap(reach_t* r, reach_method_t* m)
-{
-  // Check if a non-partial method needs an error-wrapping vtable entry.
-  // This happens when the method is dispatched through a trait/interface/union
-  // where the same method IS partial. The vtable entry must match the dispatch
-  // type's return type ({T, i1} instead of T).
-
-  if(m->internal || m->cap == TK_AT || ast_id(m->fun->ast) == TK_BE ||
-     ast_id(ast_childidx(m->fun->ast, 5)) == TK_QUESTION)
-  {
-    return false;
-  }
-
-  return reach_vtable_index_has_partial(r, m->vtable_index);
-}
-
-static LLVMValueRef make_error_wrap_function(compile_t* c,
-  reach_method_t* m)
-{
-  // Create a wrapper function that calls the non-partial concrete method and
-  // wraps its return value with an error flag (always false = no error).
-  // This is used for vtable entries where the dispatch type expects a partial
-  // return type but the concrete method is not partial.
-  compile_method_t* c_m = (compile_method_t*)m->c_method;
-  LLVMTypeRef f_type = LLVMGlobalGetValueType(c_m->func);
-  int count = LLVMCountParamTypes(f_type);
-
-  size_t buf_size = count * sizeof(LLVMTypeRef);
-  LLVMTypeRef* params = (LLVMTypeRef*)ponyint_pool_alloc_size(buf_size);
-  LLVMGetParamTypes(f_type, params);
-
-  TryReturnInfo tr_info = init_try_return_info();
-
-  LLVMTypeRef wrapped_ret = generate_try_return_type(c, &tr_info, m->result);
-
-  const char* wrap_name = genname_error_wrap(m->full_name);
-  LLVMTypeRef wrap_type = LLVMFunctionType(wrapped_ret, params, count, false);
-  LLVMValueRef wrap_fun = codegen_addfun(c, wrap_name, wrap_type, true);
-  codegen_startfun(c, wrap_fun, NULL, NULL, NULL, NULL, false);
-
-  // Forward all parameters to the real function.
-  size_t args_size = count * sizeof(LLVMValueRef);
-  LLVMValueRef* args = (LLVMValueRef*)ponyint_pool_alloc_size(args_size);
-
-  for(int i = 0; i < count; i++)
-    args[i] = LLVMGetParam(wrap_fun, i);
-
-  LLVMValueRef result = codegen_call(c, f_type, c_m->func, args, count,
-    m->cap != TK_AT);
-
-  ast_t* underyling_receiver_type = (ast_t*)ast_data(m->fun->thistype);
-  if(ast_id(m->fun->ast) == TK_NEW && 
-     (underyling_receiver_type != NULL && ast_id(underyling_receiver_type) == TK_CLASS))
-  {
-    result = args[0];
-  }
-
-  result = wrap_try_return_success(c, &tr_info, result);
-  genfun_build_ret(c, result);
-
-  codegen_finishfun(c);
-
-  ponyint_pool_free_size(buf_size, params);
-  ponyint_pool_free_size(args_size, args);
-  return wrap_fun;
-}
-
 
 static LLVMValueRef make_desc_ptr(compile_t* c, LLVMValueRef func)
 {
@@ -437,12 +362,8 @@ static LLVMValueRef make_vtable(compile_t* c, reach_type_t* t)
       pony_assert(vtable[index] == NULL);
       compile_method_t* c_m = (compile_method_t*)m->c_method;
 
-      bool needs_wrap = method_needs_error_wrap(c->reach, m);
-
       if((c_t->primitive != NULL) && !m->internal)
-        vtable[index] = make_unbox_function(c, t, m, needs_wrap);
-      else if(needs_wrap)
-        vtable[index] = make_error_wrap_function(c, m);
+        vtable[index] = make_unbox_function(c, t, m);
       else
         vtable[index] = make_desc_ptr(c, c_m->func);
     }
