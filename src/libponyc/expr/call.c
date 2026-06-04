@@ -353,13 +353,13 @@ static bool check_arg_types(pass_opt_t* opt, ast_t* params, ast_t* positional,
         // reified requirement still carries the arrow (so it genuinely depends on
         // the receiver), and the argument would be assignable if capabilities
         // were ignored (so the failure is about the capability, not the entity).
-          if(type_contains_thistype(wp_type) &&
-            is_subtype_ignore_cap(arg_type, wp_type, NULL, opt))
-            ast_error_frame(&frame, param,
-              "this parameter's type is adapted through the receiver's "
-              "viewpoint (the 'this->' arrow), so the capability it requires "
-              "depends on how the receiver is viewed, not just the capability "
-              "written in the type");
+        if(type_contains_thistype(wp_type) &&
+          is_subtype_ignore_cap(arg_type, wp_type, NULL, opt))
+          ast_error_frame(&frame, param,
+            "this parameter's type is adapted through the receiver's "
+            "viewpoint (the 'this->' arrow), so the capability it requires "
+            "depends on how the receiver is viewed, not just the capability "
+            "written in the type");
 
         errorframe_append(&frame, &info);
         errorframe_report(&frame, opt->check.errors);
