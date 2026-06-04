@@ -14,7 +14,6 @@ add_executable(libponyc.tests
     codegen.cc
     codegen_ffi.cc
     codegen_optimisation.cc
-    compiler_serialisation.cc
     data_layout_operations.cc
     dontcare.cc
     ffi.cc
@@ -41,7 +40,6 @@ add_executable(libponyc.tests
     recursive_type_alias.cc
     refer.cc
     scope.cc
-    signature.cc
     stable_type.cc
     subtype_cache.cc
     sugar.cc
@@ -90,7 +88,6 @@ if (MSVC)
     target_link_libraries(libponyc.tests
         PRIVATE libponyc
         PRIVATE libponyrt
-        PRIVATE blake2
         PRIVATE GTest::gtest
         PRIVATE dbghelp
         PRIVATE ucrt
@@ -105,7 +102,6 @@ else()
         target_link_libraries(libponyc.tests PRIVATE
             -Wl,-force_load,../../src/libponyrt/libponyrt.a
             libponyc
-            blake2
             GTest::gtest
         )
     else()
@@ -114,7 +110,6 @@ else()
             libponyrt
             -Wl,--no-whole-archive
             libponyc
-            blake2
             GTest::gtest
         )
     endif()
