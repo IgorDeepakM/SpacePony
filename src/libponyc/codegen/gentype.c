@@ -8,7 +8,6 @@
 #include "genopt.h"
 #include "genprim.h"
 #include "genreference.h"
-#include "genserialise.h"
 #include "gentrace.h"
 #include "../ast/id.h"
 #include "../pkg/package.h"
@@ -1005,9 +1004,6 @@ bool gentypes(compile_t* c)
     gentrace_prototype(c, t);
   }
 
-  gendesc_table(c);
-  gendesc_table_lookup(c);
-
   c->numeric_sizes = gen_numeric_size_table(c);
 
   if(c->opt->verbosity >= VERBOSITY_INFO)
@@ -1038,8 +1034,6 @@ bool gentypes(compile_t* c)
       c_t->abi_size = (size_t)LLVMABISizeOfType(c->target_data, c_t->structure);
     }
   }
-
-  genprim_signature(c);
 
   // Cache the instance of None, which is used as the return value for
   // behaviour calls.
@@ -1083,9 +1077,6 @@ bool gentypes(compile_t* c)
   while((t = reach_types_next(&c->reach->types, &i)) != NULL)
   {
     if(!make_trace(c, t))
-      return false;
-
-    if(!genserialise(c, t))
       return false;
 
     gendesc_init(c, t);
