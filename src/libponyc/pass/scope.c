@@ -44,7 +44,7 @@ static bool set_scope(pass_opt_t* opt, ast_t* scope, ast_t* name, ast_t* value,
 
     case TK_FUN:
     {
-      if(ast_has_annotation(value, "property"))
+      if(ast_has_annotation(value, "property", opt->strtab))
       {
         size_t name_len = strlen(s);
 
@@ -58,7 +58,7 @@ static bool set_scope(pass_opt_t* opt, ast_t* scope, ast_t* name, ast_t* value,
           strncpy(property_write_name, s, field_name_len - 1);
           property_write_name[field_name_len - 1] = 0;
 
-          ast_t* def = ast_get(scope, stringtab(property_write_name), NULL);
+          ast_t* def = ast_get(scope, stringtab(opt->strtab, property_write_name), NULL);
 
           if(def != NULL && ast_id(def) != TK_FUN)
           {
@@ -93,10 +93,10 @@ static bool set_scope(pass_opt_t* opt, ast_t* scope, ast_t* name, ast_t* value,
       return false;
   }
 
-  if(!ast_set(scope, s, value, status, allow_shadowing))
+  if(!ast_set(scope, s, value, status, allow_shadowing, opt->strtab))
   {
     ast_t* prev = ast_get(scope, s, NULL);
-    ast_t* prev_nocase = ast_get_case(scope, s, NULL);
+    ast_t* prev_nocase = ast_get_case(scope, s, NULL, opt->strtab);
 
     ast_error(opt->check.errors, name, "can't reuse name '%s'", s);
     ast_error_continue(opt->check.errors, prev_nocase,
@@ -296,7 +296,7 @@ static ast_result_t scope_iftype(pass_opt_t* opt, ast_t* ast)
         ast_error(opt->check.errors, subtype, "iftype subtype is a tuple but "
           "supertype isn't");
         ast_error_continue(opt->check.errors, supertype, "Supertype is %s",
-          ast_print_type(supertype));
+          ast_print_type(supertype, opt->strtab));
         ast_free_unattached(typeparams);
         return AST_ERROR;
       }

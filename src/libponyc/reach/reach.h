@@ -148,7 +148,7 @@ bool reach(reach_t* r, ast_t* type, const char* name, ast_t* typeargs,
 
 reach_type_t* reach_type(reach_t* r, ast_t* type, pass_opt_t* opt);
 
-reach_type_t* reach_type_name(reach_t* r, const char* name);
+reach_type_t* reach_type_name(reach_t* r, const char* name, pass_opt_t* opt);
 
 reach_method_t* reach_method(reach_type_t* t, token_id cap,
   const char* name, ast_t* typeargs, pass_opt_t* opt);

@@ -152,7 +152,7 @@ ast_t* CtfeValueStruct::create_ast_literal_node(pass_opt_t* opt, errorframe_t* e
     m_stored_obj_names.insert({ast_hash, string(obj_name)});
   }
 
-  ast_set_name(name_node, obj_name);
+  ast_set_name(name_node, obj_name, opt->strtab);
 
   return obj;
 }

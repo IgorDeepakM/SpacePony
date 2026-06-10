@@ -229,10 +229,10 @@ static bool check_permission(pass_opt_t* opt, const permission_def_t* def,
 }
 
 
-static bool is_reserved_member_name(const char* name)
+static bool is_reserved_member_name(pass_opt_t* opt, const char* name)
 {
-  if(name == stringtab("size_of") || name == stringtab("offset_of") ||
-     name == stringtab("align_of"))
+  if(name == stringtab(opt->strtab, "size_of") || name == stringtab(opt->strtab, "offset_of") ||
+     name == stringtab(opt->strtab, "align_of"))
   {
     return true;
   }
@@ -270,7 +270,7 @@ static bool check_method(pass_opt_t* opt, ast_t* ast, int method_def_index)
   }
 
   const char* name = ast_name(id);
-  if(is_reserved_member_name(name))
+  if(is_reserved_member_name(opt, name))
   {
     ast_error(opt->check.errors, ast, "cannot name a method, constructor or a behaviour '%s' "
       "because it is a reserved name", ast_name(id));
@@ -389,7 +389,7 @@ static ast_result_t syntax_entity(pass_opt_t* opt, ast_t* ast,
   AST_GET_CHILDREN(ast, id, typeparams, defcap, provides, members, c_api);
 
   // Check if we're called Main
-  if(ast_name(id) == stringtab("Main"))
+  if(ast_name(id) == stringtab(opt->strtab, "Main"))
   {
     if(ast_id(typeparams) != TK_NONE)
     {
@@ -430,7 +430,7 @@ static ast_result_t syntax_entity(pass_opt_t* opt, ast_t* ast,
     // Check referenced traits
     if(ast_id(provides) != TK_NONE)
     {
-      if(ast_has_annotation(ast, "nosupertype"))
+      if(ast_has_annotation(ast, "nosupertype", opt->strtab))
       {
         ast_error(opt->check.errors, provides,
           "a 'nosupertype' type cannot specify a provides list");
@@ -674,7 +674,7 @@ static ast_result_t syntax_ffi(pass_opt_t* opt, ast_t* ast,
   if(ast_id(typeargs) != TK_NONE)
   {
     ast_t* return_type = ast_child(typeargs);
-    if(ast_has_annotation(return_type, PONY_BYVAL_ANNOTATION))
+    if(ast_has_annotation(return_type, PONY_BYVAL_ANNOTATION, opt->strtab))
     {
       if(!pass_by_value_supported)
       {
@@ -701,7 +701,7 @@ static ast_result_t syntax_ffi(pass_opt_t* opt, ast_t* ast,
 
       ast_t* param_type = ast_childidx(p, 1);
 
-      if(ast_has_annotation(param_type, PONY_BYVAL_ANNOTATION))
+      if(ast_has_annotation(param_type, PONY_BYVAL_ANNOTATION, opt->strtab))
       {
         if(!pass_by_value_supported)
         {
@@ -956,7 +956,7 @@ static ast_result_t syntax_local(pass_opt_t* opt, ast_t* ast)
 static ast_result_t syntax_fvar_flet(pass_opt_t* opt, ast_t* ast)
 {
   const char* name = ast_name(ast_child(ast));
-  if(is_reserved_member_name(name))
+  if(is_reserved_member_name(opt, name))
   {
     ast_error(opt->check.errors, ast, "cannot name a field variable '%s' "
       "because it is a reserved name", name);
@@ -976,7 +976,7 @@ static ast_result_t syntax_embed(pass_opt_t* opt, ast_t* ast)
   }
 
   const char* name = ast_name(ast_child(ast));
-  if(is_reserved_member_name(name))
+  if(is_reserved_member_name(opt, name))
   {
     ast_error(opt->check.errors, ast, "cannot name an embedded field variable '%s' "
       "because it is a reserved name", name);
@@ -1187,7 +1187,7 @@ static ast_result_t syntax_lambdatype(pass_opt_t* opt, ast_t* ast)
 {
   AST_GET_CHILDREN(ast, fun_cap, id, typeparams, params, return_type);
 
-  if(ast_has_annotation(return_type, PONY_BYVAL_ANNOTATION))
+  if(ast_has_annotation(return_type, PONY_BYVAL_ANNOTATION, opt->strtab))
   {
     ast_error(opt->check.errors, return_type,
       "Return by value can only be used in bare lambdas");
@@ -1196,7 +1196,7 @@ static ast_result_t syntax_lambdatype(pass_opt_t* opt, ast_t* ast)
 
   for(ast_t* p = ast_child(params); p != NULL; p = ast_sibling(p))
   {
-    if(ast_has_annotation(p, PONY_BYVAL_ANNOTATION))
+    if(ast_has_annotation(p, PONY_BYVAL_ANNOTATION, opt->strtab))
     {
       ast_error(opt->check.errors, p,
         "Value parameter passing can only be used in bare lambdas");
@@ -1228,7 +1228,7 @@ static ast_result_t syntax_barelambdatype(pass_opt_t* opt, ast_t* ast)
 
   bool pass_by_value_supported = is_pass_by_value_lowering_supported(opt);
 
-  if(ast_has_annotation(return_type, PONY_BYVAL_ANNOTATION))
+  if(ast_has_annotation(return_type, PONY_BYVAL_ANNOTATION, opt->strtab))
   {
     if(!pass_by_value_supported)
     {
@@ -1240,7 +1240,7 @@ static ast_result_t syntax_barelambdatype(pass_opt_t* opt, ast_t* ast)
 
   for(ast_t* p = ast_child(params); p != NULL; p = ast_sibling(p))
   {
-    if(ast_has_annotation(p, PONY_BYVAL_ANNOTATION))
+    if(ast_has_annotation(p, PONY_BYVAL_ANNOTATION, opt->strtab))
     {
       if(!pass_by_value_supported)
       {
@@ -1370,7 +1370,7 @@ static ast_result_t syntax_lambda(pass_opt_t* opt, ast_t* ast)
     case TK_TAG:
     {
       ast_error(opt->check.errors, ret_type, "lambda return type: %s",
-        ast_print_type(ret_type));
+        ast_print_type(ret_type, opt->strtab));
       ast_error_continue(opt->check.errors, ret_type, "lambda return type "
         "cannot be capability");
       r = false;
@@ -1424,7 +1424,7 @@ static ast_result_t syntax_lambda(pass_opt_t* opt, ast_t* ast)
 
   bool pass_by_value_supported = is_pass_by_value_lowering_supported(opt);
 
-  if(ast_has_annotation(ret_type, PONY_BYVAL_ANNOTATION))
+  if(ast_has_annotation(ret_type, PONY_BYVAL_ANNOTATION, opt->strtab))
   {
     if(!is_bare_lambda)
     {
@@ -1446,7 +1446,7 @@ static ast_result_t syntax_lambda(pass_opt_t* opt, ast_t* ast)
     {
       ast_t* param_type = ast_childidx(p, 1);
 
-      if(ast_has_annotation(param_type, PONY_BYVAL_ANNOTATION))
+      if(ast_has_annotation(param_type, PONY_BYVAL_ANNOTATION, opt->strtab))
       {
         if(!is_bare_lambda)
         {
@@ -1511,7 +1511,7 @@ static ast_result_t syntax_fun(pass_opt_t* opt, ast_t* ast)
     case TK_TAG:
     {
       ast_error(opt->check.errors, type, "function return type: %s",
-        ast_print_type(type));
+        ast_print_type(type, opt->strtab));
       ast_error_continue(opt->check.errors, type, "function return type "
         "cannot be capability");
       return AST_ERROR;

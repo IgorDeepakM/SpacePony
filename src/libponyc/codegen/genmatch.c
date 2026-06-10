@@ -64,7 +64,11 @@ static ast_t* eq_param_type(compile_t* c, ast_t* pattern)
 {
   ast_t* pattern_type = deferred_reify(c->frame->reify, ast_type(pattern),
     c->opt);
-  deferred_reification_t* fun = lookup(NULL, pattern, pattern_type, c->str_eq);
+  // Pass from=NULL so lookup skips its private-access checks (which are gated on
+  // from != NULL && opt != NULL). Codegen must not re-enforce access control,
+  // which is why this historically passed a NULL opt; but opt is now needed so
+  // the subtype machinery (is_bare) can intern into this compilation's table.
+  deferred_reification_t* fun = lookup(c->opt, NULL, pattern_type, c->str_eq);
 
   AST_GET_CHILDREN(fun->ast, cap, id, typeparams, params, result, partial);
   ast_t* param = ast_child(params);
@@ -255,7 +259,7 @@ static bool check_value(compile_t* c, ast_t* pattern, ast_t* param_type,
   LLVMValueRef br = LLVMBuildCondBr(c->builder, result, continue_block,
     next_block);
 
-  handle_branch_prediction_default(c->context, br, ast_parent(pattern));
+  handle_branch_prediction_default(c->context, br, ast_parent(pattern), c);
 
   LLVMPositionBuilderAtEnd(c->builder, continue_block);
   return true;
@@ -460,9 +464,9 @@ static bool dynamic_value_ptr(compile_t* c, LLVMValueRef ptr,
 
   ast_t* the_case = ast_parent(pattern);
   match_weight_t weight;
-  if(ast_has_annotation(the_case, "likely"))
+  if(ast_has_annotation(the_case, "likely", c->opt->strtab))
     weight = WEIGHT_LIKELY;
-  else if(ast_has_annotation(the_case, "unlikely"))
+  else if(ast_has_annotation(the_case, "unlikely", c->opt->strtab))
     weight = WEIGHT_UNLIKELY;
   else
     weight = WEIGHT_NONE;
@@ -485,9 +489,9 @@ static bool dynamic_capture_ptr(compile_t* c, LLVMValueRef ptr,
 
   ast_t* the_case = ast_parent(pattern);
   match_weight_t weight;
-  if(ast_has_annotation(the_case, "likely"))
+  if(ast_has_annotation(the_case, "likely", c->opt->strtab))
     weight = WEIGHT_LIKELY;
-  else if(ast_has_annotation(the_case, "unlikely"))
+  else if(ast_has_annotation(the_case, "unlikely", c->opt->strtab))
     weight = WEIGHT_UNLIKELY;
   else
     weight = WEIGHT_NONE;
@@ -552,9 +556,9 @@ static bool dynamic_value_object(compile_t* c, LLVMValueRef object,
 
   ast_t* the_case = ast_parent(pattern);
   match_weight_t weight;
-  if(ast_has_annotation(the_case, "likely"))
+  if(ast_has_annotation(the_case, "likely", c->opt->strtab))
     weight = WEIGHT_LIKELY;
-  else if(ast_has_annotation(the_case, "unlikely"))
+  else if(ast_has_annotation(the_case, "unlikely", c->opt->strtab))
     weight = WEIGHT_UNLIKELY;
   else
     weight = WEIGHT_NONE;
@@ -578,9 +582,9 @@ static bool dynamic_capture_object(compile_t* c, LLVMValueRef object,
 
   ast_t* the_case = ast_parent(pattern);
   match_weight_t weight;
-  if(ast_has_annotation(the_case, "likely"))
+  if(ast_has_annotation(the_case, "likely", c->opt->strtab))
     weight = WEIGHT_LIKELY;
-  else if(ast_has_annotation(the_case, "unlikely"))
+  else if(ast_has_annotation(the_case, "unlikely", c->opt->strtab))
     weight = WEIGHT_UNLIKELY;
   else
     weight = WEIGHT_NONE;
@@ -835,7 +839,7 @@ static bool case_body(compile_t* c, ast_t* body,
   if(body_value == GEN_NOVALUE)
     return true;
 
-  if(is_result_needed(body))
+  if(is_result_needed(body, c->opt))
   {
     ast_t* body_type = deferred_reify(c->frame->reify, ast_type(body), c->opt);
     body_value = gen_assign_cast(c, phi_type, body_value, body_type);
@@ -855,7 +859,7 @@ static bool case_body(compile_t* c, ast_t* body,
 
 LLVMValueRef gen_match(compile_t* c, ast_t* ast)
 {
-  bool needed = is_result_needed(ast);
+  bool needed = is_result_needed(ast, c->opt);
   AST_GET_CHILDREN(ast, match_expr, cases, else_expr);
 
   // We will have no type if all cases jump away.

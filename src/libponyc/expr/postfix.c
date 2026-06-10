@@ -63,19 +63,19 @@ static bool constructor_type(pass_opt_t* opt, ast_t* ast, token_id cap,
         case TK_TYPE:
           ast_error(opt->check.errors, ast,
             "can't call a constructor on a type alias: %s",
-            ast_print_type(type));
+            ast_print_type(type, opt->strtab));
           return false;
 
         case TK_INTERFACE:
           ast_error(opt->check.errors, ast,
             "can't call a constructor on an interface: %s",
-            ast_print_type(type));
+            ast_print_type(type, opt->strtab));
           return false;
 
         case TK_TRAIT:
           ast_error(opt->check.errors, ast,
             "can't call a constructor on a trait: %s",
-            ast_print_type(type));
+            ast_print_type(type, opt->strtab));
           return false;
 
         default:
@@ -123,7 +123,7 @@ static bool constructor_type(pass_opt_t* opt, ast_t* ast, token_id cap,
     {
       ast_error(opt->check.errors, ast,
         "can't call a constructor on a type union: %s",
-        ast_print_type(type));
+        ast_print_type(type, opt->strtab));
       return false;
     }
 
@@ -131,7 +131,7 @@ static bool constructor_type(pass_opt_t* opt, ast_t* ast, token_id cap,
     {
       ast_error(opt->check.errors, ast,
         "can't call a constructor on a type intersection: %s",
-        ast_print_type(type));
+        ast_print_type(type, opt->strtab));
       return false;
     }
 
@@ -193,7 +193,7 @@ static bool method_access(pass_opt_t* opt, ast_t** astp, ast_t* method)
       // during the parsing because of lack of parentheses.
       // Here we add the TK_CALL node.
       ast_t* parent = ast_parent(ast);
-      if(ast_has_annotation(method, "property") && ast_id(parent) != TK_CALL)
+      if(ast_has_annotation(method, "property", opt->strtab) && ast_id(parent) != TK_CALL)
       {
         ast_t* question_node = ast_child(ast_childidx(ast, 1));
         if(question_node == NULL)
@@ -361,7 +361,7 @@ static bool type_access(pass_opt_t* opt, ast_t** astp)
         }
 
         ast_t* dot = ast_from(ast, TK_DOT);
-        ast_add(dot, ast_from_string(ast, "create"));
+        ast_add(dot, ast_from_string(ast, "create", opt->strtab));
         ast_swap(left, dot);
         ast_add(dot, left);
 
@@ -509,7 +509,7 @@ static bool member_access(pass_opt_t* opt, ast_t** astp)
   const char* name = ast_name(right);
 
   deferred_reification_t* find = lookup_try(opt, ast, type, name, false);
-  if(find == NULL || ast_has_annotation(find->ast, "property"))
+  if(find == NULL || ast_has_annotation(find->ast, "property", opt->strtab))
   {
     // Special case for property when assigned to
     // First check that the expression is actually assign to.
@@ -526,11 +526,11 @@ static bool member_access(pass_opt_t* opt, ast_t** astp)
       strcpy(property_write_name, name);
       strncat(property_write_name, "_w", field_name_len);
 
-      find = lookup(opt, ast, type, stringtab(property_write_name));
+      find = lookup(opt, ast, type, stringtab(opt->strtab, property_write_name));
 
       if(find != NULL)
       {
-        ast_set_name(right, stringtab(property_write_name));
+        ast_set_name(right, stringtab(opt->strtab, property_write_name), opt->strtab);
       }
 
       ponyint_pool_free_size(field_name_len, property_write_name);
@@ -668,7 +668,7 @@ bool expr_qualify(pass_opt_t* opt, ast_t** astp)
 
   // Otherwise, sugar as qualified call to .apply()
   ast_t* dot = ast_from(left, TK_DOT);
-  ast_add(dot, ast_from_string(left, "apply"));
+  ast_add(dot, ast_from_string(left, "apply", opt->strtab));
   ast_swap(left, dot);
   ast_add(dot, left);
 

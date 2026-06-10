@@ -424,7 +424,7 @@ static const char* system_triple(compile_t* c)
   std::string result = std::string(triple.getArchName()) + "-"
     + std::string(triple.getOSName()) + "-"
     + std::string(triple.getEnvironmentName());
-  return stringtab(result.c_str());
+  return stringtab(c->opt->strtab, result.c_str());
 }
 
 static uint16_t expected_elf_machine(compile_t* c)
@@ -478,7 +478,7 @@ static bool elf_matches_target(const char* path, uint16_t target_machine)
 }
 
 static const char* find_libc_crt_dir(const char* sysroot,
-  const char* sys_triple, uint16_t target_machine)
+  const char* sys_triple, uint16_t target_machine, strtable_t* strtab)
 {
   // Search candidate paths for libc CRT objects.
   // The lib64 candidates cover Fedora, RHEL, and other distros that
@@ -499,22 +499,22 @@ static const char* find_libc_crt_dir(const char* sysroot,
   char buf[PATH_MAX];
 
   snprintf(buf, sizeof(buf), "%s/usr/lib/%s", sysroot, sys_triple);
-  candidates[0] = stringtab(buf);
+  candidates[0] = stringtab(strtab, buf);
 
   snprintf(buf, sizeof(buf), "%s/usr/lib", sysroot);
-  candidates[1] = stringtab(buf);
+  candidates[1] = stringtab(strtab, buf);
 
   snprintf(buf, sizeof(buf), "%s/lib/%s", sysroot, sys_triple);
-  candidates[2] = stringtab(buf);
+  candidates[2] = stringtab(strtab, buf);
 
   snprintf(buf, sizeof(buf), "%s/lib", sysroot);
-  candidates[3] = stringtab(buf);
+  candidates[3] = stringtab(strtab, buf);
 
   snprintf(buf, sizeof(buf), "%s/usr/lib64", sysroot);
-  candidates[4] = stringtab(buf);
+  candidates[4] = stringtab(strtab, buf);
 
   snprintf(buf, sizeof(buf), "%s/lib64", sysroot);
-  candidates[5] = stringtab(buf);
+  candidates[5] = stringtab(strtab, buf);
 
   static const char* sentinels[] = { "crt1.o", "crt0.o" };
 
@@ -573,7 +573,7 @@ static const char* find_ponyc_crt_dir(ast_t* program, compile_t* c)
 // return contract changes the call site in link_exe_lld_elf must change
 // in lockstep.
 static const char* find_dragonfly_gcc_lib_dir(const char* sysroot,
-  const char* arch_prefix)
+  const char* arch_prefix, strtable_t* strtab)
 {
   char buf[PATH_MAX];
 
@@ -653,7 +653,7 @@ static const char* find_dragonfly_gcc_lib_dir(const char* sysroot,
               triple_dir, ver_entry->d_name);
             if(n < 0 || (size_t)n >= sizeof(result))
               continue;
-            best_dir = stringtab(result);
+            best_dir = stringtab(strtab, result);
           }
         }
         closedir(ver_dir);
@@ -702,7 +702,7 @@ static const char* find_dragonfly_gcc_lib_dir(const char* sysroot,
           sysroot, entry->d_name);
         if(n < 0 || (size_t)n >= sizeof(result))
           continue;
-        best_dir = stringtab(result);
+        best_dir = stringtab(strtab, result);
       }
     }
     closedir(base_dir);
@@ -721,7 +721,7 @@ static const char* find_dragonfly_gcc_lib_dir(const char* sysroot,
 }
 
 static const char* find_gcc_lib_dir(const char* sysroot,
-  const char* arch_prefix)
+  const char* arch_prefix, strtable_t* strtab)
 {
   // Search for GCC runtime library directory containing libgcc.a.
   // Check multiple base paths and pick the highest version.
@@ -820,7 +820,7 @@ static const char* find_gcc_lib_dir(const char* sysroot,
           char result[PATH_MAX];
           snprintf(result, sizeof(result), "%s/%s",
             triple_dir, ver_entry->d_name);
-          best_dir = stringtab(result);
+          best_dir = stringtab(strtab, result);
         }
       }
 
@@ -841,7 +841,7 @@ static const char* resolve_sysroot(compile_t* c, const char* sys_triple,
   // If user specified --sysroot, validate it.
   if(c->opt->sysroot != NULL && c->opt->sysroot[0] != '\0')
   {
-    if(find_libc_crt_dir(c->opt->sysroot, sys_triple, target_machine) != NULL)
+    if(find_libc_crt_dir(c->opt->sysroot, sys_triple, target_machine, c->opt->strtab) != NULL)
       return c->opt->sysroot;
 
     errorf(errors, NULL,
@@ -869,20 +869,20 @@ static const char* resolve_sysroot(compile_t* c, const char* sys_triple,
   char buf[PATH_MAX];
 
   snprintf(buf, sizeof(buf), "/usr/%s", sys_triple);
-  candidates[0] = stringtab(buf);
+  candidates[0] = stringtab(c->opt->strtab, buf);
 
   snprintf(buf, sizeof(buf), "/usr/local/%s", sys_triple);
-  candidates[1] = stringtab(buf);
+  candidates[1] = stringtab(c->opt->strtab, buf);
 
   snprintf(buf, sizeof(buf), "/usr/%s/libc", sys_triple);
-  candidates[2] = stringtab(buf);
+  candidates[2] = stringtab(c->opt->strtab, buf);
 
   snprintf(buf, sizeof(buf), "/usr/local/%s/libc", sys_triple);
-  candidates[3] = stringtab(buf);
+  candidates[3] = stringtab(c->opt->strtab, buf);
 
   for(int i = 0; i < 4; i++)
   {
-    if(find_libc_crt_dir(candidates[i], sys_triple, target_machine) != NULL)
+    if(find_libc_crt_dir(candidates[i], sys_triple, target_machine, c->opt->strtab) != NULL)
       return candidates[i];
   }
 
@@ -951,7 +951,7 @@ static bool link_exe_lld_elf(compile_t* c, ast_t* program,
   // Find CRT directories.
   uint16_t target_machine = expected_elf_machine(c);
   const char* libc_crt_dir = find_libc_crt_dir(sysroot, sys_triple,
-    target_machine);
+    target_machine, c->opt->strtab);
   if(libc_crt_dir == NULL)
   {
     errorf(errors, NULL,
@@ -984,7 +984,7 @@ static bool link_exe_lld_elf(compile_t* c, ast_t* program,
   else if(is_dragonfly)
   {
     compiler_crt_dir = find_dragonfly_gcc_lib_dir(sysroot,
-      arch_prefix.c_str());
+      arch_prefix.c_str(), c->opt->strtab);
     if(compiler_crt_dir == NULL)
     {
       errorf(errors, NULL,
@@ -1018,7 +1018,7 @@ static bool link_exe_lld_elf(compile_t* c, ast_t* program,
   }
   else
   {
-    gcc_lib_dir = find_gcc_lib_dir(sysroot, arch_prefix.c_str());
+    gcc_lib_dir = find_gcc_lib_dir(sysroot, arch_prefix.c_str(), c->opt->strtab);
   }
 
   // Build argument vector.
@@ -1077,7 +1077,7 @@ static bool link_exe_lld_elf(compile_t* c, ast_t* program,
   // Our patched LLD falls back to the original path when the
   // sysroot-prefixed path doesn't exist, matching GNU ld behavior.
   snprintf(buf, sizeof(buf), "--sysroot=%s", sysroot);
-  args.push_back(stringtab(buf));
+  args.push_back(stringtab(c->opt->strtab, buf));
 
   if(c->opt->staticbin)
   {
@@ -1119,25 +1119,25 @@ static bool link_exe_lld_elf(compile_t* c, ast_t* program,
     // DragonFly's Scrt1.o/crt1.o naming.
     const char* startup = c->opt->staticbin ? "rcrt0.o" : "crt0.o";
     snprintf(buf, sizeof(buf), "%s/%s", libc_crt_dir, startup);
-    args.push_back(stringtab(buf));
+    args.push_back(stringtab(c->opt->strtab, buf));
   }
   else if(pie)
   {
     // PIE startup: prefer Scrt1.o, fall back to crt1.o.
     snprintf(buf, sizeof(buf), "%s/Scrt1.o", libc_crt_dir);
     if(file_exists(buf))
-      args.push_back(stringtab(buf));
+      args.push_back(stringtab(c->opt->strtab, buf));
     else
     {
       snprintf(buf, sizeof(buf), "%s/crt1.o", libc_crt_dir);
-      args.push_back(stringtab(buf));
+      args.push_back(stringtab(c->opt->strtab, buf));
     }
   }
   else
   {
     // Static or non-PIE dynamic (FreeBSD/DragonFly): plain crt1.o startup.
     snprintf(buf, sizeof(buf), "%s/crt1.o", libc_crt_dir);
-    args.push_back(stringtab(buf));
+    args.push_back(stringtab(c->opt->strtab, buf));
   }
 
   // OpenBSD doesn't ship crti.o/crtn.o — its CRT model uses crt0.o (or
@@ -1146,7 +1146,7 @@ static bool link_exe_lld_elf(compile_t* c, ast_t* program,
   if(!is_openbsd)
   {
     snprintf(buf, sizeof(buf), "%s/crti.o", libc_crt_dir);
-    args.push_back(stringtab(buf));
+    args.push_back(stringtab(c->opt->strtab, buf));
   }
 
   if(is_openbsd)
@@ -1156,34 +1156,34 @@ static bool link_exe_lld_elf(compile_t* c, ast_t* program,
     // /usr/lib but base cc -v never selects it; the static-PIE path picks
     // up the same crtbegin.o as the dynamic-PIE path.
     snprintf(buf, sizeof(buf), "%s/crtbegin.o", compiler_crt_dir);
-    args.push_back(stringtab(buf));
+    args.push_back(stringtab(c->opt->strtab, buf));
   }
   else if(c->opt->staticbin && !is_dragonfly)
   {
     snprintf(buf, sizeof(buf), "%s/crtbeginT.o", compiler_crt_dir);
-    args.push_back(stringtab(buf));
+    args.push_back(stringtab(c->opt->strtab, buf));
   }
   else if(pie)
   {
     snprintf(buf, sizeof(buf), "%s/crtbeginS.o", compiler_crt_dir);
-    args.push_back(stringtab(buf));
+    args.push_back(stringtab(c->opt->strtab, buf));
   }
   else
   {
     // Non-PIE dynamic (FreeBSD), or static on DragonFly (no crtbeginT.o
     // exists; gcc's own -static link uses plain crtbegin.o here).
     snprintf(buf, sizeof(buf), "%s/crtbegin.o", compiler_crt_dir);
-    args.push_back(stringtab(buf));
+    args.push_back(stringtab(c->opt->strtab, buf));
   }
 
   // Library search paths: sysroot dirs first, then GCC, then ponyc/user.
   snprintf(buf, sizeof(buf), "-L%s", libc_crt_dir);
-  args.push_back(stringtab(buf));
+  args.push_back(stringtab(c->opt->strtab, buf));
 
   if(gcc_lib_dir != NULL)
   {
     snprintf(buf, sizeof(buf), "-L%s", gcc_lib_dir);
-    args.push_back(stringtab(buf));
+    args.push_back(stringtab(c->opt->strtab, buf));
 
     if(is_dragonfly)
     {
@@ -1209,9 +1209,9 @@ static bool link_exe_lld_elf(compile_t* c, ast_t* program,
       if(file_exists(check))
       {
         snprintf(buf, sizeof(buf), "-L%s", gcc_root_dir);
-        args.push_back(stringtab(buf));
+        args.push_back(stringtab(c->opt->strtab, buf));
         args.push_back("-rpath");
-        args.push_back(stringtab(gcc_root_dir));
+        args.push_back(stringtab(c->opt->strtab, gcc_root_dir));
       }
     }
     else
@@ -1229,7 +1229,7 @@ static bool link_exe_lld_elf(compile_t* c, ast_t* program,
         && S_ISDIR(gcc_target_stat.st_mode))
       {
         snprintf(buf, sizeof(buf), "-L%s", gcc_target_lib);
-        args.push_back(stringtab(buf));
+        args.push_back(stringtab(c->opt->strtab, buf));
       }
     }
   }
@@ -1240,7 +1240,7 @@ static bool link_exe_lld_elf(compile_t* c, ast_t* program,
   {
     const char* path = program_lib_path_at(program, i);
     snprintf(buf, sizeof(buf), "-L%s", path);
-    args.push_back(stringtab(buf));
+    args.push_back(stringtab(c->opt->strtab, buf));
 
     if(!c->opt->staticbin)
     {
@@ -1281,7 +1281,7 @@ static bool link_exe_lld_elf(compile_t* c, ast_t* program,
       {
         char lbuf[PATH_MAX];
         snprintf(lbuf, sizeof(lbuf), "-L%s", buf);
-        args.push_back(stringtab(lbuf));
+        args.push_back(stringtab(c->opt->strtab, lbuf));
       }
     }
   }
@@ -1352,7 +1352,7 @@ static bool link_exe_lld_elf(compile_t* c, ast_t* program,
     else
     {
       snprintf(buf, sizeof(buf), "-l%s", lib);
-      args.push_back(stringtab(buf));
+      args.push_back(stringtab(c->opt->strtab, buf));
     }
   }
 
@@ -1398,7 +1398,7 @@ static bool link_exe_lld_elf(compile_t* c, ast_t* program,
       snprintf(buf, sizeof(buf), "%s/%s", ponyc_crt_dir, rt_name);
       if(file_exists(buf))
       {
-        args.push_back(stringtab(buf));
+        args.push_back(stringtab(c->opt->strtab, buf));
       }
       else
       {
@@ -1527,25 +1527,25 @@ static bool link_exe_lld_elf(compile_t* c, ast_t* program,
     // crtbegin.o choice above; base cc -v never selects crtendS.o on
     // OpenBSD even though the S variant exists in /usr/lib).
     snprintf(buf, sizeof(buf), "%s/crtend.o", compiler_crt_dir);
-    args.push_back(stringtab(buf));
+    args.push_back(stringtab(c->opt->strtab, buf));
   }
   else if(pie)
   {
     snprintf(buf, sizeof(buf), "%s/crtendS.o", compiler_crt_dir);
-    args.push_back(stringtab(buf));
+    args.push_back(stringtab(c->opt->strtab, buf));
   }
   else
   {
     // Static or non-PIE dynamic (FreeBSD/DragonFly): plain crtend.o.
     snprintf(buf, sizeof(buf), "%s/crtend.o", compiler_crt_dir);
-    args.push_back(stringtab(buf));
+    args.push_back(stringtab(c->opt->strtab, buf));
   }
 
   // OpenBSD doesn't ship crtn.o — see the crti.o skip earlier.
   if(!is_openbsd)
   {
     snprintf(buf, sizeof(buf), "%s/crtn.o", libc_crt_dir);
-    args.push_back(stringtab(buf));
+    args.push_back(stringtab(c->opt->strtab, buf));
   }
 
   args.push_back("-o");
@@ -1589,13 +1589,19 @@ static bool link_exe_lld_elf(compile_t* c, ast_t* program,
   return true;
 }
 
-static const char* find_macos_sdk_path()
+static const char* find_macos_sdk_path(strtable_t* strtab)
 {
-  static const char* cached = NULL;
+  // Cache the discovered path as a raw string (not interned) so the expensive
+  // xcrun probe runs only once per process, but intern into the caller's table
+  // on every call. Each compilation has its own interned-string table, so
+  // caching an interned pointer would dangle once the first compilation's table
+  // is freed.
+  static char cached_path[PATH_MAX];
   static bool searched = false;
+  static bool found = false;
 
   if(searched)
-    return cached;
+    return found ? stringtab(strtab, cached_path) : NULL;
   searched = true;
 
   char sdk_path[PATH_MAX];
@@ -1617,9 +1623,11 @@ static const char* find_macos_sdk_path()
       struct stat st;
       if(stat(lib_path, &st) == 0 && S_ISDIR(st.st_mode))
       {
-        cached = stringtab(lib_path);
+        strncpy(cached_path, lib_path, sizeof(cached_path) - 1);
+        cached_path[sizeof(cached_path) - 1] = '\0';
+        found = true;
         pclose(f);
-        return cached;
+        return stringtab(strtab, cached_path);
       }
     }
     pclose(f);
@@ -1632,8 +1640,10 @@ static const char* find_macos_sdk_path()
   struct stat st;
   if(stat(fallback, &st) == 0 && S_ISDIR(st.st_mode))
   {
-    cached = stringtab(fallback);
-    return cached;
+    strncpy(cached_path, fallback, sizeof(cached_path) - 1);
+    cached_path[sizeof(cached_path) - 1] = '\0';
+    found = true;
+    return stringtab(strtab, cached_path);
   }
 
   return NULL;
@@ -1665,7 +1675,7 @@ static const char* macho_platform_version(compile_t* c)
 
   char buf[32];
   snprintf(buf, sizeof(buf), "%u.%u.%u", major, minor, micro);
-  return stringtab(buf);
+  return stringtab(c->opt->strtab, buf);
 }
 
 static bool link_exe_lld_macho(compile_t* c, ast_t* program,
@@ -1698,7 +1708,7 @@ static bool link_exe_lld_macho(compile_t* c, ast_t* program,
     return false;
   }
 
-  const char* sdk_lib_path = find_macos_sdk_path();
+  const char* sdk_lib_path = find_macos_sdk_path(c->opt->strtab);
   if(sdk_lib_path == NULL)
   {
     errorf(errors, NULL,
@@ -1723,7 +1733,7 @@ static bool link_exe_lld_macho(compile_t* c, ast_t* program,
 
   // SDK library path.
   snprintf(buf, sizeof(buf), "-L%s", sdk_lib_path);
-  args.push_back(stringtab(buf));
+  args.push_back(stringtab(c->opt->strtab, buf));
 
   // Ponyc lib paths and user lib paths.
   size_t path_count = program_lib_path_count(program);
@@ -1731,7 +1741,7 @@ static bool link_exe_lld_macho(compile_t* c, ast_t* program,
   {
     const char* path = program_lib_path_at(program, i);
     snprintf(buf, sizeof(buf), "-L%s", path);
-    args.push_back(stringtab(buf));
+    args.push_back(stringtab(c->opt->strtab, buf));
   }
 
   // Standard library fallback paths for Homebrew and other system
@@ -1750,7 +1760,7 @@ static bool link_exe_lld_macho(compile_t* c, ast_t* program,
       if(stat(fallback_dirs[i], &st) == 0 && S_ISDIR(st.st_mode))
       {
         snprintf(buf, sizeof(buf), "-L%s", fallback_dirs[i]);
-        args.push_back(stringtab(buf));
+        args.push_back(stringtab(c->opt->strtab, buf));
       }
     }
   }
@@ -1770,7 +1780,7 @@ static bool link_exe_lld_macho(compile_t* c, ast_t* program,
     else
     {
       snprintf(buf, sizeof(buf), "-l%s", lib);
-      args.push_back(stringtab(buf));
+      args.push_back(stringtab(c->opt->strtab, buf));
     }
   }
 
@@ -1897,12 +1907,12 @@ static bool link_exe_lld_coff(compile_t* c, ast_t* program,
   args.push_back("/NOLOGO");
 
   snprintf(buf, sizeof(buf), "/MACHINE:%s", arch);
-  args.push_back(stringtab(buf));
+  args.push_back(stringtab(c->opt->strtab, buf));
 
   args.push_back("/ignore:4099");
 
   snprintf(buf, sizeof(buf), "/OUT:%s", file_exe);
-  args.push_back(stringtab(buf));
+  args.push_back(stringtab(c->opt->strtab, buf));
 
   // Object file.
   args.push_back(file_o);
@@ -1911,16 +1921,16 @@ static bool link_exe_lld_coff(compile_t* c, ast_t* program,
   if(strlen(vcvars.ucrt) > 0)
   {
     snprintf(buf, sizeof(buf), "/LIBPATH:%s", vcvars.ucrt);
-    args.push_back(stringtab(buf));
+    args.push_back(stringtab(c->opt->strtab, buf));
   }
 
   // Windows SDK kernel32 path.
   snprintf(buf, sizeof(buf), "/LIBPATH:%s", vcvars.kernel32);
-  args.push_back(stringtab(buf));
+  args.push_back(stringtab(c->opt->strtab, buf));
 
   // MSVC runtime lib path.
   snprintf(buf, sizeof(buf), "/LIBPATH:%s", vcvars.msvcrt);
-  args.push_back(stringtab(buf));
+  args.push_back(stringtab(c->opt->strtab, buf));
 
   // User library search paths.
   size_t path_count = program_lib_path_count(program);
@@ -1928,7 +1938,7 @@ static bool link_exe_lld_coff(compile_t* c, ast_t* program,
   {
     const char* path = program_lib_path_at(program, i);
     snprintf(buf, sizeof(buf), "/LIBPATH:%s", path);
-    args.push_back(stringtab(buf));
+    args.push_back(stringtab(c->opt->strtab, buf));
   }
 
   // User libraries (append .lib suffix for non-absolute paths).
@@ -1943,7 +1953,7 @@ static bool link_exe_lld_coff(compile_t* c, ast_t* program,
     else
     {
       snprintf(buf, sizeof(buf), "%s.lib", lib);
-      args.push_back(stringtab(buf));
+      args.push_back(stringtab(c->opt->strtab, buf));
     }
   }
 
@@ -1957,7 +1967,7 @@ static bool link_exe_lld_coff(compile_t* c, ast_t* program,
   char* tok = strtok(default_libs_copy, " ");
   while(tok != NULL)
   {
-    args.push_back(stringtab(tok));
+    args.push_back(stringtab(c->opt->strtab, tok));
     tok = strtok(NULL, " ");
   }
 
@@ -2102,7 +2112,7 @@ bool genexe(compile_t* c, ast_t* program)
     fprintf(stderr, " Reachability\n");
 
   if(!reach(c->reach, main_ast, c->str_create, NULL, c->opt) ||
-     !reach(c->reach, main_ast, stringtab("runtime_override_defaults"), NULL, c->opt) ||
+     !reach(c->reach, main_ast, stringtab(c->opt->strtab, "runtime_override_defaults"), NULL, c->opt) ||
      !reach(c->reach, env_ast, c->str__create, NULL, c->opt))
   {
     return false;

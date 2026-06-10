@@ -75,9 +75,9 @@ static bool declared_ffi(pass_opt_t* opt, ast_t* call, ast_t* decl)
       {
         ast_error_frame(&frame, arg, "argument not a assignable to parameter");
         ast_error_frame(&frame, arg, "argument type is %s",
-          ast_print_type(a_type));
+          ast_print_type(a_type, opt->strtab));
         ast_error_frame(&frame, param, "parameter type requires %s",
-          ast_print_type(p_type));
+          ast_print_type(p_type, opt->strtab));
         errorframe_append(&frame, &info);
         errorframe_report(&frame, opt->check.errors);
         ast_free_unattached(a_type);
@@ -141,7 +141,7 @@ static bool declared_ffi(pass_opt_t* opt, ast_t* call, ast_t* decl)
   ast_t* decl_ret_type = ast_child(decl_ret_typeargs);
 
   if((ast_id(decl_ret_type) == TK_TUPLETYPE) &&
-     ast_has_annotation(decl_ret_type, PONY_BYVAL_ANNOTATION))
+     ast_has_annotation(decl_ret_type, PONY_BYVAL_ANNOTATION, opt->strtab))
   {
     ast_error(opt->check.errors, decl_ret_type, "returning a tuple is always done by value, therefore"
       " a " PONY_BYVAL_ANNOTATION " is not needed");
