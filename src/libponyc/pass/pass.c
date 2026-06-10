@@ -102,11 +102,13 @@ void pass_opt_init(pass_opt_t* options)
   memset(options, 0, sizeof(pass_opt_t));
   options->limit = PASS_ALL;
   options->verbosity = VERBOSITY_INFO;
+  // The interned-string table must exist before anything that interns into it.
+  options->strtab = stringtab_new();
   options->check.errors = errors_alloc();
   options->ast_print_width = 80;
   options->ctfe_max_recursion = 50;
   options->ctfe_max_duration = 120;
-  options->user_flags = userflags_create();
+  options->user_flags = userflags_create(options->strtab);
   frame_push(&options->check, NULL);
 }
 
@@ -144,6 +146,12 @@ void pass_opt_done(pass_opt_t* options)
       options->check.stats.stack_alloc
       );
   }
+
+  // Free the interned-string table last: every interned pointer handed out
+  // during this compilation (including those inside the AST) dangles after
+  // this, so nothing that holds one may be used past here.
+  stringtab_free(options->strtab);
+  options->strtab = NULL;
 }
 
 
@@ -197,7 +205,7 @@ static bool visit_pass(ast_t** astp, pass_opt_t* options, pass_id last_pass,
 
 bool module_passes(ast_t* package, pass_opt_t* options, source_t* source)
 {
-  if(!pass_parse(package, source, options->check.errors,
+  if(!pass_parse(package, source, options->check.errors, options->strtab,
     options->allow_test_symbols, options->parse_trace))
     return false;
 

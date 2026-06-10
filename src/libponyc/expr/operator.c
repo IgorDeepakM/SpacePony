@@ -316,7 +316,7 @@ static bool is_expr_constructor(ast_t* ast)
   }
 }
 
-static bool is_expr_ffi_return_by_value(ast_t* ast)
+static bool is_expr_ffi_return_by_value(ast_t* ast, pass_opt_t* opt)
 {
   pony_assert(ast != NULL);
   switch (ast_id(ast))
@@ -328,7 +328,7 @@ static bool is_expr_ffi_return_by_value(ast_t* ast)
       if(ast_id(at) == TK_AT)
       {
         ast_t* ret_decl = ast_childidx(def, 3);
-        if(ast_has_annotation(ret_decl, PONY_BYVAL_ANNOTATION))
+        if(ast_has_annotation(ret_decl, PONY_BYVAL_ANNOTATION, opt->strtab))
         {
           return true;
         }
@@ -340,7 +340,7 @@ static bool is_expr_ffi_return_by_value(ast_t* ast)
     {
       ast_t* def = (ast_t*)ast_data(ast);
       ast_t* ret_decl = ast_child(ast_childidx(def, 1));
-      if (ast_has_annotation(ret_decl, PONY_BYVAL_ANNOTATION))
+      if (ast_has_annotation(ret_decl, PONY_BYVAL_ANNOTATION, opt->strtab))
       {
         return true;
       }
@@ -348,25 +348,25 @@ static bool is_expr_ffi_return_by_value(ast_t* ast)
       return false;
     }
     case TK_SEQ:
-      return is_expr_ffi_return_by_value(ast_childlast(ast));
+      return is_expr_ffi_return_by_value(ast_childlast(ast), opt);
     case TK_IF:
     case TK_WHILE:
     case TK_REPEAT:
     {
       ast_t* body = ast_childidx(ast, 1);
       ast_t* else_expr = ast_childidx(ast, 2);
-      return is_expr_ffi_return_by_value(body) && is_expr_ffi_return_by_value(else_expr);
+      return is_expr_ffi_return_by_value(body, opt) && is_expr_ffi_return_by_value(else_expr, opt);
     }
     case TK_TRY:
     {
       ast_t* body = ast_childidx(ast, 0);
       ast_t* else_expr = ast_childidx(ast, 1);
-      return is_expr_ffi_return_by_value(body) && is_expr_ffi_return_by_value(else_expr);
+      return is_expr_ffi_return_by_value(body, opt) && is_expr_ffi_return_by_value(else_expr, opt);
     }
     case TK_DISPOSING_BLOCK:
     {
       ast_t* body = ast_childidx(ast, 0);
-      return is_expr_ffi_return_by_value(body);
+      return is_expr_ffi_return_by_value(body, opt);
     }
     case TK_MATCH:
     {
@@ -376,14 +376,14 @@ static bool is_expr_ffi_return_by_value(ast_t* ast)
 
       while (the_case != NULL)
       {
-        if (!is_expr_ffi_return_by_value(ast_childidx(the_case, 2)))
+        if (!is_expr_ffi_return_by_value(ast_childidx(the_case, 2), opt))
           return false;
         the_case = ast_sibling(the_case);
       }
-      return is_expr_ffi_return_by_value(else_expr);
+      return is_expr_ffi_return_by_value(else_expr, opt);
     }
     case TK_RECOVER:
-      return is_expr_ffi_return_by_value(ast_childidx(ast, 1));
+      return is_expr_ffi_return_by_value(ast_childidx(ast, 1), opt);
     default:
       return false;
     }
@@ -414,7 +414,7 @@ static bool check_embed_construction(pass_opt_t* opt, ast_t* left, ast_t* right)
   bool result = true;
   if(ast_id(left) == TK_EMBEDREF)
   {
-    if(!is_expr_constructor(right) && !is_expr_ffi_return_by_value(right))
+    if(!is_expr_constructor(right) && !is_expr_ffi_return_by_value(right, opt))
     {
       ast_error(opt->check.errors, left,
         "an embedded field must be assigned using a constructor");
@@ -731,7 +731,7 @@ bool expr_assign(pass_opt_t* opt, ast_t** astp)
   if(wl_type == NULL)
   {
     ast_error_frame(&frame, ast, "Invalid type for field of assignment: %s",
-        ast_print_type(fl_type));
+        ast_print_type(fl_type, opt->strtab));
 
     if(ast_checkflag(ast_type(right), AST_FLAG_INCOMPLETE))
       ast_error_frame(&frame, right,
@@ -798,7 +798,7 @@ bool expr_assign(pass_opt_t* opt, ast_t** astp)
           "can't destructure a union using assignment, use pattern matching "
           "instead");
         ast_error_continue(opt->check.errors, right,
-          "inferred type of expression: %s", ast_print_type(r_type));
+          "inferred type of expression: %s", ast_print_type(r_type, opt->strtab));
         break;
 
       case TK_ISECTTYPE:
@@ -806,7 +806,7 @@ bool expr_assign(pass_opt_t* opt, ast_t** astp)
           "can't destructure an intersection using assignment, use pattern "
           "matching instead");
         ast_error_continue(opt->check.errors, right,
-          "inferred type of expression: %s", ast_print_type(r_type));
+          "inferred type of expression: %s", ast_print_type(r_type, opt->strtab));
         break;
 
       default:
@@ -864,11 +864,11 @@ bool expr_assign(pass_opt_t* opt, ast_t** astp)
     ast_error(opt->check.errors, ast,
       "not safe to write right side to left side");
     ast_error_continue(opt->check.errors, wl_type, "right side type: %s",
-      ast_print_type(wl_type));
+      ast_print_type(wl_type, opt->strtab));
     if(ast_child(left) != NULL)
     {
       ast_error_continue(opt->check.errors, ast_child(left), "left side type: %s",
-      ast_print_type(ast_type(ast_child(left))));
+      ast_print_type(ast_type(ast_child(left)), opt->strtab));
     }
     ast_free_unattached(wl_type);
     return false;
@@ -928,7 +928,7 @@ static bool add_as_type(pass_opt_t* opt, ast_t* ast, ast_t* expr,
 
     default:
     {
-      const char* name = package_hygienic_id(&opt->check);
+      const char* name = package_hygienic_id(&opt->check, opt);
 
       ast_t* expr_type = ast_type(expr);
       errorframe_t info = NULL;
@@ -939,9 +939,9 @@ static bool add_as_type(pass_opt_t* opt, ast_t* ast, ast_t* expr,
         ast_error_frame(&frame, ast,
           "this capture violates capabilities");
         ast_error_frame(&frame, type,
-          "match type: %s", ast_print_type(type));
+          "match type: %s", ast_print_type(type, opt->strtab));
         ast_error_frame(&frame, expr,
-          "pattern type: %s", ast_print_type(expr_type));
+          "pattern type: %s", ast_print_type(expr_type, opt->strtab));
         errorframe_append(&frame, &info);
         errorframe_report(&frame, opt->check.errors);
 
@@ -951,12 +951,12 @@ static bool add_as_type(pass_opt_t* opt, ast_t* ast, ast_t* expr,
         ast_error_frame(&frame, ast,
           "matching variable of type %s with %s is not possible, "
           "since a struct lacks a type descriptor",
-          ast_print_type(expr_type), ast_print_type(type));
+          ast_print_type(expr_type, opt->strtab), ast_print_type(type, opt->strtab));
         ast_error_frame(&frame, type,
-          "match type: %s", ast_print_type(type));
+          "match type: %s", ast_print_type(type, opt->strtab));
         ast_error_frame(&frame, expr,
           "a struct cannot be part of a union type. "
-          "pattern type: %s", ast_print_type(expr_type));
+          "pattern type: %s", ast_print_type(expr_type, opt->strtab));
         errorframe_append(&frame, &info);
         errorframe_report(&frame, opt->check.errors);
 
@@ -1010,13 +1010,13 @@ bool expr_as(pass_opt_t* opt, ast_t** astp)
     {
       ast_error(opt->check.errors, ast, "Cannot cast to same type");
       ast_error_continue(opt->check.errors, expr,
-        "Expression is already of type %s", ast_print_type(type));
+        "Expression is already of type %s", ast_print_type(type, opt->strtab));
     }
     else
     {
       ast_error(opt->check.errors, ast, "Cannot cast to subtype");
       ast_error_continue(opt->check.errors, expr,
-        "%s is a subtype of this Expression. 'as' is not needed here.", ast_print_type(type));
+        "%s is a subtype of this Expression. 'as' is not needed here.", ast_print_type(type, opt->strtab));
     }
     return false;
   }
@@ -1093,7 +1093,7 @@ bool expr_consume(pass_opt_t* opt, ast_t* ast)
   {
     ast_error(opt->check.errors, ast, "can't consume to this capability");
     ast_error_continue(opt->check.errors, term, "expression type is %s",
-      ast_print_type(type));
+      ast_print_type(type, opt->strtab));
     return false;
   }
 

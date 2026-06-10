@@ -43,14 +43,14 @@ static bool is_x_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
   errorframe_t* errorf, pass_opt_t* opt);
 
 static void struct_cant_be_x(ast_t* sub, ast_t* super, errorframe_t* errorf,
-  const char* entity)
+  const char* entity, pass_opt_t* opt)
 {
   if(errorf == NULL)
     return;
 
   ast_error_frame(errorf, sub,
     "%s is not a subtype of %s: a struct can't be a subtype of %s",
-    ast_print_type(sub), ast_print_type(super), entity);
+    ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab), entity);
 }
 
 static ast_t* get_valueformalarg_def(ast_t* ast)
@@ -111,9 +111,9 @@ static bool is_sub_cap_and_eph(ast_t* sub, ast_t* super, check_cap_t check_cap,
       {
         ast_error_frame(errorf, sub,
           "%s is not a subtype of %s: %s%s is not a subcap of %s%s",
-          ast_print_type(sub), ast_print_type(super),
-          ast_print_type(sub_cap), ast_print_type(sub_eph),
-          ast_print_type(super_cap), ast_print_type(super_eph));
+          ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab),
+          ast_print_type(sub_cap, opt->strtab), ast_print_type(sub_eph, opt->strtab),
+          ast_print_type(super_cap, opt->strtab), ast_print_type(super_eph, opt->strtab));
 
         if(is_cap_sub_cap(ast_id(sub_cap), TK_EPHEMERAL, ast_id(super_cap),
           ast_id(super_eph)))
@@ -135,7 +135,7 @@ static bool is_sub_cap_and_eph(ast_t* sub, ast_t* super, check_cap_t check_cap,
           ast_error_frame(errorf, sub_cap,
             "%s is a generic capability standing for {%s}; a capability is a "
             "subcap of it only if it is a subcap of every one of those",
-            ast_print_type(super_cap), generic);
+            ast_print_type(super_cap, opt->strtab), generic);
       }
 
       return false;
@@ -151,9 +151,9 @@ static bool is_sub_cap_and_eph(ast_t* sub, ast_t* super, check_cap_t check_cap,
       {
         ast_error_frame(errorf, sub,
           "%s is not in constraint %s: %s%s is not in constraint %s%s",
-          ast_print_type(sub), ast_print_type(super),
-          ast_print_type(sub_cap), ast_print_type(sub_eph),
-          ast_print_type(super_cap), ast_print_type(super_eph));
+          ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab),
+          ast_print_type(sub_cap, opt->strtab), ast_print_type(sub_eph, opt->strtab),
+          ast_print_type(super_cap, opt->strtab), ast_print_type(super_eph, opt->strtab));
       }
 
       return false;
@@ -169,9 +169,9 @@ static bool is_sub_cap_and_eph(ast_t* sub, ast_t* super, check_cap_t check_cap,
       {
         ast_error_frame(errorf, sub,
           "%s is not a bound subtype of %s: %s%s is not a bound subcap of %s%s",
-          ast_print_type(sub), ast_print_type(super),
-          ast_print_type(sub_cap), ast_print_type(sub_eph),
-          ast_print_type(super_cap), ast_print_type(super_eph));
+          ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab),
+          ast_print_type(sub_cap, opt->strtab), ast_print_type(sub_eph, opt->strtab),
+          ast_print_type(super_cap, opt->strtab), ast_print_type(super_eph, opt->strtab));
       }
 
       return false;
@@ -302,10 +302,10 @@ static bool is_eq_typeargs(ast_t* a, ast_t* b, errorframe_t* errorf,
   {
     ast_error_frame(errorf, a,
       "%s has different type arguments than %s (the type arguments must be equivalent, not covariant nor contravariant)",
-      ast_print_type(a), ast_print_type(b));
+      ast_print_type(a, opt->strtab), ast_print_type(b, opt->strtab));
     ast_error_frame(errorf, a,
       "this might be possible if either %s or %s were an interface rather than a concrete type",
-      ast_print_type(a), ast_print_type(b));
+      ast_print_type(a, opt->strtab), ast_print_type(b, opt->strtab));
   }
 
   // Make sure we had the same number of typeargs.
@@ -315,7 +315,7 @@ static bool is_eq_typeargs(ast_t* a, ast_t* b, errorframe_t* errorf,
     {
       ast_error_frame(errorf, a,
         "%s has a different number of type arguments than %s",
-        ast_print_type(a), ast_print_type(b));
+        ast_print_type(a, opt->strtab), ast_print_type(b, opt->strtab));
     }
 
     ret = false;
@@ -344,7 +344,7 @@ static bool is_reified_fun_sub_fun(ast_t* sub, ast_t* super,
         {
           ast_error_frame(errorf, sub,
             "%s constructor is not a subtype of %s constructor",
-            ast_print_type(sub_cap), ast_print_type(super_cap));
+            ast_print_type(sub_cap, opt->strtab), ast_print_type(super_cap, opt->strtab));
         }
 
         return false;
@@ -359,7 +359,7 @@ static bool is_reified_fun_sub_fun(ast_t* sub, ast_t* super,
         {
           ast_error_frame(errorf, sub,
             "constructor result %s is not a subtype of %s",
-            ast_print_type(sub_result), ast_print_type(super_result));
+            ast_print_type(sub_result, opt->strtab), ast_print_type(super_result, opt->strtab));
         }
 
         return false;
@@ -381,7 +381,7 @@ static bool is_reified_fun_sub_fun(ast_t* sub, ast_t* super,
         {
           ast_error_frame(errorf, sub,
             "%s method is not a subtype of %s method",
-            ast_print_type(sub_cap), ast_print_type(super_cap));
+            ast_print_type(sub_cap, opt->strtab), ast_print_type(super_cap, opt->strtab));
         }
 
         return false;
@@ -405,7 +405,7 @@ static bool is_reified_fun_sub_fun(ast_t* sub, ast_t* super,
         {
           ast_error_frame(errorf, sub,
             "method result %s is not a subtype of %s",
-            ast_print_type(sub_result), ast_print_type(super_result));
+            ast_print_type(sub_result, opt->strtab), ast_print_type(super_result, opt->strtab));
         }
 
         return false;
@@ -413,14 +413,14 @@ static bool is_reified_fun_sub_fun(ast_t* sub, ast_t* super,
 
       // pass by value return types must have the same byval annotation
       // otherwise it is not the same type
-      if(ast_has_annotation(sub_result, PONY_BYVAL_ANNOTATION) !=
-         ast_has_annotation(super_result, PONY_BYVAL_ANNOTATION))
+      if(ast_has_annotation(sub_result, PONY_BYVAL_ANNOTATION, opt->strtab) !=
+         ast_has_annotation(super_result, PONY_BYVAL_ANNOTATION, opt->strtab))
       {
         if(errorf != NULL)
         {
           ast_error_frame(errorf, sub,
             "%s and %s has different '" PONY_BYVAL_ANNOTATION "' return type annotations",
-            ast_print_type(sub), ast_print_type(super));
+            ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
         }
 
         return false;
@@ -450,7 +450,7 @@ static bool is_reified_fun_sub_fun(ast_t* sub, ast_t* super,
       {
         ast_error_frame(errorf, sub,
           "type parameter constraint %s is not a supertype of %s",
-          ast_print_type(sub_constraint), ast_print_type(super_constraint));
+          ast_print_type(sub_constraint, opt->strtab), ast_print_type(super_constraint, opt->strtab));
       }
 
       return false;
@@ -477,12 +477,12 @@ static bool is_reified_fun_sub_fun(ast_t* sub, ast_t* super,
 
     // pass by value types must have the same byval annotation
     // otherwise it is not the same type
-    if(ast_has_annotation(sub_type, PONY_BYVAL_ANNOTATION) !=
-       ast_has_annotation(super_type, PONY_BYVAL_ANNOTATION))
+    if(ast_has_annotation(sub_type, PONY_BYVAL_ANNOTATION, opt->strtab) !=
+       ast_has_annotation(super_type, PONY_BYVAL_ANNOTATION, opt->strtab))
     {
       ast_error_frame(errorf, sub,
         "%s and %s has different '" PONY_BYVAL_ANNOTATION "' annotations",
-        ast_print_type(sub), ast_print_type(super));
+        ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
       return false;
     }
 
@@ -495,7 +495,7 @@ static bool is_reified_fun_sub_fun(ast_t* sub, ast_t* super,
       if(errorf != NULL)
       {
         ast_error_frame(errorf, sub, "parameter %s is not a supertype of %s",
-          ast_print_type(sub_type), ast_print_type(super_type));
+          ast_print_type(sub_type, opt->strtab), ast_print_type(super_type, opt->strtab));
       }
 
       ast_free_unattached(sub_type);
@@ -668,7 +668,7 @@ static bool is_x_sub_isect(ast_t* sub, ast_t* super, check_cap_t check_cap,
       {
         ast_error_frame(errorf, sub,
           "%s is not a subtype of every element of %s",
-          ast_print_type(sub), ast_print_type(super));
+          ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
       }
 
       return false;
@@ -870,7 +870,7 @@ static bool is_x_sub_union(ast_t* sub, ast_t* super, check_cap_t check_cap,
     }
 
     ast_error_frame(errorf, sub, "%s is not a subtype of any element of %s",
-      ast_print_type(sub), ast_print_type(super));
+      ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
   }
 
   return false;
@@ -893,7 +893,7 @@ static bool is_union_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
       {
         ast_error_frame(errorf, child,
           "not every element of %s is a subtype of %s",
-          ast_print_type(sub), ast_print_type(super));
+          ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
       }
 
       return false;
@@ -972,7 +972,7 @@ static bool is_isect_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
   if(errorf != NULL)
   {
     ast_error_frame(errorf, sub, "no element of %s is a subtype of %s",
-      ast_print_type(sub), ast_print_type(super));
+      ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
   }
 
   return false;
@@ -991,7 +991,7 @@ static bool is_tuple_sub_tuple(ast_t* sub, ast_t* super, check_cap_t check_cap,
     {
       ast_error_frame(errorf, sub,
         "%s is not a subtype of %s: they have a different number of elements",
-        ast_print_type(sub), ast_print_type(super));
+        ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
     }
 
     return false;
@@ -1013,7 +1013,7 @@ static bool is_tuple_sub_tuple(ast_t* sub, ast_t* super, check_cap_t check_cap,
   if(!ret && errorf != NULL)
   {
     ast_error_frame(errorf, sub, "%s is not a pairwise subtype of %s",
-      ast_print_type(sub), ast_print_type(super));
+      ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
   }
 
   return ret;
@@ -1029,7 +1029,7 @@ static bool is_single_sub_tuple(ast_t* sub, ast_t* super, check_cap_t check_cap,
   {
     ast_error_frame(errorf, sub,
       "%s is not a subtype of %s: the supertype is a tuple",
-      ast_print_type(sub), ast_print_type(super));
+      ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
   }
 
   return false;
@@ -1050,8 +1050,8 @@ static bool is_tuple_sub_nominal(ast_t* sub, ast_t* super,
         {
           ast_error_frame(errorf, child,
             "%s is not a subtype of %s: %s is not a subtype of %s",
-            ast_print_type(sub), ast_print_type(super),
-            ast_print_type(child), ast_print_type(super));
+            ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab),
+            ast_print_type(child, opt->strtab), ast_print_type(super, opt->strtab));
         }
         return false;
       }
@@ -1066,7 +1066,7 @@ static bool is_tuple_sub_nominal(ast_t* sub, ast_t* super,
 
     ast_error_frame(errorf, sub,
       "%s is not a subtype of %s: the subtype is a tuple",
-      ast_print_type(sub), ast_print_type(super));
+      ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
     ast_error_frame(errorf, super_def, "this might be possible if the supertype"
       " were an empty interface, such as the Any type.");
   }
@@ -1139,7 +1139,7 @@ static bool is_nominal_sub_entity(ast_t* sub, ast_t* super,
     if(errorf != NULL)
     {
       ast_error_frame(errorf, sub, "%s is not a subtype of %s",
-        ast_print_type(sub), ast_print_type(super));
+        ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
     }
 
     return false;
@@ -1171,25 +1171,25 @@ static bool is_nominal_sub_structural(ast_t* sub, ast_t* super,
   pony_assert((sub_pass >= PASS_TRAITS) && (super_pass >= PASS_TRAITS));
   (void)sub_pass; (void)super_pass;
 
-  if(ast_has_annotation(sub_def, "nosupertype"))
+  if(ast_has_annotation(sub_def, "nosupertype", opt->strtab))
   {
     if(errorf != NULL)
     {
       ast_error_frame(errorf, sub,
         "%s is not a subtype of %s: it is marked 'nosupertype'",
-        ast_print_type(sub), ast_print_type(super));
+        ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
     }
 
     return false;
   }
 
-  if(is_bare(sub) != is_bare(super))
+  if(is_bare(sub, opt) != is_bare(super, opt))
   {
     if(errorf != NULL)
     {
       ast_error_frame(errorf, sub,
         "%s is not a subtype of %s: their bareness differ",
-        ast_print_type(sub), ast_print_type(super));
+        ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
     }
 
     return false;
@@ -1219,7 +1219,7 @@ static bool is_nominal_sub_structural(ast_t* sub, ast_t* super,
       {
         ast_error_frame(errorf, sub,
           "%s is not a subtype of %s: it has no method '%s'",
-          ast_print_type(sub), ast_print_type(super),
+          ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab),
           ast_name(super_member_id));
       }
 
@@ -1252,7 +1252,7 @@ static bool is_nominal_sub_structural(ast_t* sub, ast_t* super,
         ast_error_frame(errorf, sub_member,
           "%s is not a subtype of %s: "
           "method '%s' has an incompatible signature",
-          ast_print_type(sub), ast_print_type(super),
+          ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab),
           ast_name(super_member_id));
       }
     }
@@ -1273,7 +1273,7 @@ static bool is_nominal_sub_interface(ast_t* sub, ast_t* super,
 
   if(ast_id(sub_def) == TK_STRUCT)
   {
-    struct_cant_be_x(sub, super, errorf, "an interface");
+    struct_cant_be_x(sub, super, errorf, "an interface", opt);
     ret = false;
   }
 
@@ -1289,14 +1289,14 @@ static bool is_nominal_sub_interface(ast_t* sub, ast_t* super,
 static bool nominal_provides_trait(ast_t* type, ast_t* trait,
   check_cap_t check_cap, errorframe_t* errorf, pass_opt_t* opt)
 {
-  pony_assert(!is_bare(trait));
-  if(is_bare(type))
+  pony_assert(!is_bare(trait, opt));
+  if(is_bare(type, opt))
   {
     if(errorf != NULL)
     {
       ast_error_frame(errorf, type,
         "%s is not a subtype of %s: their bareness differ",
-        ast_print_type(type), ast_print_type(trait));
+        ast_print_type(type, opt->strtab), ast_print_type(trait, opt->strtab));
     }
 
     return false;
@@ -1338,7 +1338,7 @@ static bool nominal_provides_trait(ast_t* type, ast_t* trait,
   if(errorf != NULL)
   {
     ast_error_frame(errorf, type, "%s does not implement trait %s",
-      ast_print_type(type), ast_print_type(trait));
+      ast_print_type(type, opt->strtab), ast_print_type(trait, opt->strtab));
   }
 
   return false;
@@ -1360,9 +1360,9 @@ static bool is_entity_sub_trait(ast_t* sub, ast_t* super,
   return true;
 }
 
-static bool is_struct_sub_trait(ast_t* sub, ast_t* super, errorframe_t* errorf)
+static bool is_struct_sub_trait(ast_t* sub, ast_t* super, errorframe_t* errorf, pass_opt_t* opt)
 {
-  struct_cant_be_x(sub, super, errorf, "a trait");
+  struct_cant_be_x(sub, super, errorf, "a trait", opt);
   return false;
 }
 
@@ -1394,7 +1394,7 @@ static bool is_trait_sub_trait(ast_t* sub, ast_t* super, check_cap_t check_cap,
 }
 
 static bool is_interface_sub_trait(ast_t* sub, ast_t* super,
-  check_cap_t check_cap, errorframe_t* errorf)
+  check_cap_t check_cap, errorframe_t* errorf, pass_opt_t* opt)
 {
   (void)check_cap;
 
@@ -1402,7 +1402,7 @@ static bool is_interface_sub_trait(ast_t* sub, ast_t* super,
   {
     ast_error_frame(errorf, sub,
       "%s is not a subtype of %s: an interface can't be a subtype of a trait",
-      ast_print_type(sub), ast_print_type(super));
+      ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
   }
 
   return false;
@@ -1423,13 +1423,13 @@ static bool is_nominal_sub_trait(ast_t* sub, ast_t* super,
       return is_entity_sub_trait(sub, super, check_cap, errorf, opt);
 
     case TK_STRUCT:
-      return is_struct_sub_trait(sub, super, errorf);
+      return is_struct_sub_trait(sub, super, errorf, opt);
 
     case TK_TRAIT:
       return is_trait_sub_trait(sub, super, check_cap, errorf, opt);
 
     case TK_INTERFACE:
-      return is_interface_sub_trait(sub, super, check_cap, errorf);
+      return is_interface_sub_trait(sub, super, check_cap, errorf, opt);
 
     default: {}
   }
@@ -1480,7 +1480,7 @@ static bool is_x_sub_typeparam(ast_t* sub, ast_t* super,
       {
         ast_error_frame(errorf, sub,
           "%s is not a subtype of %s: the type parameter has no constraint",
-          ast_print_type(sub), ast_print_type(super));
+          ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
       }
 
       return false;
@@ -1500,7 +1500,7 @@ static bool is_x_sub_typeparam(ast_t* sub, ast_t* super,
     {
       ast_error_frame(errorf, sub,
         "%s is not a subtype of %s: the type parameter has no lower bounds",
-        ast_print_type(sub), ast_print_type(super));
+        ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
     }
 
     return false;
@@ -1537,7 +1537,7 @@ static bool is_x_sub_arrow(ast_t* sub, ast_t* super,
     {
       ast_error_frame(errorf, sub,
         "%s is not a subtype of %s: the supertype has no lower bounds",
-        ast_print_type(sub), ast_print_type(super));
+        ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
     }
 
     return false;
@@ -1569,7 +1569,7 @@ static bool is_nominal_entity_type(ast_t* sub, ast_t* super, errorframe_t* error
   {
     ast_error_frame(errorf, sub,
       "%s is not an entity type of %s",
-      ast_print_type(sub), ast_print_type(super));
+      ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
   }
 
   return false;
@@ -1583,7 +1583,7 @@ static bool is_nominal_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
   {
     case TK_UNIONTYPE:
     {
-      if(is_bare(sub))
+      if(is_bare(sub, opt))
       {
         if(errorf != NULL)
         {
@@ -1597,7 +1597,7 @@ static bool is_nominal_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
 
     case TK_ISECTTYPE:
     {
-      if(is_bare(sub))
+      if(is_bare(sub, opt))
       {
         if(errorf != NULL)
         {
@@ -1673,7 +1673,7 @@ static bool is_entity_type_sub_x(ast_t* sub, ast_t* super, errorframe_t* errorf,
   {
     ast_error_frame(errorf, sub,
       "entity %s is not a subtype of %s",
-      ast_print_type(sub), ast_print_type(super));
+      ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
   }
 
   return false;
@@ -1706,7 +1706,7 @@ static bool is_typeparam_sub_typeparam(ast_t* sub, ast_t* super,
   {
     ast_error_frame(errorf, sub,
       "%s is not a subtype of %s: they are different type parameters",
-      ast_print_type(sub), ast_print_type(super));
+      ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
   }
 
   return false;
@@ -1754,7 +1754,7 @@ static bool is_typeparam_sub_arrow(ast_t* sub, ast_t* super,
     {
       ast_error_frame(errorf, sub,
         "%s is not a subtype of %s: the supertype has no lower bounds",
-        ast_print_type(sub), ast_print_type(super));
+        ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
     }
 
     return false;
@@ -1825,7 +1825,7 @@ static bool is_typeparam_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
       {
         ast_error_frame(errorf, sub,
           "%s is not a subtype of %s: the subtype has no constraint",
-          ast_print_type(sub), ast_print_type(super));
+          ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
       }
 
       return false;
@@ -1845,7 +1845,7 @@ static bool is_typeparam_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
     {
       ast_error_frame(errorf, sub,
         "%s is not a subtype of %s: the subtype has no constraint",
-        ast_print_type(sub), ast_print_type(super));
+        ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
     }
 
     return false;
@@ -1964,7 +1964,7 @@ static bool is_arrow_sub_nominal(ast_t* sub, ast_t* super,
     {
       ast_error_frame(errorf, sub,
         "%s is not a subtype of %s: the subtype has no upper bounds",
-        ast_print_type(sub), ast_print_type(super));
+        ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
     }
 
     return false;
@@ -2056,7 +2056,7 @@ static bool is_arrow_sub_arrow(ast_t* sub, ast_t* super, check_cap_t check_cap,
     {
       ast_error_frame(errorf, sub,
         "%s is not a subtype of %s: the subtype has no upper bounds",
-        ast_print_type(sub), ast_print_type(super));
+        ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
     }
 
     ok = false;
@@ -2068,7 +2068,7 @@ static bool is_arrow_sub_arrow(ast_t* sub, ast_t* super, check_cap_t check_cap,
     {
       ast_error_frame(errorf, sub,
         "%s is not a subtype of %s: the supertype has no lower bounds",
-        ast_print_type(sub), ast_print_type(super));
+        ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab));
     }
 
     ok = false;
@@ -2281,7 +2281,7 @@ static bool is_x_sub_x(ast_t* sub, ast_t* super, check_cap_t check_cap,
             "typeargs that grow at each level. The "
             "recursion-divergence guard aborted after %zu same-def "
             "frames (ponylang/ponyc#1216).",
-            ast_print_type(sub), ast_print_type(super), SAME_DEF_LIMIT);
+            ast_print_type(sub, opt->strtab), ast_print_type(super, opt->strtab), SAME_DEF_LIMIT);
         }
 
         // Mark the subtree as poisoned so neither this frame nor any
@@ -2817,8 +2817,14 @@ bool is_known(ast_t* type)
   return false;
 }
 
-bool is_bare(ast_t* type)
+bool is_bare(ast_t* type, pass_opt_t* opt)
 {
+  // opt must be non-NULL: the TK_NOMINAL case interns "ponyint_bare" into
+  // opt->strtab. Lookup paths that deliberately pass opt == NULL to skip
+  // access-control checks must pass from == NULL instead (see genmatch.c), which
+  // keeps the checks off without starving the subtype machinery of a table.
+  pony_assert(opt != NULL);
+
   if(type == NULL)
     return false;
 
@@ -2831,7 +2837,7 @@ bool is_bare(ast_t* type)
       ast_t* child = ast_child(type);
       while(child != NULL)
       {
-        if(is_bare(child))
+        if(is_bare(child, opt))
           return true;
 
         child = ast_sibling(child);
@@ -2843,18 +2849,18 @@ bool is_bare(ast_t* type)
     case TK_NOMINAL:
     {
       ast_t* def = (ast_t*)ast_data(type);
-      return ast_has_annotation(def, "ponyint_bare");
+      return ast_has_annotation(def, "ponyint_bare", opt->strtab);
     }
 
     case TK_ARROW:
-      return is_bare(ast_childidx(type, 1));
+      return is_bare(ast_childidx(type, 1), opt);
 
     case TK_TYPEALIASREF:
     {
       ast_t* unfolded = typealias_unfold(type);
       if(unfolded == NULL)
         return false;
-      bool ok = is_bare(unfolded);
+      bool ok = is_bare(unfolded, opt);
       ast_free_unattached(unfolded);
       return ok;
     }
@@ -3256,7 +3262,7 @@ bool is_allowed_pointer_conversion(ast_t* l_type, ast_t* r_type, pass_opt_t* opt
     l_type = unfolded;
   }
 
-  if(is_bare(l_type))
+  if(is_bare(l_type, opt))
   {
     // Implicit pointer to lambda conversion
     if(is_pointer(r_type))
@@ -3273,7 +3279,7 @@ bool is_allowed_pointer_conversion(ast_t* l_type, ast_t* r_type, pass_opt_t* opt
   else if(is_pointer(l_type))
   {
     // Implicit lambda to pointer conversion
-    if(is_bare(r_type))
+    if(is_bare(r_type, opt))
     {
       ast_t* pointer_typeargs = ast_childidx(l_type, 2);
       ast_t* pointer_typearg = ast_child(pointer_typeargs);

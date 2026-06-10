@@ -284,7 +284,7 @@ static reach_method_t* reach_rmethod(reach_method_name_t* n, const char* name)
 }
 
 static reach_method_name_t* add_method_name(reach_type_t* t, const char* name,
-  bool internal)
+  bool internal, pass_opt_t* opt)
 {
   reach_method_name_t* n = reach_method_name(t, name);
 
@@ -302,7 +302,7 @@ static reach_method_name_t* add_method_name(reach_type_t* t, const char* name,
       n->cap = TK_BOX;
       n->internal = true;
     } else {
-      deferred_reification_t* fun = lookup(NULL, NULL, t->ast, name);
+      deferred_reification_t* fun = lookup(opt, NULL, t->ast, name);
       ast_t* fun_ast = fun->ast;
       n->id = ast_id(fun_ast);
       n->cap = ast_id(ast_child(fun_ast));
@@ -339,7 +339,7 @@ static void set_method_types(reach_t* r, reach_method_t* m,
       m->params[i].ast = p_type;
       m->params[i].type = add_type(r, p_type, opt, m->fun);
       m->params[i].pass_by_value = (m->cap == TK_AT) &&
-        (ast_has_annotation(p_type, PONY_BYVAL_ANNOTATION) ||
+        (ast_has_annotation(p_type, PONY_BYVAL_ANNOTATION, opt->strtab) ||
          ast_id(p_type) == TK_TUPLETYPE);
 
       if((ast_id(p_type) != TK_NOMINAL) && (ast_id(p_type) != TK_TYPEPARAMREF))
@@ -454,7 +454,7 @@ static void trace_kind_append(printbuf_t* buf, ast_t* type)
   }
 }
 
-static const char* make_mangled_name(reach_method_t* m)
+static const char* make_mangled_name(reach_method_t* m, pass_opt_t* opt)
 {
   // Generate the mangled name.
   // cap_name[_Arg1_Arg2]_[<trace_kind>]<args>_result
@@ -537,18 +537,18 @@ static const char* make_mangled_name(reach_method_t* m)
   if(is_partial)
     printbuf(buf, "_p");
 
-  const char* name = stringtab(buf->m);
+  const char* name = stringtab(opt->strtab, buf->m);
   printbuf_free(buf);
   return name;
 }
 
-static const char* make_full_name(reach_type_t* t, reach_method_t* m)
+static const char* make_full_name(reach_type_t* t, reach_method_t* m, pass_opt_t* opt)
 {
   // Generate the full mangled name.
   // pkg_Type[_Arg1_Arg2]_cap_name[_Arg1_Arg2]_[<trace_kind>]<args>_result
   printbuf_t* buf = printbuf_new();
   printbuf(buf, "%s_%s", t->name, m->mangled_name);
-  const char* name = stringtab(buf->m);
+  const char* name = stringtab(opt->strtab, buf->m);
   printbuf_free(buf);
   return name;
 }
@@ -557,7 +557,7 @@ static void add_rmethod_to_subtype(reach_t* r, reach_type_t* t,
   reach_method_name_t* n, reach_method_t* m, pass_opt_t* opt)
 {
   // Add the method to the type if it isn't already there.
-  reach_method_name_t* n2 = add_method_name(t, n->name, false);
+  reach_method_name_t* n2 = add_method_name(t, n->name, false, opt);
   add_rmethod(r, t, n2, m->cap, m->typeargs, opt, false);
 
   // Add this mangling to the type if it isn't already there.
@@ -572,7 +572,7 @@ static void add_rmethod_to_subtype(reach_t* r, reach_type_t* t,
 
   mangled->name = m->name;
   mangled->mangled_name = m->mangled_name;
-  mangled->full_name = make_full_name(t, mangled);
+  mangled->full_name = make_full_name(t, mangled, opt);
 
   mangled->cap = m->cap;
   mangled->fun = deferred_reify_dup(m->fun);
@@ -680,7 +680,7 @@ static reach_method_t* add_rmethod(reach_t* r, reach_type_t* t,
   if(!internal)
   {
     ast_t* r_ast = set_cap_and_ephemeral(t->ast, cap, TK_NONE);
-    deferred_reification_t* fun = lookup(NULL, NULL, r_ast, n->name);
+    deferred_reification_t* fun = lookup(opt, NULL, r_ast, n->name);
     pony_assert(fun != NULL);
 
     // The typeargs and thistype are in the scope of r_ast but we're going to
@@ -707,15 +707,15 @@ static reach_method_t* add_rmethod(reach_t* r, reach_type_t* t,
     }
 
     if(cap == TK_AT &&
-      (ast_has_annotation(ast_childidx(fun->ast, 4), PONY_BYVAL_ANNOTATION) ||
+      (ast_has_annotation(ast_childidx(fun->ast, 4), PONY_BYVAL_ANNOTATION, opt->strtab) ||
        m->result->underlying == TK_TUPLETYPE))
     {
       m->return_by_value = true;
     }
   }
 
-  m->mangled_name = make_mangled_name(m);
-  m->full_name = make_full_name(t, m);
+  m->mangled_name = make_mangled_name(m, opt);
+  m->full_name = make_full_name(t, m, opt);
 
   // Add to both tables.
   reach_methods_put(&n->r_methods, m);
@@ -779,8 +779,8 @@ static void add_methods_to_type(reach_t* r, reach_type_t* from,
 static void add_internal(reach_t* r, reach_type_t* t, const char* name,
   pass_opt_t* opt)
 {
-  name = stringtab(name);
-  reach_method_name_t* n = add_method_name(t, name, true);
+  name = stringtab(opt->strtab, name);
+  reach_method_name_t* n = add_method_name(t, name, true, opt);
   add_rmethod(r, t, n, TK_BOX, NULL, opt, true);
 }
 
@@ -929,7 +929,7 @@ static void add_traits_to_type(reach_t* r, reach_type_t* t,
 static void add_special(reach_t* r, reach_type_t* t, ast_t* type,
   const char* special, pass_opt_t* opt)
 {
-  special = stringtab(special);
+  special = stringtab(opt->strtab, special);
   deferred_reification_t* find = lookup_try(NULL, NULL, type, special, false);
 
   if(find != NULL)
@@ -1013,7 +1013,7 @@ static void add_fields(reach_t* r, reach_type_t* t, pass_opt_t* opt)
   member = ast_child(members);
   size_t index = 0;
 
-  const char* str_final = stringtab("_final");
+  const char* str_final = stringtab(opt->strtab, "_final");
   bool has_finaliser = ast_get(def, str_final, NULL) != NULL;
   bool needs_finaliser = false;
 
@@ -1025,7 +1025,7 @@ static void add_fields(reach_t* r, reach_type_t* t, pass_opt_t* opt)
       case TK_FLET:
       case TK_EMBED:
       {
-        deferred_reification_t* member_lookup = lookup(NULL, NULL, t->ast,
+        deferred_reification_t* member_lookup = lookup(opt, NULL, t->ast,
           ast_name(ast_child(member)));
         pony_assert(member_lookup != NULL);
 
@@ -1105,7 +1105,7 @@ static void add_fields(reach_t* r, reach_type_t* t, pass_opt_t* opt)
 
   if(!has_finaliser && needs_finaliser)
   {
-    reach_method_name_t* n = add_method_name(t, stringtab("_final"), true);
+    reach_method_name_t* n = add_method_name(t, stringtab(opt->strtab, "_final"), true, opt);
     add_rmethod(r, t, n, TK_BOX, NULL, opt, true);
   }
 }
@@ -1253,7 +1253,7 @@ static reach_type_t* add_tuple(reach_t* r, ast_t* type, pass_opt_t* opt,
     child = ast_sibling(child);
   }
 
-  t->mangle = stringtab(mangle->m);
+  t->mangle = stringtab(opt->strtab, mangle->m);
   printbuf_free(mangle);
   return t;
 }
@@ -1422,7 +1422,7 @@ static reach_type_t* add_nominal(reach_t* r, ast_t* type, pass_opt_t* opt,
 
   bool bare = false;
 
-  if(is_bare(type))
+  if(is_bare(type, opt))
   {
     bare = true;
 
@@ -1448,7 +1448,7 @@ static reach_type_t* add_nominal(reach_t* r, ast_t* type, pass_opt_t* opt,
     AST_GET_CHILDREN(bare_method, cap, name, typeparams);
     pony_assert(ast_id(typeparams) == TK_NONE);
 
-    reach_method_name_t* n = add_method_name(t, ast_name(name), false);
+    reach_method_name_t* n = add_method_name(t, ast_name(name), false, opt);
     t->bare_method = add_rmethod(r, t, n, TK_AT, NULL, opt, false);
   }
 
@@ -1593,7 +1593,7 @@ static void reachable_pattern(reach_t* r, deferred_reification_t* reify,
       if(ast_id(type) != TK_DONTCARETYPE)
       {
         // type will be reified in reachable_method
-        reachable_method(r, reify, type, stringtab("eq"), NULL, opt);
+        reachable_method(r, reify, type, stringtab(opt->strtab, "eq"), NULL, opt);
         reachable_expr(r, reify, &ast, opt);
       }
       break;
@@ -1770,7 +1770,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
 
         // type will be reified in reachable_method
         if(type != NULL)
-          reachable_method(r, reify, type, stringtab("create"), NULL, opt);
+          reachable_method(r, reify, type, stringtab(opt->strtab, "create"), NULL, opt);
 
         break;
       }
@@ -1823,7 +1823,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
         pony_assert(ast_id(cond) == TK_SEQ);
         cond = ast_child(cond);
 
-        if(is_result_needed(ast) && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
+        if(is_result_needed(ast, opt) && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
         {
           ast_t* type = deferred_reify(reify, ast_type(ast), opt);
           add_type(r, type, opt, reify);
@@ -1850,8 +1850,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
         AST_GET_CHILDREN(ast, left_clause, right);
         AST_GET_CHILDREN(left_clause, sub, super, left);
 
-
-        if(is_result_needed(ast) && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
+        if(is_result_needed(ast, opt) && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
         {
           ast_t* type = deferred_reify(reify, ast_type(ast), opt);
           add_type(r, type, opt, reify);
@@ -1880,7 +1879,7 @@ static void reachable_expr(reach_t* r, deferred_reification_t* reify,
       case TK_DISPOSING_BLOCK:
       case TK_RECOVER:
       {
-        if(is_result_needed(ast) && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
+        if(is_result_needed(ast, opt) && !ast_checkflag(ast, AST_FLAG_JUMPS_AWAY))
         {
           ast_t* type = deferred_reify(reify, ast_type(ast), opt);
           add_type(r, type, opt, reify);
@@ -2010,7 +2009,7 @@ static void reachable_method(reach_t* r, deferred_reification_t* reify,
     t = add_type(r, type, opt, reify);
   }
 
-  reach_method_name_t* n = add_method_name(t, name, false);
+  reach_method_name_t* n = add_method_name(t, name, false, opt);
   reach_method_t* m = add_rmethod(r, t, n, n->cap, typeargs, opt, false);
   if(m == NULL)
   {
@@ -2019,7 +2018,7 @@ static void reachable_method(reach_t* r, deferred_reification_t* reify,
 
   if((n->id == TK_FUN) && ((n->cap == TK_BOX) || (n->cap == TK_TAG)))
   {
-    if(name == stringtab("_final"))
+    if(name == stringtab(opt->strtab, "_final"))
     {
       // If the method is a finaliser, don't mark the ref and val versions as
       // reachable.
@@ -2140,10 +2139,10 @@ reach_type_t* reach_type(reach_t* r, ast_t* type, pass_opt_t* opt)
   return reach_types_get(&r->types, &k, &index);
 }
 
-reach_type_t* reach_type_name(reach_t* r, const char* name)
+reach_type_t* reach_type_name(reach_t* r, const char* name, pass_opt_t* opt)
 {
   reach_type_t k;
-  k.name = stringtab(name);
+  k.name = stringtab(opt->strtab, name);
   size_t index = HASHMAP_UNKNOWN;
   return reach_types_get(&r->types, &k, &index);
 }

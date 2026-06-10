@@ -32,7 +32,7 @@ extern "C" LLVMTypeRef generate_try_return_type(compile_t* c, TryReturnInfo* try
 
   if(is_none(type->ast))
   {
-    reach_type_t* bool_reach_type = reach_type_name(c->reach, "Bool");
+    reach_type_t* bool_reach_type = reach_type_name(c->reach, "Bool", c->opt);
     compile_type_t* bool_c_t = (compile_type_t*)bool_reach_type->c_type;
     try_return_info->return_type = TRYRETURNTYPE_BOOL;
     try_return_info->wrapped_type = bool_c_t->use_type;
@@ -50,7 +50,7 @@ extern "C" LLVMTypeRef generate_try_return_type(compile_t* c, TryReturnInfo* try
   {
     try_return_info->return_type = TRYRETURNTYPE_OTHER;
 
-    reach_type_t* bool_reach_type = reach_type_name(c->reach, "Bool");
+    reach_type_t* bool_reach_type = reach_type_name(c->reach, "Bool", c->opt);
     LLVMTypeRef bool_type = ((compile_type_t*)bool_reach_type->c_type)->mem_type;
 
     LLVMTypeRef elements[2];
@@ -95,7 +95,7 @@ LLVMValueRef unwrap_try_return_bool(compile_t* c, TryReturnInfo* try_return_info
     {
       bool_expr = LLVMBuildExtractValue(c->builder, value, 1, "");
 
-      reach_type_t* bool_reach_type = reach_type_name(c->reach, "Bool");
+      reach_type_t* bool_reach_type = reach_type_name(c->reach, "Bool", c->opt);
       compile_type_t* bool_c_t = (compile_type_t*)bool_reach_type->c_type;
 
       if(LLVMGetIntTypeWidth(bool_c_t->use_type) < LLVMGetIntTypeWidth(bool_c_t->mem_type))
@@ -192,7 +192,7 @@ extern "C" LLVMValueRef wrap_try_return_success(compile_t* c, TryReturnInfo* try
   {
     case TRYRETURNTYPE_BOOL:
     {
-      reach_type_t* bool_reach_type = reach_type_name(c->reach, "Bool");
+      reach_type_t* bool_reach_type = reach_type_name(c->reach, "Bool", c->opt);
       compile_type_t* bool_c_t = (compile_type_t*)bool_reach_type->c_type;
 
       ret = LLVMConstInt(bool_c_t->use_type, 1, false);
@@ -207,7 +207,7 @@ extern "C" LLVMValueRef wrap_try_return_success(compile_t* c, TryReturnInfo* try
 
     case TRYRETURNTYPE_OTHER:
     {
-      reach_type_t* bool_type = reach_type_name(c->reach, "Bool");
+      reach_type_t* bool_type = reach_type_name(c->reach, "Bool", c->opt);
       compile_type_t* bool_c_t = (compile_type_t*)bool_type->c_type;
 
       LLVMValueRef tuple = LLVMGetUndef(try_return_info->wrapped_type);
@@ -235,7 +235,7 @@ extern "C" LLVMValueRef wrap_try_return_error(compile_t* c, TryReturnInfo* try_r
   {
     case TRYRETURNTYPE_BOOL:
     {
-      reach_type_t* bool_reach_type = reach_type_name(c->reach, "Bool");
+      reach_type_t* bool_reach_type = reach_type_name(c->reach, "Bool", c->opt);
       compile_type_t* bool_c_t = (compile_type_t*)bool_reach_type->c_type;
 
       ret = LLVMConstInt(bool_c_t->use_type, 0, false);
@@ -250,7 +250,7 @@ extern "C" LLVMValueRef wrap_try_return_error(compile_t* c, TryReturnInfo* try_r
 
     case TRYRETURNTYPE_OTHER:
     {
-      reach_type_t* bool_type = reach_type_name(c->reach, "Bool");
+      reach_type_t* bool_type = reach_type_name(c->reach, "Bool", c->opt);
       compile_type_t* bool_c_t = (compile_type_t*)bool_type->c_type;
 
       LLVMValueRef tuple = LLVMGetUndef(try_return_info->wrapped_type);

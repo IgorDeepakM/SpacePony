@@ -585,7 +585,7 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
 
   while(typeparam != NULL)
   {
-    bool noconstaintcheck = ast_has_annotation(typeparam, "noconstraintcheck");
+    bool noconstaintcheck = ast_has_annotation(typeparam, "noconstraintcheck", opt->strtab);
 
     if(noconstaintcheck)
     {
@@ -594,9 +594,9 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
       continue;
     }
 
-    bool allowbaretypes = ast_has_annotation(typeparam, "allowbaretypes");
+    bool allowbaretypes = ast_has_annotation(typeparam, "allowbaretypes", opt->strtab);
 
-    if (is_bare(typearg) && !allowbaretypes)
+    if (is_bare(typearg, opt) && !allowbaretypes)
     {
       if(report_errors)
       {
@@ -713,9 +713,9 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
           ast_error(opt->check.errors, orig,
             "value argument type is outside its constraint");
           ast_error_continue(opt->check.errors, literal,
-            "argument type: %s", ast_print_type(ast_type(literal)));
+            "argument type: %s", ast_print_type(ast_type(literal), opt->strtab));
           ast_error_continue(opt->check.errors, typeparam,
-            "constraint: %s", ast_print_type(r_constraint));
+            "constraint: %s", ast_print_type(r_constraint, opt->strtab));
         }
 
         ast_free_unattached(r_constraint);
@@ -730,9 +730,9 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
         ast_error_frame(&frame, orig,
           "type argument is outside its constraint");
         ast_error_frame(&frame, typearg,
-          "argument: %s", ast_print_type(typearg));
+          "argument: %s", ast_print_type(typearg, opt->strtab));
         ast_error_frame(&frame, typeparam,
-          "constraint: %s", ast_print_type(r_constraint));
+          "constraint: %s", ast_print_type(r_constraint, opt->strtab));
         errorframe_append(&frame, &info);
         errorframe_report(&frame, opt->check.errors);
       }
@@ -752,9 +752,9 @@ bool check_constraints(ast_t* orig, ast_t* typeparams, ast_t* typeargs,
         ast_error(opt->check.errors, orig, "a constructable constraint can "
           "only be fulfilled by a concrete type argument");
         ast_error_continue(opt->check.errors, typearg, "argument: %s",
-          ast_print_type(typearg));
+          ast_print_type(typearg, opt->strtab));
         ast_error_continue(opt->check.errors, typeparam, "constraint: %s",
-          ast_print_type(constraint));
+          ast_print_type(constraint, opt->strtab));
       }
 
       return false;

@@ -356,7 +356,7 @@ ast_t* CtfeValue::create_ast_literal_node(pass_opt_t* opt, errorframe_t* errors,
         new_node = ast_blank(TK_STRING);
         CtfeValue string;
         s->get_value("_ptr", string);
-        ast_set_name(new_node, reinterpret_cast<const char*>(string.get_pointer().get_cpointer()));
+        ast_set_name(new_node, reinterpret_cast<const char*>(string.get_pointer().get_cpointer()), opt->strtab);
       }
       else
       {

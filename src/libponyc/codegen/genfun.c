@@ -364,7 +364,7 @@ static void make_prototype(compile_t* c, reach_type_t* t,
     LLVMGetParamTypes(c_m->func_type, tparams);
 
     // Generate the sender prototype.
-    const char* sender_name = genname_be(m->full_name);
+    const char* sender_name = genname_be(m->full_name, c->opt->strtab);
     c_m->func = codegen_addfun(c, sender_name, c_m->func_type, true);
     genfun_param_attrs(c, t, m, c_m->func);
 
@@ -424,7 +424,7 @@ static void add_get_behavior_name_case(compile_t* c, reach_type_t* t,
   LLVMPositionBuilderAtEnd(c->builder, block);
 
   // hack to get the behavior name since it's always a "tag_" prefix
-  const char* name = genname_behavior_name(t->name, be_name + 4);
+  const char* name = genname_behavior_name(t->name, be_name + 4, c->opt->strtab);
 
   LLVMValueRef ret = codegen_string(c, name, strlen(name));
   genfun_build_ret(c, ret);
@@ -573,7 +573,7 @@ static bool genfun_fun(compile_t* c, reach_type_t* t, reach_method_t* m)
     ast_id(cap) == TK_AT);
 
   bool finaliser = c_m->func == c_t->final_fn;
-  bool naked = ast_has_annotation(m->fun->ast, "naked");
+  bool naked = ast_has_annotation(m->fun->ast, "naked", c->opt->strtab);
 
   if(!naked)
   {
@@ -902,7 +902,7 @@ static bool genfun_allocator(compile_t* c, reach_type_t* t)
   if((c_t->primitive != NULL) || is_pointer(t->ast) || is_nullable_pointer(t->ast))
     return true;
 
-  const char* funname = genname_alloc(t->name);
+  const char* funname = genname_alloc(t->name, c->opt->strtab);
   LLVMTypeRef ftype = LLVMFunctionType(c_t->use_type, NULL, 0, false);
   LLVMValueRef fun = codegen_addfun(c, funname, ftype, true);
   if(t->underlying != TK_PRIMITIVE)
@@ -1188,7 +1188,7 @@ void genfun_param_attrs(compile_t* c, reach_type_t* t, reach_method_t* m,
 
 void genfun_function_attrs(compile_t* c, reach_method_t* m, LLVMValueRef fun)
 {
-  bool naked = ast_has_annotation(m->fun->ast, "naked");
+  bool naked = ast_has_annotation(m->fun->ast, "naked", c->opt->strtab);
 
   if(naked)
   {
@@ -1198,7 +1198,7 @@ void genfun_function_attrs(compile_t* c, reach_method_t* m, LLVMValueRef fun)
     LLVMAddAttributeAtIndex(fun, LLVMAttributeFunctionIndex, attr_ref);
   }
 
-  if(naked || ast_has_annotation(m->fun->ast, "noinline"))
+  if(naked || ast_has_annotation(m->fun->ast, "noinline", c->opt->strtab))
   {
     unsigned attr_id = LLVMGetEnumAttributeKindForName("noinline",
       sizeof("noinline") - 1);
@@ -1206,7 +1206,7 @@ void genfun_function_attrs(compile_t* c, reach_method_t* m, LLVMValueRef fun)
     LLVMAddAttributeAtIndex(fun, LLVMAttributeFunctionIndex, attr_ref);
   }
 
-  if(ast_has_annotation(m->fun->ast, "alwaysinline"))
+  if(ast_has_annotation(m->fun->ast, "alwaysinline", c->opt->strtab))
   {
     unsigned attr_id = LLVMGetEnumAttributeKindForName("alwaysinline",
       sizeof("alwaysinline") - 1);
@@ -1386,7 +1386,7 @@ void genfun_primitive_calls(compile_t* c)
   if(need_primitive_call(c, c->str__init))
   {
     fn_type = LLVMFunctionType(c->void_type, NULL, 0, false);
-    const char* fn_name = genname_program_fn(c->filename, "primitives_init");
+    const char* fn_name = genname_program_fn(c->filename, "primitives_init", c->opt->strtab);
     c->primitives_init = LLVMAddFunction(c->module, fn_name, fn_type);
 
     codegen_startfun(c, c->primitives_init, NULL, NULL, NULL, NULL, false);
@@ -1399,7 +1399,7 @@ void genfun_primitive_calls(compile_t* c)
   {
     if(fn_type == NULL)
       fn_type = LLVMFunctionType(c->void_type, NULL, 0, false);
-    const char* fn_name = genname_program_fn(c->filename, "primitives_final");
+    const char* fn_name = genname_program_fn(c->filename, "primitives_final", c->opt->strtab);
     c->primitives_final = LLVMAddFunction(c->module, fn_name, fn_type);
 
     codegen_startfun(c, c->primitives_final, NULL, NULL, NULL, NULL, false);

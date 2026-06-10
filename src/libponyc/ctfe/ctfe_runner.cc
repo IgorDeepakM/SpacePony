@@ -1204,7 +1204,7 @@ bool CtfeRunner::match_eq_element(pass_opt_t* opt, errorframe_t* errors, ast_t* 
 
     ast_t* res_type = get_builtin_type(opt, the_case, "Bool");
 
-    CtfeValue equal = call_method(opt, errors, ast_pos, res_type, stringtab("eq"),
+    CtfeValue equal = call_method(opt, errors, ast_pos, res_type, stringtab(opt->strtab, "eq"),
       match.get_type_ast(), match, args, nullptr);
 
     pony_assert(equal.is_bool());
@@ -1233,7 +1233,7 @@ bool CtfeRunner::is_operator(pass_opt_t* opt, errorframe_t* errors, ast_t* ast_p
           vector<CtfeValue> args = { right };
 
           ast_t* bool_type_ast = type_builtin(opt, ast_pos, "Bool");
-          CtfeValue equal = call_method(opt, errors, ast_pos, bool_type_ast, stringtab("eq"),
+          CtfeValue equal = call_method(opt, errors, ast_pos, bool_type_ast, stringtab(opt->strtab, "eq"),
             left_type, left, args, nullptr);
 
           return equal.get_bool().get_value();

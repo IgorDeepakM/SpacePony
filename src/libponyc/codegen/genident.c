@@ -567,7 +567,7 @@ static LLVMValueRef box_is_box(compile_t* c, reach_type_t* left_type,
 
     // Call the type-specific __is function, which will unbox the LHS.
     LLVMPositionBuilderAtEnd(c->builder, bothtuple_block);
-    reach_method_t* is_fn = reach_method(left_type, TK_BOX, stringtab("__is"),
+    reach_method_t* is_fn = reach_method(left_type, TK_BOX, stringtab(c->opt->strtab, "__is"),
       NULL, c->opt);
     pony_assert(is_fn != NULL);
 
@@ -780,7 +780,7 @@ void gen_is_tuple_fun(compile_t* c, reach_type_t* t, pass_opt_t* opt)
 {
   pony_assert(t->underlying == TK_TUPLETYPE);
 
-  reach_method_t* m = reach_method(t, TK_BOX, stringtab("__is"), NULL, opt);
+  reach_method_t* m = reach_method(t, TK_BOX, stringtab(c->opt->strtab, "__is"), NULL, opt);
 
   if(m == NULL)
     return;

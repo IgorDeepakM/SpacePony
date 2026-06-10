@@ -63,7 +63,7 @@ LLVMValueRef gen_param(compile_t* c, ast_t* ast)
   ast_t* param_type = ast_childidx(def, 1);
 
   if((c->frame->bare_function && ast_id(param_type) == TK_TUPLETYPE) ||
-      ast_has_annotation(param_type, PONY_BYVAL_ANNOTATION))
+      ast_has_annotation(param_type, PONY_BYVAL_ANNOTATION, c->opt->strtab))
   {
     return gen_localload(c, ast);
   }
@@ -585,7 +585,7 @@ static LLVMValueRef gen_digestof_box(compile_t* c, reach_type_t* type,
 
   // Call the type-specific __digestof function, which will unbox the value.
   reach_method_t* digest_fn = reach_method(type, TK_BOX,
-    stringtab("__digestof"), NULL, c->opt);
+    stringtab(c->opt->strtab, "__digestof"), NULL, c->opt);
   pony_assert(digest_fn != NULL);
   LLVMValueRef func = gendesc_vtable(c, desc, digest_fn->vtable_index);
   LLVMTypeRef fn_type = LLVMFunctionType(c->intptr, &c->ptr, 1, false);
@@ -730,7 +730,7 @@ void gen_digestof_fun(compile_t* c, reach_type_t* t)
 {
   pony_assert(t->can_be_boxed);
 
-  reach_method_t* m = reach_method(t, TK_BOX, stringtab("__digestof"), NULL, c->opt);
+  reach_method_t* m = reach_method(t, TK_BOX, stringtab(c->opt->strtab, "__digestof"), NULL, c->opt);
 
   if(m == NULL)
     return;

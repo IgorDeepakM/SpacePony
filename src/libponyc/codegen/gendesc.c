@@ -68,7 +68,7 @@ static LLVMValueRef make_unbox_function(compile_t* c, reach_type_t* t,
   // function) by the mangled name.
   LLVMTypeRef unbox_ret_type = ret_type;
 
-  const char* unbox_name = genname_unbox(m->full_name);
+  const char* unbox_name = genname_unbox(m->full_name, c->opt->strtab);
   compile_type_t* c_t = (compile_type_t*)t->c_type;
 
   if(ast_id(m->fun->ast) != TK_NEW)
@@ -208,7 +208,7 @@ static LLVMValueRef make_trait_bitmap(compile_t* c, reach_type_t* t)
   ponyint_pool_free_size(c->trait_bitmap_size * sizeof(LLVMValueRef), bitmap);
 
   // Create a global to hold the array.
-  const char* name = genname_traitmap(t->name);
+  const char* name = genname_traitmap(t->name, c->opt->strtab);
   LLVMValueRef global = LLVMAddGlobal(c->module, map_type, name);
   LLVMSetGlobalConstant(global, true);
   LLVMSetLinkage(global, LLVMPrivateLinkage);
@@ -314,7 +314,7 @@ static LLVMValueRef make_field_list(compile_t* c, reach_type_t* t)
   LLVMValueRef field_array = LLVMConstArray2(c->field_descriptor, list, count);
 
   // Create a global to hold the array.
-  const char* name = genname_fieldlist(t->name);
+  const char* name = genname_fieldlist(t->name, c->opt->strtab);
   LLVMValueRef global = LLVMAddGlobal(c->module, field_type, name);
   LLVMSetGlobalConstant(global, true);
   LLVMSetLinkage(global, LLVMPrivateLinkage);
@@ -408,7 +408,7 @@ void gendesc_type(compile_t* c, reach_type_t* t)
       return;
   }
 
-  const char* desc_name = genname_descriptor(t->name);
+  const char* desc_name = genname_descriptor(t->name, c->opt->strtab);
   uint32_t vtable_size = t->vtable_size;
 
   if(t->underlying != TK_TUPLETYPE)

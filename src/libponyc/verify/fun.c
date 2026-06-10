@@ -468,9 +468,9 @@ bool verify_fun(pass_opt_t* opt, ast_t* ast)
     }
   }
 
-  bool naked = ast_has_annotation(ast, "naked");
-  bool noinline = ast_has_annotation(ast, "noinline");
-  bool alwaysinline = ast_has_annotation(ast, "alwaysinline");
+  bool naked = ast_has_annotation(ast, "naked", opt->strtab);
+  bool noinline = ast_has_annotation(ast, "noinline", opt->strtab);
+  bool alwaysinline = ast_has_annotation(ast, "alwaysinline", opt->strtab);
 
   if(naked && alwaysinline)
   {

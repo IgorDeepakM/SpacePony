@@ -18,7 +18,7 @@
 #include <string.h>
 
 #define FIND_METHOD(name, cap, opt) \
-  const char* strtab_name = stringtab(name); \
+  const char* strtab_name = stringtab(opt->strtab, name); \
   reach_method_t* m = reach_method(t, cap, strtab_name, NULL, opt); \
   if(m == NULL) return; \
   m->intrinsic = true; \
@@ -33,7 +33,7 @@
   gen(c, gen_data, TK_VAL);
 
 #define GENERIC_FUNCTION(name, gen, gen_data) \
-  generic_function(c, t, stringtab(name), gen, gen_data);
+  generic_function(c, t, stringtab(c->opt->strtab, name), gen, gen_data);
 
 typedef void (*generate_gen_fn)(compile_t*, reach_type_t*, reach_method_t*, void* gen_data);
 
@@ -1361,7 +1361,7 @@ typedef struct num_conv_t
 
 static void number_value(compile_t* c, num_conv_t* type, token_id cap)
 {
-  reach_type_t* t = reach_type_name(c->reach, type->type_name);
+  reach_type_t* t = reach_type_name(c->reach, type->type_name, c->opt);
 
   if(t == NULL)
     return;
@@ -1599,7 +1599,7 @@ static void number_conversion(compile_t* c, void** data, token_id cap)
     return;
   }
 
-  reach_type_t* t = reach_type_name(c->reach, from->type_name);
+  reach_type_t* t = reach_type_name(c->reach, from->type_name, c->opt);
 
   if(t == NULL)
     return;
@@ -1671,12 +1671,12 @@ static void unsafe_number_conversion(compile_t* c, void** data, token_id cap)
     return;
   }
 
-  reach_type_t* t = reach_type_name(c->reach, from->type_name);
+  reach_type_t* t = reach_type_name(c->reach, from->type_name, c->opt);
 
   if(t == NULL)
     return;
 
-  const char* name = genname_unsafe(to->fun_name);
+  const char* name = genname_unsafe(to->fun_name, c->opt->strtab);
 
   FIND_METHOD(name, cap, c->opt);
   start_function(c, t, m, to->type, &from->type, 1);
@@ -1929,7 +1929,7 @@ static void fp_intrinsics(compile_t* c)
 {
   reach_type_t* t;
 
-  if((t = reach_type_name(c->reach, "F32")) != NULL)
+  if((t = reach_type_name(c->reach, "F32", c->opt)) != NULL)
   {
     f32__nan(c, t);
     f32__inf(c, t);
@@ -1937,7 +1937,7 @@ static void fp_intrinsics(compile_t* c)
     BOX_FUNCTION(f32_bits, t);
   }
 
-  if((t = reach_type_name(c->reach, "F64")) != NULL)
+  if((t = reach_type_name(c->reach, "F64", c->opt)) != NULL)
   {
     f64__nan(c, t);
     f64__inf(c, t);

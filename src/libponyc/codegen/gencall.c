@@ -665,8 +665,8 @@ static bool contains_boxable(ast_t* type)
   }
 }
 
-static bool can_inline_message_send(compile_t* c, reach_type_t* t, reach_method_t* m,
-  const char* method_name)
+static bool can_inline_message_send(reach_type_t* t, reach_method_t* m,
+  const char* method_name, compile_t* c)
 {
   switch(t->underlying)
   {
@@ -939,7 +939,9 @@ LLVMValueRef gen_call(compile_t* c, ast_t* ast)
       case TK_INTERFACE:
       case TK_TRAIT:
         if(m->cap == TK_TAG)
-          is_message = can_inline_message_send(c, t, m, method_name);
+        {
+          is_message = can_inline_message_send(t, m, method_name, c);
+        }
         break;
 
       default: {}
@@ -1144,7 +1146,6 @@ LLVMValueRef gen_pattern_eq(compile_t* c, ast_t* pattern, LLVMValueRef r_value)
   }
 
   reach_type_t* t = reach_type(c->reach, pattern_type, c->opt);
-
   pony_assert(t != NULL);
 
   // Static or virtual dispatch.
@@ -1263,7 +1264,7 @@ static void declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* f_name,
   compile_type_t* ret_c_t = (compile_type_t*)reified_ret->c_type;
 
   ffi_decl->ret_reach_type = reified_ret;
-  ffi_decl->return_by_value = ast_has_annotation(ast_child(ret_ast), PONY_BYVAL_ANNOTATION);
+  ffi_decl->return_by_value = ast_has_annotation(ast_child(ret_ast), PONY_BYVAL_ANNOTATION, c->opt->strtab);
 
   LLVMTypeRef r_type = ffi_return_type(c, ffi_decl, reified_ret, intrinsic);
 
@@ -1320,7 +1321,7 @@ static void declare_ffi(compile_t* c, ffi_decl_t* ffi_decl, const char* f_name,
       reach_type_t* pt = reach_type(c->reach, p_type, c->opt);
       pony_assert(pt != NULL);
       bool pass_by_value =
-        ast_has_annotation(ast_childidx(arg, 1), PONY_BYVAL_ANNOTATION) ||
+        ast_has_annotation(ast_childidx(arg, 1), PONY_BYVAL_ANNOTATION, c->opt->strtab) ||
         pt->underlying == TK_TUPLETYPE;
       ffi_decl->params[param_count].reach_type = pt;
       ffi_decl->params[param_count].pass_by_value = pass_by_value;
@@ -1436,6 +1437,8 @@ LLVMValueRef generate_and_get_ffi_decl(compile_t* c, ast_t* use, ast_t* decl,
 
   // Get the function name, +1 to skip leading @
   const char* f_name = ast_name(decl_id) + 1;
+
+  deferred_reification_t* reify = c->frame->reify;
 
   // Get the function. First check if the name is in use by a global and error
   // if it's the case.
@@ -1737,7 +1740,7 @@ LLVMValueRef gencall_create(compile_t* c, reach_type_t* t, ast_t* call)
   // reference to the new actor, because the result value of the constructor
   // call is discarded at the immediate syntax level, we can make certain
   // optimizations related to the actor reference count and the cycle detector.
-  bool no_inc_rc = call && !is_result_needed(call);
+  bool no_inc_rc = call && !is_result_needed(call, c->opt);
 
   LLVMValueRef args[3];
   args[0] = codegen_ctx(c);
