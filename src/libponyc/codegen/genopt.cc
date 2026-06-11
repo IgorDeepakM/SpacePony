@@ -239,6 +239,11 @@ public:
       stack_alignment = inst->getPointerAlignment(*unwrap(c->target_data));
     }
 
+    // The alloca's alignment comes from the allocator's `align` return
+    // attribute, declared in init_runtime (codegen.c). Keep that attribute
+    // truthful to the runtime's guarantee: too weak here under-aligns object
+    // fields (e.g. U128) and crashes optimised builds (#5462); stronger than
+    // the runtime actually provides would be undefined behaviour.
     AllocaInst* replace = new AllocaInst(builder.getInt8Ty(), 0, int_size,
       stack_alignment, "", begin);
 
