@@ -147,6 +147,7 @@ struct _Typecheck
   var frame: NullablePointer[_TypecheckFrame] ref
   embed stats: _TypecheckStats
   var errors: NullablePointer[_Errors]
+  var value_formal_eq_list_data: Pointer[None]
   var evaluation_error: Bool
 
   new create() =>
@@ -156,4 +157,5 @@ struct _Typecheck
     frame = NullablePointer[_TypecheckFrame].none()
     stats = _TypecheckStats.create()
     errors = NullablePointer[_Errors].none()
+    value_formal_eq_list_data = Pointer[None]
     evaluation_error = false
