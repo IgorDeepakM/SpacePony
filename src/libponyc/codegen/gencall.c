@@ -1438,8 +1438,6 @@ LLVMValueRef generate_and_get_ffi_decl(compile_t* c, ast_t* use, ast_t* decl,
   // Get the function name, +1 to skip leading @
   const char* f_name = ast_name(decl_id) + 1;
 
-  deferred_reification_t* reify = c->frame->reify;
-
   // Get the function. First check if the name is in use by a global and error
   // if it's the case.
   ffi_decl_t* ffi_decl = NULL;
