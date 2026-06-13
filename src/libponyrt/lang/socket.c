@@ -7,6 +7,7 @@
 
 #include "../asio/asio.h"
 #include "../asio/event.h"
+#include "socket.h"
 #include "ponyassert.h"
 #include <stdbool.h>
 #include <string.h>
@@ -162,7 +163,7 @@ static struct addrinfo* os_addrinfo_intern(int family, int socktype,
   if((host != NULL) && (host[0] == '\0'))
     host = NULL;
 
-  struct addrinfo *result;
+  struct addrinfo* result;
 
   if(getaddrinfo(host, service, &hints, &result) != 0)
     return NULL;
@@ -221,7 +222,8 @@ static iocp_t* iocp_create(iocp_op_t op, asio_event_t* ev)
   {
     iocp->token = ev->iocp_token;
     atomic_fetch_add_explicit(&iocp->token->refcount, 1, memory_order_relaxed);
-  } else {
+  }
+  else {
     iocp->token = NULL;
   }
 
@@ -293,7 +295,8 @@ static void CALLBACK iocp_callback(DWORD err, DWORD bytes, OVERLAPPED* ov)
       iocp_accept_t* acc = (iocp_accept_t*)iocp;
       closesocket(acc->ns);
       iocp_accept_destroy(acc);
-    } else {
+    }
+    else {
       iocp_destroy(iocp);
     }
 
@@ -332,7 +335,8 @@ static void CALLBACK iocp_callback(DWORD err, DWORD bytes, OVERLAPPED* ov)
 
         // Dispatch a read event with the new socket as the argument.
         pony_asio_event_send(iocp->ev, ASIO_READ, (int)acc->ns);
-      } else {
+      }
+      else {
         // Close the new socket.
         pony_os_socket_close((int)acc->ns);
         acc->ns = INVALID_SOCKET;
@@ -348,7 +352,8 @@ static void CALLBACK iocp_callback(DWORD err, DWORD bytes, OVERLAPPED* ov)
       {
         // Dispatch a write event with the number of bytes written.
         pony_asio_event_send(iocp->ev, ASIO_WRITE, bytes);
-      } else {
+      }
+      else {
         // Dispatch a write event with zero bytes to indicate a close.
         pony_asio_event_send(iocp->ev, ASIO_WRITE, 0);
       }
@@ -363,7 +368,8 @@ static void CALLBACK iocp_callback(DWORD err, DWORD bytes, OVERLAPPED* ov)
       {
         // Dispatch a read event with the number of bytes read.
         pony_asio_event_send(iocp->ev, ASIO_READ, bytes);
-      } else {
+      }
+      else {
         // Dispatch a read event with zero bytes to indicate a close.
         pony_asio_event_send(iocp->ev, ASIO_READ, 0);
       }
@@ -379,7 +385,7 @@ static void CALLBACK iocp_callback(DWORD err, DWORD bytes, OVERLAPPED* ov)
   }
 }
 
-static bool iocp_connect(asio_event_t* ev, struct addrinfo *p)
+static bool iocp_connect(asio_event_t* ev, struct addrinfo* p)
 {
   SOCKET s = (SOCKET)ev->fd;
   iocp_t* iocp = iocp_create(IOCP_CONNECT, ev);
@@ -431,6 +437,12 @@ static bool iocp_accept(asio_event_t* ev)
 
 static bool iocp_recv(asio_event_t* ev, char* data, size_t len)
 {
+  // Uphold the same null-event contract as iocp_recvfrom (see issue #5474):
+  // a null event means the socket never came up, so report failure instead
+  // of dereferencing it and crashing the process.
+  if(ev == NULL)
+    return false;
+
   SOCKET s = (SOCKET)ev->fd;
   iocp_t* iocp = iocp_create(IOCP_RECV, ev);
   DWORD received;
@@ -482,6 +494,13 @@ static bool iocp_sendto(int fd, const char* data, size_t len,
 static bool iocp_recvfrom(asio_event_t* ev, char* data, size_t len,
   ipaddress_t* ipaddr)
 {
+  // A failed UDP listen leaves the Pony-side socket with a null event
+  // (pony_os_listen_udp* returns NULL; see issue #5474). Dereferencing it
+  // here would crash the process, so report failure instead and let the
+  // caller close.
+  if(ev == NULL)
+    return false;
+
   SOCKET s = (SOCKET)ev->fd;
   iocp_t* iocp = iocp_create(IOCP_RECV, ev);
   DWORD flags = 0;
@@ -550,7 +569,7 @@ static int socket_from_addrinfo(struct addrinfo* p, bool reuse)
 }
 
 static asio_event_t* os_listen(pony_actor_t* owner, int fd,
-  struct addrinfo *p, int proto)
+  struct addrinfo* p, int proto)
 {
   if(bind((SOCKET)fd, p->ai_addr, (int)p->ai_addrlen) != 0)
   {
@@ -588,7 +607,7 @@ static asio_event_t* os_listen(pony_actor_t* owner, int fd,
   return ev;
 }
 
-static bool os_connect(pony_actor_t* owner, int fd, struct addrinfo *p,
+static bool os_connect(pony_actor_t* owner, int fd, struct addrinfo* p,
   const char* from, uint32_t asio_flags)
 {
   map_any_to_loopback(p->ai_addr);
@@ -630,7 +649,7 @@ static bool os_connect(pony_actor_t* owner, int fd, struct addrinfo *p,
   if(!need_bind)
   {
     // ConnectEx requires bind.
-    struct sockaddr_storage addr = {0};
+    struct sockaddr_storage addr = { 0 };
     addr.ss_family = p->ai_family;
 
     if(bind((SOCKET)fd, (struct sockaddr*)&addr, (int)p->ai_addrlen) != 0)
@@ -972,15 +991,9 @@ PONY_API bool pony_os_host_ip6(const char* host)
   return inet_pton(AF_INET6, host, &addr) == 1;
 }
 
-typedef struct
-{
-  size_t res;
-  bool success;
-}OsResult;
-
 #ifdef PLATFORM_IS_WINDOWS
-
-PONY_API OsResult pony_os_writev(asio_event_t* ev, LPWSABUF wsa, int wsacnt)
+PONY_API pony_socket_result_t pony_os_writev(asio_event_t* ev, LPWSABUF wsa,
+  int wsacnt, size_t* count_out)
 {
   SOCKET s = (SOCKET)ev->fd;
   iocp_t* iocp = iocp_create(IOCP_SEND, ev);
@@ -988,32 +1001,28 @@ PONY_API OsResult pony_os_writev(asio_event_t* ev, LPWSABUF wsa, int wsacnt)
 
   if(WSASend(s, wsa, wsacnt, &sent, 0, &iocp->ov, NULL) != 0)
   {
-    switch (GetLastError())
+    switch(GetLastError())
     {
       case WSA_IO_PENDING:
-      {
-        OsResult ret = { (size_t)wsacnt, true };
-        return ret;
-      }
-      case WSAEWOULDBLOCK :
-      {
-        OsResult ret = { 0, true };
-        return ret;
-      }
-      default:
-      {
+        *count_out = (size_t)wsacnt;
+        return PONY_SOCKET_OK;
+      case WSAEWOULDBLOCK:
         iocp_destroy(iocp);
-        OsResult ret = { 0, false };
-        return ret;
-      }
+        *count_out = 0;
+        return PONY_SOCKET_RETRY;
+      default:
+        iocp_destroy(iocp);
+        *count_out = 0;
+        return PONY_SOCKET_ERROR;
     }
   }
 
-  OsResult ret = { (size_t)wsacnt, true };
-  return ret;
+  *count_out = (size_t)wsacnt;
+  return PONY_SOCKET_OK;
 }
 #else
-PONY_API OsResult pony_os_writev(asio_event_t* ev, const struct iovec *iov, int iovcnt)
+PONY_API pony_socket_result_t pony_os_writev(asio_event_t* ev,
+  const struct iovec* iov, int iovcnt, size_t* count_out)
 {
   ssize_t sent = writev(ev->fd, iov, iovcnt);
 
@@ -1021,20 +1030,21 @@ PONY_API OsResult pony_os_writev(asio_event_t* ev, const struct iovec *iov, int 
   {
     if(errno == EWOULDBLOCK || errno == EAGAIN)
     {
-      OsResult ret = { 0, true };
-      return ret;
+      *count_out = 0;
+      return PONY_SOCKET_RETRY;
     }
 
-    OsResult ret = { 0, false };
-    return ret;
+    *count_out = 0;
+    return PONY_SOCKET_ERROR;
   }
 
-  OsResult ret = { (size_t)sent, true };
-  return ret;
+  *count_out = (size_t)sent;
+  return PONY_SOCKET_OK;
 }
 #endif
 
-PONY_API OsResult pony_os_send(asio_event_t* ev, const char* buf, size_t len)
+PONY_API pony_socket_result_t pony_os_send(asio_event_t* ev, const char* buf,
+  size_t len, size_t* count_out)
 {
 #ifdef PLATFORM_IS_WINDOWS
   SOCKET s = (SOCKET)ev->fd;
@@ -1047,29 +1057,24 @@ PONY_API OsResult pony_os_send(asio_event_t* ev, const char* buf, size_t len)
 
   if(WSASend(s, &b, 1, &sent, 0, &iocp->ov, NULL) != 0)
   {
-    switch (GetLastError())
+    switch(GetLastError())
     {
       case WSA_IO_PENDING:
-      {
-        OsResult ret = { len, true };
-        return ret;
-      }
+        *count_out = len;
+        return PONY_SOCKET_OK;
       case WSAEWOULDBLOCK:
-      {
-        OsResult ret = { 0, true };
-        return ret;
-      }
-      default:
-      {
         iocp_destroy(iocp);
-        OsResult ret = { 0, false };
-        return ret;
-      }
+        *count_out = 0;
+        return PONY_SOCKET_RETRY;
+      default:
+        iocp_destroy(iocp);
+        *count_out = 0;
+        return PONY_SOCKET_ERROR;
     }
   }
 
-  OsResult ret = { (size_t)sent, true };
-  return ret;
+  *count_out = sent;
+  return PONY_SOCKET_OK;
 #else
   ssize_t sent = send(ev->fd, buf, len, 0);
 
@@ -1077,72 +1082,76 @@ PONY_API OsResult pony_os_send(asio_event_t* ev, const char* buf, size_t len)
   {
     if(errno == EWOULDBLOCK || errno == EAGAIN)
     {
-      OsResult ret = { 0, true };
-      return ret;
+      *count_out = 0;
+      return PONY_SOCKET_RETRY;
     }
 
-    OsResult ret = { 0, false };
-    return ret;
+    *count_out = 0;
+    return PONY_SOCKET_ERROR;
   }
 
-  OsResult ret = { (size_t)sent, true };
-  return ret;
+  *count_out = (size_t)sent;
+  return PONY_SOCKET_OK;
 #endif
 }
 
-PONY_API OsResult pony_os_recv(asio_event_t* ev, char* buf, size_t len)
+PONY_API pony_socket_result_t pony_os_recv(asio_event_t* ev, char* buf,
+  size_t len, size_t* count_out)
 {
 #ifdef PLATFORM_IS_WINDOWS
+  // Windows IOCP: the actual byte count arrives asynchronously through
+  // the completion port (see iocp_callback IOCP_RECV branch), so the
+  // synchronous return is OK with count=0 on success, ERROR otherwise.
+  * count_out = 0;
   if(!iocp_recv(ev, buf, len))
-  {
-    OsResult ret = { 0 , false };
-    return ret;
-  }
+    return PONY_SOCKET_ERROR;
 
-  OsResult ret = { 0, true };
-  return ret;
+  return PONY_SOCKET_OK;
 #else
+  // POSIX OK paths must write a non-zero count: the Pony stdlib
+  // (`packages/net/tcp_connection.pony` `_pending_reads`) advances
+  // `_read_buf_offset` and `sum` by the count and would loop forever
+  // if OK ever carried 0 bytes. `received == 0` (peer closed) is
+  // surfaced as ERROR for that reason.
   ssize_t received = recv(ev->fd, buf, len, 0);
 
   if(received < 0)
   {
     if(errno == EWOULDBLOCK || errno == EAGAIN)
     {
-      OsResult ret = { 0, true };
-      return ret;
+      *count_out = 0;
+      return PONY_SOCKET_RETRY;
     }
 
-    OsResult ret = { 0, false };
-    return ret;
-  } else if(received == 0) {
-    OsResult ret = { 0, false };
-    return ret;
+    *count_out = 0;
+    return PONY_SOCKET_ERROR;
+  }
+  else if(received == 0) {
+    *count_out = 0;
+    return PONY_SOCKET_ERROR;
   }
 
-  OsResult ret = { (size_t)received, true };
-  return ret;
+  *count_out = (size_t)received;
+  return PONY_SOCKET_OK;
 #endif
 }
 
-PONY_API OsResult pony_os_sendto(int fd, const char* buf, size_t len,
-  ipaddress_t* ipaddr)
+PONY_API pony_socket_result_t pony_os_sendto(int fd, const char* buf,
+  size_t len, ipaddress_t* ipaddr, size_t* count_out)
 {
 #ifdef PLATFORM_IS_WINDOWS
+  * count_out = 0;
   if(!iocp_sendto(fd, buf, len, ipaddr))
-  {
-    OsResult ret = { 0, false };
-    return ret;
-  }
+    return PONY_SOCKET_ERROR;
 
-  OsResult ret = { 0, true };
-  return ret;
+  return PONY_SOCKET_OK;
 #else
   socklen_t addrlen = ponyint_address_length(ipaddr);
 
   if(addrlen == (socklen_t)-1)
   {
-    OsResult ret = { 0, false };
-    return ret;
+    *count_out = 0;
+    return PONY_SOCKET_ERROR;
   }
 
   ssize_t sent = sendto(fd, buf, len, 0, (struct sockaddr*)&ipaddr->addr,
@@ -1152,31 +1161,28 @@ PONY_API OsResult pony_os_sendto(int fd, const char* buf, size_t len,
   {
     if(errno == EWOULDBLOCK || errno == EAGAIN)
     {
-      OsResult ret = { 0, true };
-      return ret;
+      *count_out = 0;
+      return PONY_SOCKET_RETRY;
     }
 
-    OsResult ret = { 0, false };
-    return ret;
+    *count_out = 0;
+    return PONY_SOCKET_ERROR;
   }
 
-  OsResult ret = { (size_t)sent, true };
-  return ret;
+  *count_out = (size_t)sent;
+  return PONY_SOCKET_OK;
 #endif
 }
 
-PONY_API OsResult pony_os_recvfrom(asio_event_t* ev, char* buf, size_t len,
-  ipaddress_t* ipaddr)
+PONY_API pony_socket_result_t pony_os_recvfrom(asio_event_t* ev, char* buf,
+  size_t len, ipaddress_t* ipaddr, size_t* count_out)
 {
 #ifdef PLATFORM_IS_WINDOWS
+  * count_out = 0;
   if(!iocp_recvfrom(ev, buf, len, ipaddr))
-  {
-    OsResult ret = { 0, false };
-    return ret;
-  }
+    return PONY_SOCKET_ERROR;
 
-  OsResult ret = { 0, true };
-  return ret;
+  return PONY_SOCKET_OK;
 #else
   socklen_t addrlen = sizeof(struct sockaddr_storage);
 
@@ -1187,19 +1193,20 @@ PONY_API OsResult pony_os_recvfrom(asio_event_t* ev, char* buf, size_t len,
   {
     if(errno == EWOULDBLOCK || errno == EAGAIN)
     {
-      OsResult ret = { 0, true };
-      return ret;
+      *count_out = 0;
+      return PONY_SOCKET_RETRY;
     }
 
-    OsResult ret = { 0, false };
-    return ret;
-  } else if(recvd == 0) {
-    OsResult ret = { 0, false };
-    return ret;
+    *count_out = 0;
+    return PONY_SOCKET_ERROR;
+  }
+  else if(recvd == 0) {
+    *count_out = 0;
+    return PONY_SOCKET_ERROR;
   }
 
-  OsResult ret = { (size_t)recvd, true };
-  return ret;
+  *count_out = (size_t)recvd;
+  return PONY_SOCKET_OK;
 #endif
 }
 
@@ -1208,7 +1215,7 @@ PONY_API void pony_os_keepalive(int fd, int secs)
   SOCKET s = (SOCKET)fd;
 
   int on = (secs > 0) ? 1 : 0;
-  setsockopt(s, SOL_SOCKET,  SO_KEEPALIVE, (const char*)&on, sizeof(int));
+  setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, (const char*)&on, sizeof(int));
 
   if(on == 0)
     return;
@@ -1527,12 +1534,12 @@ PONY_API void pony_os_multicast_leave(int fd, const char* group, const char* to)
 
 PONY_API int pony_os_sockopt_level(int option)
 {
-  switch (option)
+  switch(option)
   {
-  /*
-   * Formatted in C by:
-   *   egrep '^(IP[A-Z0-6]*PROTO_|NSPROTO_|SOL_)' ~/sum-of-all-constants.txt | egrep -v '\(' | sort -u | egrep -v '^$' | awk 'BEGIN { count=4000; } { printf("#ifdef %s\n    case %2d: return %s;\n#endif\n", $1, count++, $1); }'
-   */
+    /*
+     * Formatted in C by:
+     *   egrep '^(IP[A-Z0-6]*PROTO_|NSPROTO_|SOL_)' ~/sum-of-all-constants.txt | egrep -v '\(' | sort -u | egrep -v '^$' | awk 'BEGIN { count=4000; } { printf("#ifdef %s\n    case %2d: return %s;\n#endif\n", $1, count++, $1); }'
+     */
 #ifdef IPPROTO_3PC
     case 4000: return IPPROTO_3PC;
 #endif
@@ -1972,12 +1979,12 @@ PONY_API int pony_os_sockopt_level(int option)
 
 PONY_API int pony_os_sockopt_option(int option)
 {
-  switch (option)
+  switch(option)
   {
-  /*
-   * Formatted in C by:
-   *   egrep -v '^(IP[A-Z0-6]*PROTO_|NSPROTO_|SOL_)' ~/sum-of-all-constants.txt | egrep -v '\(' | sort -u | egrep -v '^$' | awk '{ printf("#ifdef %s\n    case %2d: return %s;\n#endif\n", $1, count++, $1); }'
-   */
+    /*
+     * Formatted in C by:
+     *   egrep -v '^(IP[A-Z0-6]*PROTO_|NSPROTO_|SOL_)' ~/sum-of-all-constants.txt | egrep -v '\(' | sort -u | egrep -v '^$' | awk '{ printf("#ifdef %s\n    case %2d: return %s;\n#endif\n", $1, count++, $1); }'
+     */
 #ifdef AF_COIP
     case  0: return AF_COIP;
 #endif
