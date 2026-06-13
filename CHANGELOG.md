@@ -12,6 +12,15 @@ All notable changes to the Pony compiler and standard library will be documented
 - Reject self-referential type parameter constraints ([PR #5403](https://github.com/ponylang/ponyc/pull/5403))
 - Report an error for infinitely recursive generic types ([PR #5411](https://github.com/ponylang/ponyc/pull/5411))
 - Fix compiler crash on partial application of a method with a literal default argument ([PR #5412](https://github.com/ponylang/ponyc/pull/5412))
+- Fix compiler crashes in while and repeat loops that jump away ([PR #5418](https://github.com/ponylang/ponyc/pull/5418))
+- Reject tuple types hidden in an intersection within a type constraint ([PR #5439](https://github.com/ponylang/ponyc/pull/5439))
+- Fix use=dtrace builds on macOS ([PR #5445](https://github.com/ponylang/ponyc/pull/5445))
+- Fix intermittent crashes when compiling on multiple threads at once ([PR #5420](https://github.com/ponylang/ponyc/pull/5420))
+- Reject self-referential iftype constraints inside lambdas and object literals ([PR #5423](https://github.com/ponylang/ponyc/pull/5423))
+- Fix incorrect rejection and crashes for iftype conditions inside lambdas and object literals ([PR #5443](https://github.com/ponylang/ponyc/pull/5443))
+- Fix runtime crash in optimized builds for types with 128-bit fields ([PR #5464](https://github.com/ponylang/ponyc/pull/5464))
+- Fix `UDPSocket.set_multicast_interface` not setting the interface ([PR #5481](https://github.com/ponylang/ponyc/pull/5481))
+- Fix `UDPSocket.set_multicast_loopback` and `set_multicast_ttl` having no effect ([PR #5481](https://github.com/ponylang/ponyc/pull/5481))
 
 ### Added
 
