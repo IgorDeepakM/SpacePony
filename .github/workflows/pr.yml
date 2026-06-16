@@ -9,6 +9,8 @@ concurrency:
 jobs:
   x86_64-windows:
     runs-on: windows-latest
+    permissions:
+      packages: write # Required for pushing to GHCR
     defaults:
       run:
         shell: pwsh
@@ -43,6 +45,8 @@ jobs:
   
   arm64-macos:
     runs-on: macos-latest
+    permissions:
+      packages: write # Required for pushing to GHCR
 
     name: arm64 Apple Darwin
     steps:
@@ -69,6 +73,8 @@ jobs:
 
   x86_64-linux:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write # Required for pushing to GHCR
 
     name: x86-64 Ubuntu Linux
     steps:
@@ -97,6 +103,8 @@ jobs:
 
   arm64-linux:
     runs-on: ubuntu-24.04-arm
+    permissions:
+      packages: write # Required for pushing to GHCR
 
     name: arm64 Ubuntu Linux
     steps:
