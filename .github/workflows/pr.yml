@@ -26,8 +26,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LIBS_TAG: ${{ hashFiles('make.ps1', 'CMakeLists.txt', 'lib/CMakeLists.txt', 'lib/llvm/patches/*') }}
-          LIBS_PR: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.number || '' }}
-        run: python .ci-scripts/pr_libs_cache.py --platform windows-latest --tag "$env:LIBS_TAG" --pr "$env:LIBS_PR" '--' pwsh -File make.ps1 -Command libs -LlvmTools false
+        run: python .ci-scripts/pr_libs_cache.py --platform windows-latest --tag "$env:LIBS_TAG" --pr "1" '--' pwsh -File make.ps1 -Command libs -LlvmTools false
       - name: Build Debug Runtime
         run: |
           .\make.ps1 -Command configure -Config Debug
@@ -56,8 +55,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LIBS_TAG: ${{ hashFiles('Makefile', 'CMakeLists.txt', 'lib/CMakeLists.txt', 'lib/llvm/patches/*') }}
-          LIBS_PR: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.number || '' }}
-        run: python3 .ci-scripts/pr_libs_cache.py --platform macos-latest --tag "$LIBS_TAG" --pr "$LIBS_PR" -- make libs llvm_tools=false build_flags=-j3
+        run: python3 .ci-scripts/pr_libs_cache.py --platform macos-latest --tag "$LIBS_TAG" --pr "1" -- make libs llvm_tools=false build_flags=-j3
       - name: Build Debug Runtime
         run: |
           make configure arch=armv8  config=debug
@@ -86,8 +84,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LIBS_TAG: ${{ hashFiles('Makefile', 'CMakeLists.txt', 'lib/CMakeLists.txt', 'lib/llvm/patches/*') }}
-          LIBS_PR: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.number || '' }}
-        run: python3 .ci-scripts/pr_libs_cache.py --platform ubuntu-latest --tag "$LIBS_TAG" --pr "$LIBS_PR" -- make libs llvm_tools=false build_flags=-j3
+        run: python3 .ci-scripts/pr_libs_cache.py --platform ubuntu-latest --tag "$LIBS_TAG" --pr "1" -- make libs llvm_tools=false build_flags=-j3
       - name: Build Debug Runtime
         run: |
           make configure arch=x86-64 config=debug
@@ -116,8 +113,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LIBS_TAG: ${{ hashFiles('Makefile', 'CMakeLists.txt', 'lib/CMakeLists.txt', 'lib/llvm/patches/*') }}
-          LIBS_PR: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.number || '' }}
-        run: python3 .ci-scripts/pr_libs_cache.py --platform ubuntu-24.04-arm --tag "$LIBS_TAG" --pr "$LIBS_PR" -- make libs llvm_tools=false build_flags=-j3
+        run: python3 .ci-scripts/pr_libs_cache.py --platform ubuntu-24.04-arm --tag "$LIBS_TAG" --pr "1" -- make libs llvm_tools=false build_flags=-j3
       - name: Build Debug Runtime
         run: |
           make configure arch=armv8 config=debug
