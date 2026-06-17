@@ -9,6 +9,7 @@
 
 #include "../ast/ast.h"
 #include "../codegen/genname.h"
+#include "../../libponyrt/mem/heap.h"
 
 
 using namespace std;
@@ -300,6 +301,14 @@ bool CtfeValuePointer::run_method(pass_opt_t* opt, errorframe_t* errors, ast_t* 
       const CtfeValuePointer& r = recv.get_pointer();
       bool n = r.m_array == nullptr;
       result = CtfeValue(CtfeValueBool(n), res_type);
+      return true;
+    }
+    else if(method_name == "min_alloc")
+    {
+      CtfeValuePointer& rec_val = recv.get_pointer();
+      size_t elem_size = rec_val.get_elem_size();
+      size_t min = ((elem_size == 0) || (elem_size > HEAP_MIN)) ? 1 : (HEAP_MIN / elem_size);
+      result = CtfeValue(min, res_type);
       return true;
     }
   }
