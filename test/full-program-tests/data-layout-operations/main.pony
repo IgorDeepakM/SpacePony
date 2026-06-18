@@ -1,5 +1,4 @@
 use "collections"
-use "lib:data-layout-operations-additional"
 
 use @FFI_Func1[I32](x: I32, y: I32)
 

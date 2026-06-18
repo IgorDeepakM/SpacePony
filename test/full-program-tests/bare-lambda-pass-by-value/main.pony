@@ -1,5 +1,3 @@
-use "lib:bare-lambda-pass-by-value-additional"
-
 use @pony_exitcode[None](code: I32)
 
 use @call_via_C_clobber_small[None](lambda: @{(\byval\ S1Small, \byval\ S1Small)},
