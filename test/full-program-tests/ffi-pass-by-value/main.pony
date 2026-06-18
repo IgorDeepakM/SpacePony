@@ -1,4 +1,3 @@
-use "lib:ffi-pass-by-value-additional"
 use "collections"
 
 use @pony_exitcode[None](code: I32)
