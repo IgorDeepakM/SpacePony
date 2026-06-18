@@ -9,9 +9,6 @@ name: Prune branch libs cache
 # .ci-scripts/prune_branch_libs_cache.py.
 
 on:
-  schedule:
-    # Daily at 04:37 UTC.
-    - cron: "37 4 * * *"
   workflow_dispatch:
     inputs:
       max_age_days:
@@ -37,10 +34,6 @@ jobs:
       - name: Prune
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PONYLANG_MAIN_READ_PACKAGE_TOKEN: ${{ secrets.PONYLANG_MAIN_READ_PACKAGE_TOKEN }}
-          # Via env, not inline ${{ }}, so a dispatch input can't inject into the
-          # run line. The dry-run flag below resolves to a fixed literal (not raw
-          # input), so it's safe to keep inline.
           MAX_AGE_DAYS: ${{ inputs.max_age_days || 14 }}
         run: |
           python3 .ci-scripts/prune_branch_libs_cache.py \
