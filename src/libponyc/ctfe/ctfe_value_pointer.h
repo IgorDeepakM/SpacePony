@@ -63,6 +63,7 @@ public:
   uint8_t *get_cpointer() const { return m_array; }
   ast_t* get_pointer_type_ast() const { return m_pointer_type; }
   ast_t* get_pointer_elem_type_ast() const { return m_elem_pointer_type; }
+  size_t get_elem_size() const { return m_elem_size; }
 
   CtfeValueBool eq(const CtfeValuePointer& b) const { return CtfeValueBool(m_array == b.m_array); }
   CtfeValueBool ne(const CtfeValuePointer& b) const { return CtfeValueBool(m_array != b.m_array); }
