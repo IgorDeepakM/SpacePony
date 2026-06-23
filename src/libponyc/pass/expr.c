@@ -641,6 +641,8 @@ ast_result_t pass_expr(ast_t** astp, pass_opt_t* options)
     case TK_PARAMREF:   r = expr_paramref(options, ast); break;
     case TK_VALUEFORMALPARAMREF:
                         r = expr_valueformalparamref(options, astp); break;
+    case TK_VALUEFORMALPARAM:
+                        r = expr_valueformalparam(options, ast); break;
     case TK_THIS:       r = expr_this(options, ast); break;
     case TK_TRUE:
     case TK_FALSE:      r = expr_literal(options, ast, "Bool"); break;

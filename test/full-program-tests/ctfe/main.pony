@@ -42,6 +42,26 @@ class Is1
   new create(x': I32) =>
     x = x'
 
+class QQ
+  var x: I32
+  var y: I32
+
+  new create(x': I32, y': I32) =>
+    x = x'
+    y = y'
+
+class WW[a: QQ val]
+  fun get_x(): I32 => a.x
+  fun get_y(): I32 => a.y
+
+class LambdaClass[l: {(I32): I32} val]
+  fun run_lambda(x: I32): I32 =>
+    l(x)
+
+class BareLambdaClass[l: @{(I32): I32} val]
+  fun run_lambda(x: I32): I32 =>
+    l(x)
+
 actor Main
   var _env: Env
 
@@ -68,6 +88,7 @@ actor Main
     test_load_save_file(340)
     test_primitive_union(360)
     test_is(380)
+    test_constant_object_type_parameter(390)
 
   fun test_literal_int(exit_add: I32) =>
     // Test shift with negative numbers
@@ -1089,4 +1110,25 @@ actor Main
 
     if d1 != d2 then
       @pony_exitcode(exit_add + 6)
+    end
+
+  fun test_constant_object_type_parameter(exit_add: I32) =>
+    let ww = WW[= recover val QQ(11, 22) end]
+
+    if (ww.get_x() != 11) or (ww.get_y() != 22) then
+      @pony_exitcode(exit_add + 1)
+    end
+
+    let lc: LambdaClass[= {(x: I32): I32 => 33 * x}] = LambdaClass[= {(x: I32): I32 => 33 * x}]
+    var res = lc.run_lambda(2)
+
+    if res != 66 then
+      @pony_exitcode(exit_add + 2)
+    end
+
+    let blc: BareLambdaClass[= @{(x: I32): I32 => 44 * x}] = BareLambdaClass[= @{(x: I32): I32 => 44 * x}]
+    res = blc.run_lambda(2)
+
+    if res != 88 then
+      @pony_exitcode(exit_add + 3)
     end
