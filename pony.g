@@ -38,29 +38,20 @@ method
   ;
 
 annotatedrawseq
-  : ('\\' ID (',' ID)* '\\')? (exprseq | jump)
+  : ('\\' ID (',' ID)* '\\')? (assignment | jump) antlr_0*
   ;
 
 rawseq
-  : exprseq
-  | jump
-  ;
-
-exprseq
-  : assignment (semiexpr | nosemi)?
-  ;
-
-nextexprseq
-  : nextassignment (semiexpr | nosemi)?
+  : (assignment | jump) antlr_1*
   ;
 
 nosemi
-  : nextexprseq
+  : nextassignment
   | jump
   ;
 
 semiexpr
-  : ';' (exprseq | jump)
+  : ';' (assignment | jump)
   ;
 
 jump
@@ -76,11 +67,11 @@ assignment
   ;
 
 nextinfix
-  : nextterm antlr_0*
+  : nextterm antlr_2*
   ;
 
 infix
-  : term antlr_1*
+  : term antlr_3*
   ;
 
 isop
@@ -190,15 +181,15 @@ parampattern
   ;
 
 nextpostfix
-  : nextatom antlr_2*
+  : nextatom antlr_4*
   ;
 
 casepostfix
-  : caseatom antlr_3*
+  : caseatom antlr_5*
   ;
 
 postfix
-  : atom antlr_4*
+  : atom antlr_6*
   ;
 
 call
@@ -322,7 +313,7 @@ tupletype
   ;
 
 infixtype
-  : type antlr_5*
+  : type antlr_7*
   ;
 
 isecttype
@@ -395,31 +386,25 @@ param
   ;
 
 antlr_0
-  : binop
-  | isop
-  | 'as' type
+  : semiexpr
+  | nosemi
   ;
 
 antlr_1
+  : semiexpr
+  | nosemi
+  ;
+
+antlr_2
   : binop
   | isop
   | 'as' type
   ;
 
-antlr_2
-  : dot
-  | tilde
-  | chain
-  | typeargs
-  | call
-  ;
-
 antlr_3
-  : dot
-  | tilde
-  | chain
-  | typeargs
-  | call
+  : binop
+  | isop
+  | 'as' type
   ;
 
 antlr_4
@@ -431,6 +416,22 @@ antlr_4
   ;
 
 antlr_5
+  : dot
+  | tilde
+  | chain
+  | typeargs
+  | call
+  ;
+
+antlr_6
+  : dot
+  | tilde
+  | chain
+  | typeargs
+  | call
+  ;
+
+antlr_7
   : uniontype
   | isecttype
   ;
