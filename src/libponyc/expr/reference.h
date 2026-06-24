@@ -18,6 +18,7 @@ bool expr_local(pass_opt_t* opt, ast_t* ast);
 bool expr_localref(pass_opt_t* opt, ast_t* ast);
 bool expr_paramref(pass_opt_t* opt, ast_t* ast);
 bool expr_valueformalparamref(pass_opt_t* opt, ast_t** astp);
+bool expr_valueformalparam(pass_opt_t* opt, ast_t* ast);
 bool expr_addressof(pass_opt_t* opt, ast_t* ast);
 bool expr_offsetof(pass_opt_t* opt, ast_t* ast);
 bool expr_sizeof(pass_opt_t* opt, ast_t* ast);

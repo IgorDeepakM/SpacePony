@@ -997,7 +997,7 @@ LLVMValueRef gen_constant_object(compile_t* c, ast_t* ast)
 
   // if the parent is TK_FVAR or TK_FLET, then this constant object is a member
   // in another struct.
-  if(ast_id(parent) != TK_FVAR && ast_id(parent) != TK_FLET)
+  if(ast_id(parent) != TK_FVAR && ast_id(parent) != TK_FLET && ast_id(parent) != TK_VALUEFORMALARG)
   {
     bool is_recovered = false;
     ast_t* dest_type = find_antecedent_type(c->opt, ast, &is_recovered);

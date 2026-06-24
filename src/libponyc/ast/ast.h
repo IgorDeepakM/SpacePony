@@ -223,5 +223,7 @@ void ast_extract_children(ast_t* parent, size_t child_count,
 ast_t* ast_get_provided_symbol_definition(ast_t* ast,
   const char* name, sym_status_t* status);
 
+uint64_t ast_hash(ast_t* ast);
+
 PONY_EXTERN_C_END
 #endif

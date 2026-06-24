@@ -73,6 +73,8 @@ bool contains_struct(ast_t* type);
 
 bool contains_entity_type(ast_t* type);
 
+bool type_is_only_cap(ast_t* type, token_id cap);
+
 ast_t* remove_entity_types(ast_t* type);
 
 bool is_pointer_referenced_object(ast_t* type);

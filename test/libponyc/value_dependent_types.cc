@@ -11,6 +11,10 @@
 
 #define TEST_COMPILE_IR(src) DO(test_compile(src, "ir"))
 
+#define TEST_ERRORS_1(src, err1) \
+  { const char* errs[] = {err1, NULL}; \
+    DO(test_expected_errors(src, "ir", errs)); }
+
 class VDTTest: public PassTest
 {};
 
@@ -553,7 +557,7 @@ TEST_F(VDTTest, ReturnTypeSumOfInputTypesCallError)
 TEST_F(VDTTest, FBoundedPolymorphicClass)
 {
   const char* src =
-    "class Foo[n: Foo[n]]\n";
+    "class Foo[n: Foo[n] val]\n";
 
   TEST_COMPILE(src);
 }
@@ -648,6 +652,29 @@ TEST_F(VDTTest, RecursiveValueTypeParameterConstraintCompiles)
     "      end\n"
     "    end\n"
     "    rv";
+
+  TEST_COMPILE_IR(src);
+}
+
+TEST_F(VDTTest, VDTTypeConstantObjectNotVal)
+{
+  const char* src =
+    "class QQ\n"
+
+    "class WW[a:QQ]\n";
+
+  TEST_ERRORS_1(src, "the value formal parameter type must be of val capability");
+}
+
+TEST_F(VDTTest, VDTTypeConstantObjectVal)
+{
+  const char* src =
+    "class QQ\n"
+
+    "class WW[a:QQ val]\n"
+    "actor Main\n"
+    "  new create(env: Env) =>\n"
+    "    let ww = WW[= QQ]\n";
 
   TEST_COMPILE_IR(src);
 }

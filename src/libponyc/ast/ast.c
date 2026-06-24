@@ -2090,3 +2090,64 @@ ast_t* ast_get_provided_symbol_definition(ast_t* ast,
 
   return def;
 }
+
+
+uint64_t ast_hash(ast_t* ast)
+{
+  uint64_t hash = 0;
+
+  ast_t* type = ast_type(ast);
+  if(type != NULL)
+  {
+    hash ^= ast_hash(type);
+  }
+
+  switch(ast_id(ast))
+  {
+    case TK_ID:
+    case TK_STRING:
+    {
+      const char* data = (const char*)ast_data(ast);
+      if(data != NULL)
+      {
+        hash ^= ponyint_hash_str(data);
+      }
+      else
+      {
+        const char* name = ast_name(ast);
+        if(name != NULL)
+        {
+          hash ^= ponyint_hash_str(name);
+        }
+      }
+
+      break;
+    }
+
+    case TK_INT:
+    {
+      lexint_t* val = ast_int(ast);
+      hash ^= ponyint_hash_int64(val->low) ^ ponyint_hash_int64(val->high);
+      break;
+    }
+
+    case TK_FLOAT:
+      hash ^= ponyint_hash_int64((uint64_t)ast_float(ast));
+      break;
+
+    default:
+      break;
+  }
+
+  hash ^= ast_id(ast);
+
+  ast_t* child = ast_child(ast);
+
+  while(child != NULL)
+  {
+    hash ^= ast_hash(child);
+    child = ast_sibling(child);
+  }
+
+  return hash;
+}
