@@ -231,7 +231,7 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
 * Lambdas are just classes or primitives underneath similar to lambdas in C++ are sugared down to a C++ class. They can also be passed as value type arguments. This way classes can use lambdas determined at compile time without even needing to store the lambda in the class and the lambda is inserted at compile time.
 
   ```pony
-  class c[l: {(I32): I32} val]
+  class C[l: {(I32): I32} val]
     fun run_lambda(x: I32): I32 =>
       l(x)
 
