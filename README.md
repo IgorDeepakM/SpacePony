@@ -219,6 +219,28 @@ Did I miss anything? This guide will tell you more [Building from source](BUILD.
     n * k
   ```
 
+* Any object can become a value type argument as long as constant object has a val capability. When passing a constant object as a type argument it is often necessary to use `recover` so that the object gets a val capability.
+
+  ```pony
+  class C[a: Array[I32] val]
+    ...
+
+  var c = C[= recover val [1; 2; 3; 4] end]
+  ```
+
+* Lambdas are just classes or primitives underneath similar to lambdas in C++ are sugared down to a C++ class. They can also be passed as value type arguments. This way classes can use lambdas determined at compile time without even needing to store the lambda in the class and the lambda is inserted at compile time.
+
+  ```pony
+  class c[l: {(I32): I32} val]
+    fun run_lambda(x: I32): I32 =>
+      l(x)
+
+  ...
+
+  var c = C[{(x: I32): I32 => 33 * x}]
+  let res = c.run_lambda(2)  // gets the value 66
+  ```
+
 ### CFixedSizedArray
 
 * Added CFixedSizedArray in order to be able to model C fixed sized arrays found in C.
