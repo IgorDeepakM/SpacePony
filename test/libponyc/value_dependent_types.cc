@@ -557,7 +557,7 @@ TEST_F(VDTTest, ReturnTypeSumOfInputTypesCallError)
 TEST_F(VDTTest, FBoundedPolymorphicClass)
 {
   const char* src =
-    "class Foo[n: Foo[n]]\n";
+    "class Foo[n: Foo[n] val]\n";
 
   TEST_COMPILE(src);
 }

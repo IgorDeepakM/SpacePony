@@ -3186,6 +3186,43 @@ bool contains_entity_type(ast_t* type)
   return false;
 }
 
+bool type_is_only_cap(ast_t* type, token_id cap)
+{
+  switch(ast_id(type))
+  {
+    case TK_UNIONTYPE:
+    case TK_ISECTTYPE:
+    {
+      ast_t* child = ast_child(type);
+
+      while(child != NULL)
+      {
+        if(!type_is_only_cap(child, cap))
+        {
+          return false;
+        }
+
+        child = ast_sibling(child);
+      }
+
+      break;
+    }
+
+    case TK_NOMINAL:
+      if(ast_id(ast_childidx(type, 3)) != cap)
+      {
+        return false;
+      }
+      break;
+
+    default:
+      pony_assert(false);
+      break;
+  }
+
+  return true;
+}
+
 ast_t* remove_entity_types(ast_t* type)
 {
   switch(ast_id(type))

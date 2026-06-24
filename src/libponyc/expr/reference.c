@@ -675,28 +675,14 @@ bool expr_valueformalparam(pass_opt_t* opt, ast_t* ast)
 
   ast_t* type = ast_childidx(ast, 1);
 
-  bool no_val = false;
-
-  if(ast_id(type) == TK_TYPEPARAMREF)
+  if(ast_id(type) != TK_TYPEPARAMREF)
   {
-    if(ast_id(ast_childidx(type, 1)) != TK_VAL)
+    if(!type_is_only_cap(type, TK_VAL))
     {
-      no_val = true;
+      ast_error(opt->check.errors, ast,
+        "the value formal parameter type must be of val capability");
+      return false;
     }
-  }
-  else
-  {
-    if(ast_id(ast_childidx(type, 3)) != TK_VAL)
-    {
-      no_val = true;
-    }
-  }
-
-  if(no_val)
-  {
-    ast_error(opt->check.errors, ast,
-      "the value formal parameter type must be of val capability");
-    return false;
   }
 
   return true;
