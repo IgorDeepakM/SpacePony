@@ -62,6 +62,24 @@ class BareLambdaClass[l: @{(I32): I32} val]
   fun run_lambda(x: I32): I32 =>
     l(x)
 
+class ConstantArrayClass[a: Array[I32] val]
+  fun compare(x: Array[I32]): Bool =>
+    var i: USize = 0
+
+    for e in a.values() do
+      try
+        if e != x(i)? then
+          return false
+        end
+      else
+        return false
+      end
+
+      i = i + 1
+    end
+
+    true
+
 actor Main
   var _env: Env
 
@@ -1131,4 +1149,9 @@ actor Main
 
     if res != 88 then
       @pony_exitcode(exit_add + 3)
+    end
+
+    let cac: ConstantArrayClass[= recover val [1; 2; 3; 4] end] = ConstantArrayClass[= recover val [1; 2; 3; 4] end]
+    if not cac.compare([1; 2; 3; 4]) then
+      @pony_exitcode(exit_add + 4)
     end

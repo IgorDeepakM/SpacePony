@@ -276,15 +276,24 @@ bool is_literal_equal(ast_t* a, ast_t* b, pass_opt_t* opt, bool allow_eq_list)
           ast_t* type_a = ast_type(a);
           ast_t* type_b = ast_type(b);
 
-          ast_t* data_a = (ast_t*)ast_data(type_a);
-          ast_t* data_b = (ast_t*)ast_data(type_b);
-
-          uint64_t a_hash = ast_hash(data_a);
-          uint64_t b_hash = ast_hash(data_b);
-
-          if(a_hash == b_hash)
+          if(ast_id(type_a) == TK_NOMINAL && ast_id(type_b) == TK_NOMINAL)
           {
-            return true;
+            ast_t* data_a = (ast_t*)ast_data(type_a);
+            ast_t* data_b = (ast_t*)ast_data(type_b);
+
+            ast_t* id_a = ast_child(data_a);
+            ast_t* id_b = ast_child(data_b);
+
+            if(ast_data(id_a) != NULL && ast_data(id_b))
+            {
+              uint64_t a_hash = ast_hash(data_a);
+              uint64_t b_hash = ast_hash(data_b);
+
+              if(a_hash == b_hash)
+              {
+                return true;
+              }
+            }
           }
         }
       }
