@@ -2,3 +2,10 @@ benchmark/*
 CHANGELOG.md
 CODE_OF_CONDUCT.md
 .release-notes/
+<<<<<<< HEAD
+=======
+.known-couplings/
+CLAUDE.md
+.claude/
+AGENTS.md
+>>>>>>> f7bcdd99d (Move known couplings to one file per coupling (#5583))
