@@ -54,7 +54,7 @@
 
     [Parameter(HelpMessage="CITests to run")]
     [string]
-    $CiTestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release,pony-compiler-tests,pony-lsp-tests,pony-lint-tests,pony-doc-tests' # ,grammar' do not run grammar for now as there is work on th
+    $CiTestsToRun = 'libponyrt.tests,libponyc.tests,libponyc.run.tests.debug,libponyc.run.tests.release,stdlib-debug,stdlib-release,pony-compiler-tests,pony-lsp-tests,pony-lint-tests,pony-doc-tests', # ,grammar' do not run grammar for now as there is work on th
 
     [Parameter(HelpMessage="Runtime use options to enable at configure time, comma-separated. On Windows only 'systematic_testing' is supported.")]
     [string]
