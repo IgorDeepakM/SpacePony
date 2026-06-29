@@ -1,8 +1,6 @@
 name: "Stress Test: Windows Generative (Systematic)"
 
 on:
-  schedule:
-    - cron: "0 11 * * *"
   workflow_dispatch:
     inputs:
       sha:

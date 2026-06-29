@@ -1,8 +1,6 @@
 name: "Stress Test: Linux Glibc Generative (Normal)"
 
 on:
-  schedule:
-    - cron: "0 18 * * *"
   workflow_dispatch:
     inputs:
       sha:

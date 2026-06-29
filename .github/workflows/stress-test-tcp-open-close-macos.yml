@@ -1,8 +1,6 @@
 name: "Stress Test: MacOS TCP Open/Close"
 
 on:
-  schedule:
-    - cron: "30 13 * * *"
   workflow_dispatch:
     inputs:
       sha:

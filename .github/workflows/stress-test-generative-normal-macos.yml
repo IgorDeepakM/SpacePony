@@ -1,8 +1,6 @@
 name: "Stress Test: macOS Generative (Normal)"
 
 on:
-  schedule:
-    - cron: "30 21 * * *"
   workflow_dispatch:
     inputs:
       sha:

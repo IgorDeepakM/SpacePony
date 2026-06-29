@@ -1,8 +1,6 @@
 name: "Stress Test: Linux TCP Open/Close"
 
 on:
-  schedule:
-    - cron: "0 7 * * *"
   workflow_dispatch:
     inputs:
       sha:
