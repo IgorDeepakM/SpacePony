@@ -134,9 +134,12 @@ pony_ctx_t* ponyint_sched_init(uint32_t threads, bool noyield, bool nopin,
   );
 #endif
 
-bool ponyint_sched_start(bool library);
+// Convert a runtime-stats print interval in seconds to ponyint_cpu_tick()
+// cycles. Exposed (rather than inlined into ponyint_sched_init) so the
+// width-sensitive conversion can be unit-tested.
+uint64_t ponyint_sched_stats_interval_cycles(uint32_t interval_seconds);
 
-void ponyint_sched_stop();
+bool ponyint_sched_start();
 
 void ponyint_sched_add(pony_ctx_t* ctx, pony_actor_t* actor);
 
