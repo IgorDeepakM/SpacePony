@@ -72,14 +72,14 @@ void print_scheduler_stats(scheduler_t* sched)
   printf("Scheduler stats for index: %d, "
         "total memory allocated: %" PRId64 ", "
         "total memory used: %" PRId64 ", "
-        "created actors counter: %lu, "
-        "destroyed actors counter: %lu, "
-        "actors app cpu: %lu, "
-        "actors gc marking cpu: %lu, "
-        "actors gc sweeping cpu: %lu, "
-        "actors system cpu: %lu, "
-        "scheduler msgs cpu: %lu, "
-        "scheduler misc cpu: %lu, "
+        "created actors counter: %zu, "
+        "destroyed actors counter: %zu, "
+        "actors app cpu: %zu, "
+        "actors gc marking cpu: %zu, "
+        "actors gc sweeping cpu: %zu, "
+        "actors system cpu: %zu, "
+        "scheduler msgs cpu: %zu, "
+        "scheduler misc cpu: %zu, "
         "memory used inflight messages: %" PRId64 ", "
         "memory allocated inflight messages: %" PRId64 ", "
         "number of inflight messages: %" PRId64 "\n",
@@ -1833,7 +1833,7 @@ pony_ctx_t* ponyint_sched_init(uint32_t threads, bool noyield, bool pin,
   return pony_ctx();
 }
 
-bool ponyint_sched_start(bool library)
+bool ponyint_sched_start()
 {
   pony_register_thread();
 
@@ -1843,7 +1843,7 @@ bool ponyint_sched_start(bool library)
   atomic_store_explicit(&pinned_actor_scheduler_suspended, false, memory_order_relaxed);
   atomic_store_explicit(&pinned_actor_scheduler_suspended_check, false, memory_order_relaxed);
 
-  atomic_store_explicit(&detect_quiescence, !library, memory_order_relaxed);
+  atomic_store_explicit(&detect_quiescence, true, memory_order_relaxed);
 
   DTRACE0(RT_START);
   uint32_t start = 0;
@@ -1873,10 +1873,7 @@ bool ponyint_sched_start(bool library)
   // custom run loop for pinned actors
   run_pinned_actors();
 
-  if(!library)
-  {
-    ponyint_sched_shutdown();
-  }
+  ponyint_sched_shutdown();
 
   TRACING_THREAD_STOP();
   ponyint_pool_thread_cleanup();
@@ -1891,12 +1888,6 @@ bool ponyint_sched_start(bool library)
   ponyint_mpmcq_destroy(&this_scheduler->q);
 
   return true;
-}
-
-void ponyint_sched_stop()
-{
-  atomic_store_explicit(&detect_quiescence, true, memory_order_release);
-  ponyint_sched_shutdown();
 }
 
 void ponyint_sched_add(pony_ctx_t* ctx, pony_actor_t* actor)

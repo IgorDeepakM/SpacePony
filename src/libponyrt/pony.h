@@ -260,9 +260,15 @@ PONY_API void pony_triggergc(pony_ctx_t* ctx);
 /** Start gc tracing for sending.
  *
  * Call this before sending a message if it has anything in it that can be
- * GCed. Then trace all the GCable items, then call pony_send_done.
+ * GCed. Then trace all the GCable items, then call pony_send_done. `to` is the
+ * message's destination actor: the send-trace uses it to recognise a self-send
+ * (an object forwarded back to the sending actor) and pin such objects against
+ * the local GC sweep while they round-trip through the actor's own queue, so
+ * weighted reference counting amortises the owner acquire instead of
+ * re-borrowing on every round-trip. Pass NULL if there is no meaningful
+ * destination; the send is then never treated as a self-send.
  */
-PONY_API void pony_gc_send(pony_ctx_t* ctx);
+PONY_API void pony_gc_send(pony_ctx_t* ctx, pony_actor_t* to);
 
 /** Start gc tracing for receiving.
  *
@@ -324,9 +330,12 @@ PONY_API void pony_release_done(pony_ctx_t* ctx);
  * pony_gc_send/pony_send_done round instead of doing one pair of calls for each
  * message. Call pony_send_next before tracing the content of a new message.
  * Using this function can reduce the amount of gc-specific messages
- * sent.
+ * sent. `to` is the new message's destination actor (used for self-send
+ * detection, the same as the pony_gc_send argument, and NULL likewise means
+ * "no destination, never a self-send"); it takes effect only after the
+ * previous message's trace has been finished.
  */
-PONY_API void pony_send_next(pony_ctx_t* ctx);
+PONY_API void pony_send_next(pony_ctx_t* ctx, pony_actor_t* to);
 
 /** Identifiers for reference capabilities when tracing.
  *
@@ -377,7 +386,8 @@ PONY_API void pony_traceunknown(pony_ctx_t* ctx, void* p, int m);
  *
  * Then call pony_start().
  *
- * It is not safe to call this again before the runtime has terminated.
+ * The runtime can only be initialised and run once per process; it is not safe
+ * to call this more than once.
  */
 PONY_API int pony_init(int argc, char** argv);
 
@@ -387,20 +397,16 @@ PONY_API int pony_init(int argc, char** argv);
  * the value pointed by exit_code set with pony_exitcode(), defaulting to 0.
  * exit_code can be NULL if you don't care about the exit code.
  *
- * If library is false, this call will return when the pony program has
- * terminated. If library is true, this call will return immediately, with an
- * exit code of 0, and the runtime won't terminate until pony_stop() is
- * called. This allows further processing to be done on the current thread.
- * The value pointed by exit_code will not be modified if library is true. Use
- * the return value of pony_stop() in that case.
+ * This call will return when the pony program has terminated.
  *
  * language_features specifies which features of the runtime specific to the
  * Pony language, such as network, should be initialised.
  * If language_features is NULL, no feature will be initialised.
  *
- * It is not safe to call this again before the runtime has terminated.
+ * The runtime can only be run once per process; it is not safe to call this
+ * more than once.
  */
-PONY_API bool pony_start(bool library, int* exit_code,
+PONY_API bool pony_start(int* exit_code,
   const pony_language_features_init_t* language_features);
 
 /**
@@ -422,14 +428,6 @@ PONY_API void pony_register_thread();
 PONY_API void pony_unregister_thread();
 
 PONY_API int32_t pony_scheduler_index();
-
-/** Signals that the pony runtime may terminate.
- *
- * This only needs to be called if pony_start() was called with library set to
- * true. This returns the exit code, defaulting to zero. This call won't return
- * until the runtime actually terminates.
- */
-PONY_API int pony_stop();
 
 /** Set the exit code.
  *

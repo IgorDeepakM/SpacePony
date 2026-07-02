@@ -35,9 +35,10 @@ static bool actor_noblock = false;
 #ifdef USE_SYSTEMATIC_TESTING
 // Monotonic source of stable, creation-order actor ids
 // (pony_actor_t.systematic_testing_id). Static, so zero-initialized at process
-// load; not reset by pony_stop. That is fine: only the relative creation order
-// within a single runtime lifetime is used, and a fixed seed reproduces that
-// order because systematic testing creates actors deterministically.
+// load and never reset within the process. That is fine: only the relative
+// creation order within a single runtime lifetime is used, and a fixed seed
+// reproduces that order because systematic testing creates actors
+// deterministically.
 static PONY_ATOMIC(uint64_t) actor_systematic_testing_id_counter;
 #endif
 
@@ -45,20 +46,20 @@ static PONY_ATOMIC(uint64_t) actor_systematic_testing_id_counter;
 void print_actor_stats(pony_actor_t* actor)
 {
   printf("Actor stats for actor: %zu, "
-        "heap memory allocated: %ld, "
-        "heap memory used: %ld, "
-        "heap num allocated: %ld, "
-        "heap realloc counter: %ld, "
-        "heap alloc counter: %ld, "
-        "heap free counter: %ld, "
-        "heap gc counter: %ld, "
-        "system cpu: %ld, "
-        "app cpu: %ld, "
-        "garbage collection marking cpu: %ld, "
-        "garbage collection sweeping cpu: %ld, "
-        "messages sent counter: %ld, "
-        "system messages processed counter: %ld, "
-        "app messages processed counter: %ld\n",
+        "heap memory allocated: %zu, "
+        "heap memory used: %zu, "
+        "heap num allocated: %zu, "
+        "heap realloc counter: %zu, "
+        "heap alloc counter: %zu, "
+        "heap free counter: %zu, "
+        "heap gc counter: %zu, "
+        "system cpu: %zu, "
+        "app cpu: %zu, "
+        "garbage collection marking cpu: %zu, "
+        "garbage collection sweeping cpu: %zu, "
+        "messages sent counter: %zu, "
+        "system messages processed counter: %zu, "
+        "app messages processed counter: %zu\n",
         (uintptr_t)actor,
         actor->actorstats.heap_mem_allocated,
         actor->actorstats.heap_mem_used,
@@ -482,29 +483,6 @@ static bool handle_message(pony_ctx_t* ctx, pony_actor_t* actor,
 
       DTRACE3(ACTOR_MSG_RUN, (uintptr_t)ctx->scheduler, (uintptr_t)actor, msg->id);
       actor->type->dispatch(ctx, actor, msg);
-
-#ifdef PLATFORM_IS_WINDOWS
-      // Release the IOCP message reference taken in pony_asio_event_send.
-      // The event pointer in the message must stay alive through dispatch;
-      // now that the behavior has returned, we can release it.
-      if(actor->type->event_notify != (uint32_t)-1 &&
-        msg->id == actor->type->event_notify)
-      {
-        asio_msg_t* am = (asio_msg_t*)msg;
-        asio_event_t* ev = am->event;
-        iocp_token_t* token = ev->iocp_token;
-
-        if(atomic_fetch_sub_explicit(&token->refcount, 1,
-          memory_order_acq_rel) == 1)
-        {
-          if(atomic_load_explicit(&token->dead, memory_order_acquire))
-          {
-            POOL_FREE(asio_event_t, ev);
-            POOL_FREE(iocp_token_t, token);
-          }
-        }
-      }
-#endif
 
       return true;
     }

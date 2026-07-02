@@ -14,9 +14,9 @@ typedef struct scheduler_t scheduler_t;
 #include <platform.h>
 #include "mutemap.h"
 
-#define PONY_KQUEUE_SCHEDULER_INDEX   -10
-#define PONY_IOCP_SCHEDULER_INDEX     -11
-#define PONY_EPOLL_SCHEDULER_INDEX    -12
+#define PONY_KQUEUE_SCHEDULER_INDEX        -10
+#define PONY_SOCK_NOTIFY_SCHEDULER_INDEX   -11
+#define PONY_EPOLL_SCHEDULER_INDEX         -12
 #define PONY_UNKNOWN_SCHEDULER_INDEX -1
 
 // the `-999` constant is the same value that is hardcoded in `actor_pinning.pony`
@@ -84,6 +84,15 @@ typedef struct pony_ctx_t
   // Temporary storage for acquire/release of actors/objects for GC;
   // empty when GC not running
   actormap_t acquire;
+  // Destination of the message currently being traced for send. Set from the
+  // destination argument of pony_gc_send (and pony_send_next, per message, when
+  // the message-merge optimiser folds several sends into one trace round) and
+  // cleared by pony_send_done. Lets the send-trace recognise a self-send
+  // (msg_target == current) and pin the traced objects against the local GC
+  // sweep while they sit in this actor's own queue, so weighted reference
+  // counting amortises the owner acquire instead of re-borrowing every
+  // round-trip.
+  pony_actor_t* msg_target;
 #ifdef USE_RUNTIMESTATS
   uint64_t last_tsc;
   schedulerstats_t schedulerstats;
@@ -125,9 +134,12 @@ pony_ctx_t* ponyint_sched_init(uint32_t threads, bool noyield, bool nopin,
   );
 #endif
 
-bool ponyint_sched_start(bool library);
+// Convert a runtime-stats print interval in seconds to ponyint_cpu_tick()
+// cycles. Exposed (rather than inlined into ponyint_sched_init) so the
+// width-sensitive conversion can be unit-tested.
+uint64_t ponyint_sched_stats_interval_cycles(uint32_t interval_seconds);
 
-void ponyint_sched_stop();
+bool ponyint_sched_start();
 
 void ponyint_sched_add(pony_ctx_t* ctx, pony_actor_t* actor);
 
